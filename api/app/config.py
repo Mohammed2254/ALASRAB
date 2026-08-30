@@ -29,9 +29,15 @@ class Config:
     API_TITLE = "الأسراب API"
     API_VERSION = "v1"
     OPENAPI_VERSION = "3.0.3"
-    OPENAPI_URL_PREFIX = "/"
-    OPENAPI_SWAGGER_UI_PATH = "/docs"
-    OPENAPI_SWAGGER_UI_URL = "https://cdn.jsdelivr.net/npm/swagger-ui-dist/"
+
+    # `API.md` §٢: العقد يخدم المطوّر لا المستخدم، و**يُعطَّل في الإنتاج**.
+    # واجهة تعرض كل مسار وكل حقل هي خريطة جاهزة لمن يبحث عن سطح هجوم — والقيمة
+    # التي تعطيها للمطوّر لا يحتاجها أحد على الخادم الحيّ.
+    # الافتراض **معطَّل**: نسيان الضبط يُخفي لا يكشف.
+    if _flag("EXPOSE_API_DOCS"):
+        OPENAPI_URL_PREFIX = "/"
+        OPENAPI_SWAGGER_UI_PATH = "/docs"
+        OPENAPI_SWAGGER_UI_URL = "https://cdn.jsdelivr.net/npm/swagger-ui-dist/"
 
 
 class TestConfig(Config):

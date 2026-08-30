@@ -19,6 +19,13 @@ LOCKOUT_MINUTES = 15
 
 _hasher = PasswordHasher()
 
+# هاش ثابت لرمزٍ لا يُستعمل، غرضه **دفع كلفة argon2 حين لا يوجد المستخدم**.
+#
+# بدونه: رقم غير موجود يردّ فورًا، ورقم موجود برمز خاطئ يدفع عشرات الميلي ثانية.
+# الرسالة واحدة والزمن ليس واحدًا — فتعود شاشة الدخول أداة تعداد للطلاب، وهو
+# بالضبط ما تمنعه §٧.١. الرسالة الواحدة بلا زمن واحد ضمانة ناقصة.
+_DUMMY_HASH = _hasher.hash("0000")
+
 
 class AuthError(Exception):
     """فشل الدخول. الرسالة واحدة لكل الأسباب — انظر `login`."""
@@ -92,13 +99,14 @@ def login(org_id: int, student_no: str, pin: str) -> tuple[User, str]:
         )
     )
 
+    # يُتحقّق دائمًا — من هاش المستخدم إن وُجد، ومن الهاش الوهمي إن لم يوجد —
+    # فيتساوى زمن المسارين ولا يكشف الوجود من عدمه.
     ok = False
-    if user is not None:
-        try:
-            _hasher.verify(user.pin_hash, pin)
-            ok = True
-        except (VerifyMismatchError, VerificationError):
-            ok = False
+    try:
+        _hasher.verify(user.pin_hash if user is not None else _DUMMY_HASH, pin)
+        ok = user is not None
+    except (VerifyMismatchError, VerificationError):
+        ok = False
 
     db.session.add(LoginAttempt(org_id=org_id, student_no=student_no, ok=ok))
 
