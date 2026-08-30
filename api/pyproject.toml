@@ -1,0 +1,16 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+# ملفّات Alembic مولَّدة: فحص كود لا نكتبه بيدنا يعطي ضجيجًا يُدرَّب على تجاهله،
+# وأداة تُتجاهَل أسوأ من غيابها.
+exclude = ["migrations"]
+
+[tool.ruff.lint]
+# لا نُفعّل كل شيء: قاعدة لا نفهم سببها تُطفأ عند أوّل إزعاج، فتفقد الأداة مصداقيتها.
+select = ["E", "F", "I", "B", "UP", "SIM", "ARG"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ARG"]          # تركيبات pytest تُمرَّر ولا تُستعمل بالاسم أحيانًا
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

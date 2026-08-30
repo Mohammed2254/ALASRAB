@@ -1,0 +1,27 @@
+# اسم المشروع صريح — لا يُشتقّ من اسم المجلّد.
+# بلا هذا السطر يعتبر Compose كل ملفّ في مجلّد اسمه `api` مشروعًا واحدًا،
+# فيزيل حاويات مشروع آخر عند التشغيل. وقع هذا فعلًا مع المستودع المرجعي.
+name: asrab-v2
+
+# قاعدة بيانات التطوير — حاوية وحجم خاصّان بهذا المستودع.
+# المنفذ 5434: على هذا الجهاز نسختان أخريان (5432 نظامية، 5433 للمستودع المرجعي)
+# ولا نلمس أيًّا منهما. استقلال الحاوية يعني أن حذف المستودع القديم لا يكسر هذا.
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: asrab-v2-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: asrab_v2
+      POSTGRES_USER: asrab
+      POSTGRES_PASSWORD: asrab_dev_only
+    ports: ['127.0.0.1:5434:5432']
+    volumes: [asrab_v2_pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U asrab -d asrab_v2']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  asrab_v2_pgdata:
