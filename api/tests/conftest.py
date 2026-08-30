@@ -91,15 +91,30 @@ def seeded(app):
     db.session.add(team)
     db.session.flush()
 
-    version = WeightVersion(org_id=org.id, effective_from=datetime(2020, 1, 1, tzinfo=UTC))
-    db.session.add(version)
-    db.session.flush()
-    db.session.add(
-        Weight(version_id=version.id, activity_type="memorize", hours_per_unit=Decimal("2.5"))
-    )
-    db.session.add(
-        MasteryMultiplier(version_id=version.id, grade="accepted", multiplier=Decimal("1.0"))
-    )
+    # إصداران بتاريخَي سريان مختلفين — أساس اختبار ث-١١: حدثٌ ماضٍ يجب أن
+    # يُحتسب بالوزن الذي كان ساريًا وقت وقوعه، لا بالوزن الحالي.
+    versions = {}
+    for label, effective, memorize, mastered in [
+        ("old", datetime(2020, 1, 1, tzinfo=UTC), "1.0", "1.5"),
+        ("new", datetime(2026, 6, 1, tzinfo=UTC), "2.5", "2.0"),
+    ]:
+        v = WeightVersion(org_id=org.id, effective_from=effective, note=label)
+        db.session.add(v)
+        db.session.flush()
+        db.session.add(
+            Weight(version_id=v.id, activity_type="memorize", hours_per_unit=Decimal(memorize))
+        )
+        # النسبة المئوية كنشاط: يثبت أن الوحدة لا تغيّر المخطط (ADR-005).
+        db.session.add(
+            Weight(version_id=v.id, activity_type="quran_progress", hours_per_unit=Decimal("0.2"))
+        )
+        db.session.add(
+            MasteryMultiplier(version_id=v.id, grade="mastered", multiplier=Decimal(mastered))
+        )
+        db.session.add(
+            MasteryMultiplier(version_id=v.id, grade="accepted", multiplier=Decimal("1.0"))
+        )
+        versions[label] = v.id
 
     users = {}
     for name, no in [("طالب أول", "1001"), ("طالب ثانٍ", "1002")]:
@@ -109,7 +124,12 @@ def seeded(app):
         db.session.add(Membership(org_id=org.id, user_id=u.id, team_id=team.id, role="pilot"))
         users[no] = u.id
     db.session.commit()
-    return {"org_id": org.id, "team_id": team.id, "version_id": version.id, "users": users}
+    return {
+        "org_id": org.id,
+        "team_id": team.id,
+        "versions": versions,
+        "users": users,
+    }
 
 
 @pytest.fixture
