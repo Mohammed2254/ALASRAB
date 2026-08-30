@@ -57,7 +57,40 @@ erDiagram
 
 ---
 
-## ٣. الجداول
+## ٣. الجداول — الغرض
+
+**٢٤ جدولًا.** لكلٍّ سطرٌ يقول **لماذا يوجد**، والمعقّدة منها لها قسم مفصّل بعده.
+
+| الجدول | لماذا يوجد |
+|---|---|
+| `orgs` | حاوية كل شيء، ومكان الإعدادات التي تختلف بين منظمة وأخرى (المنطقة الزمنية · بداية الأسبوع · مهلة «أرضي») |
+| `users` | الطيارون والمشرفون — الهوية وبيانات الدخول. **بلا `role` وبلا `grounded`** |
+| `teams` | الأسراب — وحدة التنافس الجماعي ومالكة عملة الوقود |
+| `memberships` | **من في أي سرب ومتى** ودوره. فترة السريان تمنع أن ينقل طالبٌ تاريخَه لسربه الجديد |
+| `point_events` | **سجلّ الأحداث — مصدر كل رصيد في المنصة.** لا عمود رصيد في أي مكان |
+| `reading_submissions` | طلبات القراءة **قبل** اعتمادها — الحالة المعلَّقة التي لا مكان لها في سجلّ الحقائق |
+| `weight_versions` | **إصدار أوزان بتاريخ سريان.** وجوده هو ما يجعل تعديل وزنٍ اليوم لا يمسّ أرقام الماضي |
+| `weights` | قيمة النشاط الواحد بالساعات داخل إصدار. **صفوف لا كود** — فتقبل الصفحات والنسبة معًا |
+| `mastery_multipliers` | مضاعف التقدير (متقن/مقبول/يحتاج إعادة) داخل إصدار. **مفصول عن `weights`** لأنه يضرب أنشطة عدّة لا نشاطًا واحدًا |
+| `rank_thresholds` | عتبات الرتب. **صفوف** فإضافة رتبة شاشة إعدادات لا هجرة |
+| `raw_rows` | **الحمولة الخام كما وصلت، قبل أي اشتقاق.** بلاها تصحيحُ المعايرة بعد شهر يعني بيانات ضائعة (خ-٥) |
+| `entry_defaults` | القيم الافتراضية ومرادفات أعمدة اللصق — **تُبقي معرفة «الاسم البديل» بيانات لا شرطًا في الكود** |
+| `daily_questions` | سؤال اليوم وخياراته وشرحه ومكافأته |
+| `answers` | إجابة الطالب. **قيد فريد** يمنع الإجابة مرّتين — في القاعدة لا بإخفاء الزر |
+| `notes` | **الصندوق الأسود:** قناة راجعة مجهولة. جهالتها **بنية الجدول** |
+| `pilot_of_week` | اختيار الأسبوع **وسببه النصّي** — والقيمة كلها في «لماذا» |
+| `fuel_activities` | الأنشطة الجماعية الأربعة وسعة لتراتها |
+| `fuel_criteria` | بنود تقييم النشاط وأوزانها — **تجمع ١٠٠٪ بالضبط** |
+| `fuel_assessments` | تقييم نشاطٍ لسربٍ في **تاريخ وقوعه** |
+| `fuel_scores` | درجة كل بند **مفصّلة** — ليُشرح الرقم بعد شهر: «٨٠ × ٣٥٪ = ٢٨.٠٠» |
+| `audit_log` | **التعويض عن دمج الدورين:** كل تغيير قاعدة مؤرَّخ ومنسوب ومرئيّ لكل المشرفين |
+| `readiness_log` | تغييرات الجاهزية **اليدوية** من المشرف. (الحالة الآلية محسوبة ولا تُخزَّن) |
+| `sessions` | **الجلسة كصفّ** — وهو ما يجعل إبطالها فوريًّا ممكنًا (ADR-003) |
+| `login_attempts` | عدّ المحاولات للقفل بعد ٥. **في القاعدة لا في الذاكرة**: الذاكرة تضيع مع إعادة التشغيل وتكذب مع أكثر من عامل |
+
+---
+
+## ٣.١ الجداول المعقّدة — بالتفصيل
 
 ### `orgs` — المنظمة
 **الغرض:** حاوية كل شيء، ومكان الإعدادات التي تختلف بين منظمة وأخرى.
@@ -92,6 +125,7 @@ users(id, org_id, full_name, student_no, pin_hash, is_active)
 ### `teams` · `memberships` — الأسراب
 ```sql
 teams(id, org_id, name, code, thread_color, archived_at)
+  UNIQUE (org_id, code)
 
 memberships(id, org_id, user_id, team_id, role, joined_at, left_at)
   UNIQUE (user_id) WHERE left_at IS NULL
@@ -124,6 +158,10 @@ point_events(
 
 CHECK (scope='individual' AND user_id IS NOT NULL AND team_id IS NULL AND currency='hours'
     OR scope='team'       AND team_id IS NOT NULL AND user_id IS NULL AND currency='fuel')
+
+CHECK (kind <> 'correction' OR reason IS NOT NULL)          -- ث-٧
+UNIQUE (org_id, external_ref) WHERE external_ref IS NOT NULL -- ث-٣ (فهرس جزئي)
+TRIGGER point_events_no_mutation BEFORE UPDATE OR DELETE     -- ث-٢
 ```
 
 | القرار | لماذا |
@@ -253,20 +291,89 @@ login_attempts(id, org_id, student_no, ok, at)
 
 ---
 
-## ٤. الفهارس
+## ٤. الفهارس والقيود الفريدة
 
-| الفهرس | المسار الذي يخدمه |
+**كلّها هنا — لا شيء مبعثر في الأقسام.** ولكلٍّ **مسار استعمال مسمّى**.
+
+### ٤.١ فهارس الأداء
+| الفهرس | المسار |
 |---|---|
-| `point_events(org_id, user_id, occurred_at) WHERE scope='individual'` | رصيد الطالب وسجلّه · الصدارة الفردية |
+| `point_events(org_id, user_id, occurred_at) WHERE scope='individual'` | رصيد الطالب · سجلّه · الصدارة الفردية |
 | `point_events(org_id, team_id, occurred_at) WHERE scope='team'` | وقود السرب · محطة التزوّد |
-| `UNIQUE point_events(org_id, external_ref) WHERE external_ref IS NOT NULL` | **الـidempotency** |
-| `reading_submissions(org_id, status, created_at) WHERE status='pending'` | طابور الاعتماد |
-| `memberships(team_id) WHERE left_at IS NULL` | أعضاء السرب الحاليون |
-| `notes(org_id, day)` | قائمة الملاحظات |
-| `sessions(token_hash)` | التحقّق على **كل طلب** |
+| `reading_submissions(org_id, created_at) WHERE status='pending'` | **طابور اعتماد المشرف** — الأقدم أوّلًا |
+| `memberships(team_id) WHERE left_at IS NULL` | أعضاء السرب الحاليون · معدّل السرب |
+| `notes(org_id, day)` | قائمة الملاحظات مرتّبة |
+| `sessions(token_hash)` | **التحقّق على كل طلب** — أكثر استعلام تنفيذًا في المنصة |
+| `login_attempts(org_id, student_no, at)` | عدّ محاولات آخر ١٥ دقيقة |
+| `audit_log(org_id, at)` | صفحة سجلّ التغييرات |
 
-**سبعة فهارس، ولكلٍّ مسار مسمّى.** كل فهرس زائد كلفةُ كتابة على **كل** إدخال —
-وشاشة اللصق تكتب عشرات الصفوف دفعة واحدة تحت معيار «أقلّ من دقيقة».
+### ٤.٢ قيود فريدة — كلٌّ يمنع خطأً بعينه
+| القيد | الخطأ الذي يمنعه |
+|---|---|
+| `users(org_id, student_no)` | رقما طالب متطابقان ⇒ دخول ملتبس |
+| `point_events(org_id, external_ref) WHERE external_ref IS NOT NULL` | **الـidempotency:** إعادة اللصق تضاعف الرصيد |
+| `memberships(user_id) WHERE left_at IS NULL` | طالب في سربين ⇒ يُحتسب مرّتين في معدّلين |
+| `reading_submissions(user_id, read_on, book_title)` | إرسال مزدوج بنقرتين |
+| `answers(user_id, question_id)` | الإجابة مرّتين ⇒ مكافأة مضاعفة |
+| `pilot_of_week(org_id, week_start)` | طياران لأسبوع واحد |
+| `fuel_assessments(team_id, activity_id, occurred_on)` | تقييم النشاط نفسه مرّتين للسرب نفسه |
+| `teams(org_id, code)` | رمزا سرب متطابقان في اللصق |
+
+**٨ فهارس + ٨ قيود.** ولا شيء غيرها: كل فهرس زائد **كلفةُ كتابة على كل إدخال**،
+وشاشة اللصق تكتب عشرات الصفوف دفعة واحدة تحت معيار «أقلّ من دقيقة» (NFR-02).
+
+---
+
+## ٤.٣ الثوابت ← مواضع الفرض
+
+> **القاعدة الحاكمة (ADR-002):** الثابت الذي يُفرض في كود التطبيق وحده **يُنسى
+> ويُلتفّ عليه**. ما يمكن فرضه في القاعدة **يُفرض فيها**.
+
+| # | الثابت | موضع الفرض | الاختبار الذي يثبته |
+|---|---|---|---|
+| ث-١ | الساعات فردية · الوقود جماعي · ولا يلتقيان | **`CHECK currency_scope_match`** | إدخال الصور الأربع المخالفة ⇒ رفض |
+| ث-٢ | **لا `UPDATE` ولا `DELETE` على `point_events`** | **`TRIGGER BEFORE UPDATE OR DELETE`** يرفع خطأً | `UPDATE` و`DELETE` مباشران ⇒ استثناء |
+| ث-٣ | إعادة الاستيراد لا تضاعف | فهرس فريد على `external_ref` | **لصق الملفّ مرّتين ⇒ الرصيد لم يتغيّر** (م-١) |
+| ث-٤ | عضوية واحدة سارية لكل طالب | فهرس فريد جزئي | عضوية ثانية بلا `left_at` ⇒ رفض |
+| ث-٥ | طلب معتمد ⇔ له حدث | `CHECK (approved ⇔ point_event_id IS NOT NULL)` | اعتماد بلا حدث ⇒ رفض |
+| ث-٦ | الرفض يوجب سببًا | `CHECK (rejected → review_reason IS NOT NULL)` | رفض بلا سبب ⇒ رفض |
+| ث-٧ | التصحيح يوجب سببًا | `CHECK (kind='correction' → reason IS NOT NULL)` | حدث معاكس بلا سبب ⇒ رفض |
+| ث-٨ | إجابة واحدة لكل سؤال | فهرس فريد | إجابة ثانية ⇒ `409` |
+| ث-٩ | طيار أسبوع واحد | فهرس فريد | اختيار ثانٍ ⇒ رفض |
+| ث-١٠ | أوزان الوقود تجمع ١٠٠٪ | **`services/fuel.py`** — لأن الجمع عبر صفوف لا يُعبَّر عنه بـ`CHECK` صفّي | مجموع ٩٥ ⇒ `422` |
+| ث-١١ | الأوزان تُختار بـ`occurred_at` لا `now()` | **`rules/engine.py::ruleset_at`** | حدث ماضٍ بعد إصدار جديد ⇒ يستعمل الوزن القديم |
+| ث-١٢ | `notes` بلا أثر يربطها بمرسِلها | **بنية الجدول** — لا عمود أصلًا | فحص المخطط: لا `user_id` ولا `ip` |
+| ث-١٣ | الرتبة لا تنخفض بتغيير العتبات | `services/rules_admin.py` | معاينة تُظهر `demoted` فارغًا دائمًا |
+| ث-١٤ | «أرضي» محسوبة لا مخزَّنة | **بنية الجدول** — لا عمود `grounded` | فحص المخطط: لا عمود في `users` |
+| ث-١٥ | كل إلحاق يمرّ بـ`ledger` | **مراجعة + `grep`** — لا يُفرض تقنيًّا | `grep -rn "PointEvent(" app/ --exclude=ledger.py` ⇒ فارغ |
+
+### ث-٢ — الثابت الذي كاد يسقط
+
+«لا `UPDATE` ولا `DELETE`» كانت **قاعدة مكتوبة في `AGENTS.md` بلا فرض تقني** —
+وهو **نقضٌ حرفيّ لـADR-002**: طبّقنا مبدأ «القيد لا يُنسى» على العملات ونسيناه
+على السجلّ نفسه.
+
+```sql
+CREATE FUNCTION point_events_append_only() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'point_events سجلّ إلحاق فقط: التصحيح حدث معاكس بسبب مكتوب';
+END $$ LANGUAGE plpgsql;
+
+CREATE TRIGGER point_events_no_mutation
+  BEFORE UPDATE OR DELETE ON point_events
+  FOR EACH ROW EXECUTE FUNCTION point_events_append_only();
+```
+
+**و`TRUNCATE` لا يُطلق مشغّلات الصفوف** — فـ`seed.py` والاختبارات تعمل بلا تغيير.
+هذا ليس التفافًا على الحماية: `TRUNCATE` يحتاج قفلًا حصريًّا وصلاحية، ولا يقع
+عرَضًا في مسار تطبيقي.
+
+### ث-١٥ — الثابت الوحيد بلا فرض تقني
+
+ملكية `ledger` **لا يمكن فرضها بقيد** — لا شيء في PostgreSQL يعرف أي وحدة بايثون
+أصدرت `INSERT`. فرضها **مراجعة + `grep` قابل للتنفيذ**، وهذا **حدّ معلَن لا
+ادّعاء**: ث-٢ يحرس أخطر ما في السجلّ (التعديل) بالقاعدة، وث-١٥ يحرس الاتّساق
+بالمراجعة.
 
 ---
 
