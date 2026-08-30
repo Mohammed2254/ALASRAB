@@ -1,0 +1,184 @@
+@import 'tailwindcss';
+@import './fonts.css';
+
+/*
+  عالم «المدرّج والشارة».
+
+  اللوحة اللونية ليست اختيارًا ذوقيًا — هي نظام علامات المطارات الفعلي، ولكل لون
+  فيه معنى مقنَّن لا يُخالَف:
+
+    أصفر  = حركة وإرشاد   (المسار، التقدّم، العنصر النشط)
+    أبيض  = سطح وهوية     (النصّ، العتبات، الطائرات)
+    أحمر  = توقّف          (أرضي، وهذا استعماله الوحيد)
+
+  لأن اللون منقول من الواقع بمعناه، يستحيل أن ينزلق إلى الزينة — وهذا بالضبط
+  ما أوقع البروتوتايب الأول في الطفولية حين كان اللون مخترَعًا.
+
+  التباينات مقيسة على **أرضية اللوح** (#12161E) لا على الأسفلت العاري، لأن النصّ
+  يجلس على اللوح في كل موضع تقريبًا:
+    paint 15.4:1 · taxi 10.7:1 · muted 5.9:1 · hold 5.0:1
+  اللون السابق للتوقّف (#E03C2E) كان 4.19:1 على اللوح — تحت الأرضية، ففُتّح.
+  concrete (#5A6472) تحت 4.5:1 عمدًا — للخطوط والحدود فقط، ولا يحمل نصًّا أبدًا.
+*/
+@theme {
+  --color-asphalt: #0a0c10;
+  --color-apron: #141922;
+  --color-taxiway: #1c2330;
+  --color-concrete: #5a6472;
+  --color-muted: #8892a0;
+  --color-paint: #edeff2;
+  --color-taxi: #f5c518;
+  --color-hold: #ea5140;
+
+  --font-display: 'Reem Kufi', system-ui, sans-serif;
+  --font-ui: 'Alexandria', system-ui, sans-serif;
+
+  --ease-taxi: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    accent-color: var(--color-taxi);
+    scrollbar-color: var(--color-taxiway) var(--color-asphalt);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-asphalt);
+    color: var(--color-paint);
+    font-family: var(--font-ui);
+    font-size: 15px;
+    line-height: 1.7;
+    font-variant-numeric: tabular-nums;
+    /* حبيبات الأسفلت: منخفضة عمدًا — النسيج الشفّاف يرفع الأسود إلى رمادي ويقلب منطق المواد */
+    background-image: repeating-linear-gradient(
+      115deg,
+      color-mix(in srgb, var(--color-paint) 3%, transparent) 0 2px,
+      transparent 2px 7px
+    );
+  }
+
+  ::selection {
+    background: var(--color-taxi);
+    color: var(--color-asphalt);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-taxi);
+    outline-offset: 3px;
+  }
+
+  /*
+    Reem Kufi خطّ عناوين: فراغ الكلمة فيه يكاد يساوي فراغ الحرف، فـ«بندر الشمري»
+    تُقرأ «بندرالشمري» بلا تدخّل. word-spacing آمن على العربية — يوسّع محرف المسافة
+    ولا يمسّ وصل الحروف، بخلاف letter-spacing.
+    وهو للعناوين وحدها: المتون الطويلة تُضبط بـ font-ui حيث فراغ الكلمة صريح.
+  */
+  .font-display {
+    word-spacing: 0.16em;
+  }
+
+  /*
+    التتبّع للاتيني وحده — تطبيقه على العربية يفصل الحروف الموصولة، فـ«كاملًا»
+    تصير «كا ملًا».
+
+    لا تُلغِ التتبّع بـ :lang(ar): جذر المستند نفسه lang="ar"، فتطابق القاعدة كل
+    عنصر في الصفحة وتُبطل الصنف كليًّا — وهذا ما حدث فعلًا. الضمانة الصحيحة أن
+    .tracked لا تُوضع إلا على محتوى لاتيني، وكل موضع يحمل lang="en" ليصرّح بذلك.
+  */
+  .tracked {
+    letter-spacing: 0.16em;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer components {
+  /*
+    اللوح: الحاوية الوحيدة، ولا لوح داخل لوح أبدًا.
+    حافّة سفلية صفراء بسماكة الطلاء — لا حدّ ملوّن على الجانب، ولا زوايا مستديرة،
+    ولا ظلّ: الطلاء مادّة مسطّحة على سطح، لا بطاقة تطفو فوقه.
+  */
+  .placard {
+    position: relative;
+    border: 1px solid color-mix(in srgb, var(--color-concrete) 46%, transparent);
+    background: color-mix(in srgb, var(--color-apron) 78%, transparent);
+  }
+
+  /* عتبة المدرّج: الشرطات البيضاء التي تعلّم بداية السطح */
+  .threshold {
+    display: flex;
+    gap: 3px;
+  }
+  .threshold > span {
+    width: 3px;
+    height: 11px;
+    background: var(--color-paint);
+    opacity: 0.72;
+  }
+
+  /* خطّ الوسط المتقطّع: يقود العين على طول الصفّ كما يقود الطائرة على الممرّ */
+  .centerline {
+    flex: 1;
+    height: 2px;
+    align-self: center;
+    background-image: linear-gradient(
+      to left,
+      color-mix(in srgb, var(--color-taxi) 62%, transparent) 0 9px,
+      transparent 9px 17px
+    );
+    background-size: 17px 2px;
+  }
+
+  /* حدّ الشارة المضفور: الحافّة المخيطة التي تحيط بكل شارة قماشية */
+  .merrow {
+    border: 3px solid var(--thread, var(--color-taxi));
+    border-radius: 10px;
+    background-image: repeating-linear-gradient(
+      48deg,
+      color-mix(in srgb, var(--color-paint) 6%, transparent) 0 1px,
+      transparent 1px 4px
+    );
+  }
+
+  /* شبكة القياس: تُستعمل حيث تُقرأ أرقام عليها فقط، لا كخلفية */
+  .gauge {
+    background-image:
+      repeating-linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--color-concrete) 26%, transparent) 0 1px,
+        transparent 1px 100%
+      );
+    background-size: 100% var(--gauge-step, 28px);
+  }
+}
+
+/* حركة مؤلَّفة واحدة: تخميد أُسّي بلا ارتداد */
+@keyframes taxi-in {
+  from {
+    opacity: 0;
+    transform: translateY(9px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.taxi-in {
+  animation: taxi-in 560ms var(--ease-taxi) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
