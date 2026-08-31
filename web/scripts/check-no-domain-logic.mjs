@@ -1,5 +1,5 @@
 /*
-  @covers ق-١١
+  @covers ق-١١, ق-٢٥
 
   فحص معماري: **الواجهة تعرض ولا تحسب** (`AGENTS.md` ٥).
 
@@ -8,6 +8,9 @@
 
   ما يمنعه:
     · مقارنة (`hours >= 400`) — عتبة رتبة في الواجهة.
+      **والمنع شامل عمدًا:** عتبةٌ لا تُكتب إلا بمقارنة، فحظرها كلّها يجعل
+      المخالفة مستحيلة بلا اجتهاد في التمييز. وثمنه أن `list.length > 0` تُكتب
+      `list.length ? …` — كلفة سطر مقابل قاعدة بلا ثغرات.
     · عملية حسابية (`x / y * 100`) — نسبة تقدّم تُحسب هنا.
     · رقم من أرقام المجال حرفيًّا — عتبة أو وزن أو مهلة «أرضي».
 
@@ -29,7 +32,14 @@ const JsxParser = Parser.extend(jsx())
   · **البدائيات البصرية** ترسم SVG بإحداثيات، فحسابها هندسة لا قاعدة. والخطر
     فيها مختلف: أن تلمس حقلًا من حقول المجال أصلًا. تُمنع من ذكرها بالاسم.
 */
-const CONTRACT_CONSUMERS = ['src/pages/PilotDeck.jsx', 'src/pages/Login.jsx']
+const CONTRACT_CONSUMERS = [
+  'src/pages/PilotDeck.jsx',
+  'src/pages/Login.jsx',
+  // و-٤ (ق-٢٥): الشاشتان تستهلكان عقد القراءة — `hours` تصل محسوبة من الحدث،
+  // ولا تُشتقّ هنا من `pages × وزن`.
+  'src/pages/MyReadings.jsx',
+  'src/pages/admin/ReadingQueue.jsx',
+]
 const VISUAL_PRIMITIVES = ['src/components/Insignia.jsx', 'src/components/Placard.jsx']
 
 // حقول المجال في ردّ `/me/deck`. البدائية البصرية لا تراها إطلاقًا.

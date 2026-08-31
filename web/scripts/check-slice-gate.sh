@@ -20,7 +20,21 @@ set -uo pipefail
 export LC_ALL=C.UTF-8   # الأرقام العربية-الهندية متعدّدة البايتات: بلا هذا يفشل النطاق
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SPEC="$ROOT/docs/plans/SLICE-01.md"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# بيان الخطط الفاعلة.
+#
+# كان مثبَّتًا على `SLICE-01.md` وحده، فمعايير أي وحدة تالية تبقى خارج البوابة
+# بلا إنذار. و`SLICE-01.md` **مجمَّد كوحدة مغلقة** فلا تُضاف إليه معايير جديدة،
+# فصار البيان: الشريحة المغلقة + كل خطّة وحدة فاعلة.
+#
+# **والملفّ الغائب عطلٌ لا صمت:** بيانٌ يشير إلى ملفّ غير موجود يوقف البوابة،
+# لأن اختفاء خطّةٍ يعني اختفاء معاييرها — وهو ما وُجدت البوابة لتمنعه.
+# ═══════════════════════════════════════════════════════════════════════════
+MANIFEST=("$ROOT/docs/plans/SLICE-01.md")
+for plan in "$ROOT"/docs/slices/*.md; do
+  [ -e "$plan" ] && MANIFEST+=("$plan")
+done
 SEARCH=("$ROOT/api/tests" "$ROOT/web/src/test" "$ROOT/web/scripts")
 # المصدر وحده. الوسم يعيش في الكود المكتوب لا في مخرَجه المترجَم، و`__pycache__`
 # يحمل نسخًا قديمة من النصوص التوثيقية. (`grep` يرفض اليوم إخراج مطابقات من ملفّ
@@ -28,22 +42,28 @@ SEARCH=("$ROOT/api/tests" "$ROOT/web/src/test" "$ROOT/web/scripts")
 # الصحيح أصلًا هو المصدر.)
 SOURCES=(--include='*.py' --include='*.js' --include='*.jsx' --include='*.mjs' --include='*.sh')
 DIGITS='[٠١٢٣٤٥٦٧٨٩]'
-MIN_CRITERIA=12   # حارس الفراغ: البوابة لا تمرّ على استخراج فاشل
+MIN_CRITERIA=16   # حارس الفراغ: و-١ وحدها ١٦ — استخراجٌ دونها عطلٌ لا نجاح
 
-[ -f "$SPEC" ] || { echo "❌ لا مواصفة في $SPEC"; exit 2; }
+for plan in "${MANIFEST[@]}"; do
+  [ -f "$plan" ] || { echo "❌ خطّة مفقودة من البيان: $plan"; exit 2; }
+done
 
 # **من §٧ وحده.** جداول §٨ تعيد ذكر المعايير في خريطة الملكية، فقراءة الملفّ
 # كلّه تجعل معيارًا محذوفًا من §٧ يبقى محسوبًا لأنه ما زال مذكورًا في الخريطة —
 # فيختفي من المصدر المخوَّل بلا إنذار. النطاق: من عنوان §٧ إلى عنوان §٨.
-section=$(sed -n '/^## ٧\. معايير القبول/,/^## ٨\. الاختبار/p' "$SPEC")
-declared=$(printf '%s\n' "$section" | grep -oE "^\| \*{0,2}ق-$DIGITS+" | grep -oE "ق-$DIGITS+" | sort -u)
+declared=$(
+  for plan in "${MANIFEST[@]}"; do
+    sed -n '/^## ٧\. معايير القبول/,/^## ٨\. الاختبار/p' "$plan"
+  done | grep -oE "^\| \*{0,2}ق-$DIGITS+" | grep -oE "ق-$DIGITS+" | sort -u
+)
 covered=$(grep -rhoE "${SOURCES[@]}" "@covers +ق-$DIGITS+(, *ق-$DIGITS+)*" "${SEARCH[@]}" 2>/dev/null \
           | grep -oE "ق-$DIGITS+" | sort -u)
 
 n_declared=$(printf '%s\n' "$declared" | grep -c . || true)
 n_covered=$(printf '%s\n' "$covered" | grep -c . || true)
 
-echo "═══ تتبّع بوابة SLICE-01 §٨ ═══"
+echo "═══ تتبّع بوابة الوحدات ═══"
+echo "  الخطط في البيان: ${#MANIFEST[@]} — $(for p in "${MANIFEST[@]}"; do printf '%s ' "$(basename "$p")"; done)"
 echo "  معايير معلَنة في §٧: $n_declared"
 echo "  معايير لها مالك:     $n_covered"
 

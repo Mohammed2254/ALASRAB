@@ -8,13 +8,14 @@
 
 from flask import g
 from flask.views import MethodView
-from flask_smorest import Blueprint
+from flask_smorest import Blueprint, abort
 
 from ..extensions import db
 from ..models import Org
-from ..schemas import DeckSchema
+from ..schemas import DeckSchema, MyReadingsSchema, SubmitReadingSchema, SubmittedSchema
 from ..security import login_required
 from ..services import deck as deck_service
+from ..services import reading as reading_service
 
 blp = Blueprint("me", __name__, url_prefix="/api", description="بطاقة الطيار")
 
@@ -52,3 +53,46 @@ class Deck(MethodView):
             # rank_in_org مؤجَّل إلى و-٩ (FR-051) — ولا يُحسب هنا كحلٍّ مؤقّت.
             "team": None if card.team is None else {"name": card.team.name, "rank_in_org": None},
         }
+
+
+@blp.route("/me/readings")
+class MyReadings(MethodView):
+    @login_required
+    @blp.response(200, MyReadingsSchema)
+    def get(self):
+        """
+        طلبات **الطالب المصادَق عليه** وحده — الهوية من الجلسة لا من الطلب.
+
+        و`hours` تأتي **من الحدث** لا من `pages × وزن`: الواجهة تعرض ولا تحسب،
+        وحسابها في مكانين يعني نسختين تتباعدان.
+        """
+        rows = reading_service.list_for_user(g.user.id)
+        return {
+            "readings": [
+                {
+                    "id": s.id,
+                    "read_on": s.read_on,
+                    "pages": s.pages,
+                    "book_title": s.book_title,
+                    "status": s.status,
+                    "review_reason": s.review_reason,
+                    "reviewed_at": s.reviewed_at,
+                    "hours": event.delta if event is not None else None,
+                }
+                for s, event in rows
+            ]
+        }
+
+    @login_required
+    @blp.arguments(SubmitReadingSchema)
+    @blp.response(201, SubmittedSchema)
+    def post(self, data):
+        """طلبٌ معلَّق. **لا ساعات في الردّ** — لا يمنح شيئًا قبل الاعتماد (FR-021)."""
+        org = db.session.get(Org, g.user.org_id)
+        try:
+            submission = reading_service.submit(
+                org, g.user.id, data["read_on"], data["pages"], data["book_title"]
+            )
+        except reading_service.ReadingError as exc:
+            abort(exc.status, message=str(exc))
+        return {"id": submission.id, "status": submission.status}

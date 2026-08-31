@@ -58,4 +58,13 @@ export const api = {
   me: () => request('/auth/me'),
 
   deck: () => request('/me/deck'),
+
+  myReadings: () => request('/me/readings'),
+  submitReading: (body) => request('/me/readings', { method: 'POST', body }),
+
+  readingQueue: () => request('/admin/readings'),
+  approveReadings: (ids) =>
+    request('/admin/readings/approve', { method: 'POST', body: { ids } }),
+  rejectReading: (id, reason) =>
+    request(`/admin/readings/${id}/reject`, { method: 'POST', body: { reason } }),
 }

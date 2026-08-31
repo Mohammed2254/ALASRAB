@@ -1,5 +1,5 @@
 /*
-  @covers ق-١٣, ق-١٤, ق-١٥, ق-١٦
+  @covers ق-١٣, ق-١٤, ق-١٥, ق-١٦, ق-٢٦
 
   فحص بصري **مقيس** في متصفّح حقيقي — لا لقطات تُنظَر بالعين وحدها.
 
@@ -195,6 +195,29 @@ for (const [studentNo, slug, label] of STUDENTS) {
   await page.waitForTimeout(600)
   await page.screenshot({ path: `${OUT}/deck-${slug}.png`, fullPage: true })
   await audit(page, label)
+
+  /*
+    ق-٢٦ — شاشتا و-٤ تُقاسان كبقيّتها.
+
+    ولا يكفي فحصهما لطالب واحد: «قراءاتي» تُقاس على من له طلبات بالحالات الثلاث
+    (سالم)، و«الطابور» لا يُفتح إلا لمشرف (بندر). فحصُ شاشةٍ فارغة لا يثبت أن
+    محتواها يُعرض صحيحًا.
+  */
+  if (slug === 'empty') {
+    await page.click('text=قراءاتي')
+    await page.waitForSelector('text=تسجيل قراءة', { timeout: 8000 })
+    await page.waitForTimeout(500)
+    await page.screenshot({ path: `${OUT}/my-readings.png`, fullPage: true })
+    await audit(page, 'قراءاتي')
+  }
+  if (slug === 'normal') {
+    await page.click('text=طابور القراءات')
+    await page.waitForSelector('text=طابور القراءات', { timeout: 8000 })
+    await page.waitForTimeout(500)
+    await page.screenshot({ path: `${OUT}/reading-queue.png`, fullPage: true })
+    await audit(page, 'طابور القراءات')
+  }
+
   if (consoleErrors.length) fail('صفحة', `${label}: ${consoleErrors.join(' | ')}`)
   await ctx.close()
 }
@@ -219,4 +242,4 @@ if (failures.length) {
   for (const f of failures) console.error(`   ${f}`)
   process.exit(1)
 }
-console.log('\n✅ ق-١٣ · ق-١٤ · ق-١٥ · ق-١٦ — مقيسة ومجتازة.')
+console.log('\n✅ ق-١٣ · ق-١٤ · ق-١٥ · ق-١٦ · ق-٢٦ — مقيسة ومجتازة.')

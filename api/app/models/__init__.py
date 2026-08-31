@@ -2,6 +2,7 @@
 
 from .event import PointEvent
 from .org import Org
+from .reading import ReadingSubmission
 from .rules import MasteryMultiplier, RankThreshold, Weight, WeightVersion
 from .session import LoginAttempt, Session
 from .team import Membership, Team
@@ -13,6 +14,7 @@ __all__ = [
     "Membership",
     "Org",
     "PointEvent",
+    "ReadingSubmission",
     "RankThreshold",
     "Session",
     "Team",

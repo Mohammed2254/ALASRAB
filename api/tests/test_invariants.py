@@ -261,3 +261,104 @@ def test_users_table_has_no_grounded_column(seeded):
 def test_ledger_refuses_event_that_is_neither_or_both(seeded):
     with pytest.raises(ValueError, match="إمّا لطالب"):
         ledger.append([ledger.EventSpec(org_id=1, kind="x", delta=Decimal("1"), occurred_at=NOW)])
+
+
+# ═══ ث-٥ · ث-٦ — طلبات القراءة (و-٤) ═══
+
+
+def _raw_reading(**cols):
+    """
+    إدخال مباشر يتجاوز `services/reading` عمدًا.
+
+    اختبارٌ يمرّ بطبقة التطبيق يثبت أن التطبيق مؤدَّب، **لا أن القاعدة محميّة** —
+    والفرق هو ADR-002 كلّه.
+    """
+    cols.setdefault("book_title", "كتاب الاختبار")
+    keys = ", ".join(cols)
+    vals = ", ".join(f":{k}" for k in cols)
+    db.session.execute(db.text(f"INSERT INTO reading_submissions ({keys}) VALUES ({vals})"), cols)
+    db.session.commit()
+
+
+@pytest.mark.parametrize(
+    "case, cols",
+    [
+        (
+            "معتمد بلا حدث",
+            dict(status="approved", point_event_id=None),
+        ),
+        (
+            "معلَّق مع حدث",
+            dict(status="pending", point_event_id=-1),
+        ),
+        (
+            "مرفوض مع حدث",
+            dict(status="rejected", review_reason="سبب", point_event_id=-1),
+        ),
+    ],
+)
+def test_approved_and_event_are_inseparable(seeded, case, cols):
+    """
+    @covers ق-١٩ · ث-٥
+
+    يمنع الخطأين معًا: اعتمادٌ بلا ساعات فيشتكي الطالب ولا يجد أثرًا، وساعاتٌ
+    بلا اعتماد فتُمنح بلا مراجعة.
+    """
+    if cols.get("point_event_id") == -1:
+        cols["point_event_id"] = ledger.append(
+            [
+                ledger.EventSpec(
+                    org_id=seeded["org_id"],
+                    kind="reading",
+                    delta=Decimal("6"),
+                    user_id=seeded["users"]["1001"],
+                    occurred_at=NOW,
+                )
+            ]
+        )[0].id
+
+    with pytest.raises((IntegrityError, DBAPIError)):
+        _raw_reading(
+            org_id=seeded["org_id"],
+            user_id=seeded["users"]["1001"],
+            read_on=NOW.date(),
+            pages=40,
+            **cols,
+        )
+    db.session.rollback()
+
+
+def test_rejection_without_reason_is_rejected_by_database(seeded):
+    """@covers ق-٢٠ · ث-٦ — رفضٌ صامت يقتل الثقة أسرع من غياب الميزة."""
+    with pytest.raises((IntegrityError, DBAPIError)):
+        _raw_reading(
+            org_id=seeded["org_id"],
+            user_id=seeded["users"]["1001"],
+            read_on=NOW.date(),
+            pages=40,
+            status="rejected",
+        )
+    db.session.rollback()
+
+
+def test_valid_reading_rows_are_accepted(seeded):
+    """@covers ق-١٩ · ق-٢٠ — الحدّ الآخر: القيود ليست مفرطة."""
+    from app.models import ReadingSubmission
+
+    _raw_reading(
+        org_id=seeded["org_id"],
+        user_id=seeded["users"]["1001"],
+        read_on=NOW.date(),
+        pages=40,
+        status="pending",
+    )
+    _raw_reading(
+        org_id=seeded["org_id"],
+        user_id=seeded["users"]["1001"],
+        read_on=NOW.date(),
+        pages=12,
+        book_title="كتاب مرفوض",
+        status="rejected",
+        review_reason="خارج القائمة",
+    )
+    assert db.session.scalar(db.select(db.func.count(ReadingSubmission.id))) == 2

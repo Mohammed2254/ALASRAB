@@ -32,7 +32,7 @@ const dateFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', {
 
 const formatDay = (iso) => (iso ? dateFormatter.format(new Date(`${iso}T00:00:00Z`)) : null)
 
-export default function PilotDeck() {
+export default function PilotDeck({ onOpenReadings, onOpenQueue }) {
   const { user, logout } = useApp()
   const state = useAsync(() => api.deck(), [])
 
@@ -51,7 +51,31 @@ export default function PilotDeck() {
       </header>
 
       <Async state={state} loadingTitle="بطاقة الطيار">
-        {(deck) => <Card deck={deck} fullName={user.full_name} />}
+        {(deck) => (
+          <>
+            <Card deck={deck} fullName={user.full_name} />
+            <nav className="mt-4 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={onOpenReadings}
+                className="min-h-[48px] w-full border border-taxi text-[15px] text-taxi"
+              >
+                قراءاتي
+              </button>
+              {/* الدور من الخادم لا من الواجهة: إخفاء الزرّ راحةٌ لا حماية،
+                  والصلاحية محروسة بـ@admin_required. */}
+              {user.role === 'admin' && (
+                <button
+                  type="button"
+                  onClick={onOpenQueue}
+                  className="min-h-[48px] w-full border border-concrete/45 text-[15px] text-paint"
+                >
+                  طابور القراءات
+                </button>
+              )}
+            </nav>
+          </>
+        )}
       </Async>
     </div>
   )

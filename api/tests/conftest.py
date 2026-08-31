@@ -108,6 +108,11 @@ def seeded(app):
         db.session.add(
             Weight(version_id=v.id, activity_type="quran_progress", hours_per_unit=Decimal("0.2"))
         )
+        # القراءة (و-٤): بالوزن المبذور نفسه في `seed.py` — فتُقاس الاختبارات
+        # على ما يعمل به الإنتاج لا على رقم اختباري.
+        db.session.add(
+            Weight(version_id=v.id, activity_type="reading", hours_per_unit=Decimal("0.15"))
+        )
         db.session.add(
             MasteryMultiplier(version_id=v.id, grade="mastered", multiplier=Decimal(mastered))
         )

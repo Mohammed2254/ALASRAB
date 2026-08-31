@@ -63,9 +63,10 @@ def create_app(config_object=Config):
     # الاستيراد هنا لا في الأعلى: النماذج تحتاج db المهيّأ، واستيرادها مبكرًا
     # يخلق دورة استيراد.
     from . import models  # noqa: F401
-    from .routes import auth, me
+    from .routes import admin, auth, me
 
     api.register_blueprint(auth.blp)
     api.register_blueprint(me.blp)
+    api.register_blueprint(admin.blp)
 
     return app

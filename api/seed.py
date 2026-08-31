@@ -34,10 +34,11 @@ from app.models import (
     WeightVersion,
 )
 from app.rules.engine import Achievement, ruleset_at
-from app.services import ledger
+from app.services import ledger, reading
 from app.services.auth import hash_pin
 
 TABLES = [
+    "reading_submissions",
     "point_events",
     "login_attempts",
     "sessions",
@@ -115,6 +116,22 @@ def _award(org_id: int, user_id: int, student_no: str, entries: list) -> None:
         ledger.append(specs)
 
 
+def _seed_readings(org, user) -> None:
+    """
+    طلبات قراءة بالحالات الثلاث — فتُفتح شاشتا و-٤ على بيانات لا على فراغ.
+
+    وتمرّ بالخدمة لا بإدخال مباشر: البذرة التي تتجاوز القواعد تخفي كسرها.
+    """
+    if user is None:
+        return
+    today = reading.local_today(org)
+    reading.submit(org, user.id, today - timedelta(days=1), 25, "الرحيق المختوم")
+    approved = reading.submit(org, user.id, today - timedelta(days=3), 40, "زاد المعاد")
+    rejected = reading.submit(org, user.id, today - timedelta(days=5), 12, "كتاب غير معتمد")
+    reading.approve(org, [approved.id], reviewer_id=1)
+    reading.reject(org, rejected.id, reviewer_id=1, reason="الكتاب خارج القائمة المعتمدة")
+
+
 def run():
     app = create_app()
     with app.app_context():
@@ -163,6 +180,9 @@ def run():
             db.session.add(Membership(org_id=org.id, user_id=user.id, team_id=team.id, role=role))
             db.session.commit()
             _award(org.id, user.id, student_no, entries)
+
+        # بعد إنشاء الطلاب: البذرة تحتاج مستخدمًا قائمًا.
+        _seed_readings(org, db.session.scalar(db.select(User).where(User.student_no == "1002")))
 
         print(f"✅ بذرة: منظمة {org.id} · سرب {team.id} · {len(PEOPLE)} طلاب · رمز الجميع 1234")
         for full_name, student_no, _, _ in PEOPLE:

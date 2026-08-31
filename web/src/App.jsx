@@ -1,5 +1,9 @@
+import { useState } from 'react'
+
 import { Failed, Loading } from './components/States'
+import ReadingQueue from './pages/admin/ReadingQueue'
 import Login from './pages/Login'
+import MyReadings from './pages/MyReadings'
 import PilotDeck from './pages/PilotDeck'
 import { AppStateProvider, useApp } from './state/AppState'
 
@@ -12,11 +16,27 @@ import { AppStateProvider, useApp } from './state/AppState'
 */
 function Gate() {
   const { status, error, refresh } = useApp()
+  /*
+    ثلاث شاشات بحالة واحدة — **وما زال بلا موجّه مسارات.**
 
-  // 'checking': بدونها تومض شاشة الدخول لمن هو داخل أصلًا.
+    التبديل هنا بوّابة مصادقة ثم عرضٌ داخليّ، لا تنقّلٌ بعناوين. والموجّه يُضاف
+    في و-٩ حين تصير الوجهات وجهات لها روابط تُشارَك وتُحفَظ.
+  */
+  const [screen, setScreen] = useState('deck')
+
   if (status === 'checking') return <Shell><Loading title="جارٍ التحقّق" /></Shell>
   if (status === 'error') return <Shell><Failed error={error} onRetry={refresh} /></Shell>
-  return status === 'in' ? <PilotDeck /> : <Login />
+  if (status !== 'in') return <Login />
+
+  const back = () => setScreen('deck')
+  if (screen === 'readings') return <MyReadings onDone={back} />
+  if (screen === 'queue') return <ReadingQueue onDone={back} />
+  return (
+    <PilotDeck
+      onOpenReadings={() => setScreen('readings')}
+      onOpenQueue={() => setScreen('queue')}
+    />
+  )
 }
 
 function Shell({ children }) {

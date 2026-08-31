@@ -2,5 +2,25 @@
 
 from .auth import LoginSchema, SessionSchema
 from .me import DeckSchema
+from .reading import (
+    ApproveSchema,
+    MyReadingsSchema,
+    QueueSchema,
+    RejectSchema,
+    ReviewResultsSchema,
+    SubmitReadingSchema,
+    SubmittedSchema,
+)
 
-__all__ = ["DeckSchema", "LoginSchema", "SessionSchema"]
+__all__ = [
+    "ApproveSchema",
+    "DeckSchema",
+    "LoginSchema",
+    "MyReadingsSchema",
+    "QueueSchema",
+    "RejectSchema",
+    "ReviewResultsSchema",
+    "SessionSchema",
+    "SubmitReadingSchema",
+    "SubmittedSchema",
+]
