@@ -1,5 +1,5 @@
 /*
-  @covers ق-١٣, ق-١٤, ق-١٥, ق-١٦, ق-٢٦, ق-٣١
+  @covers ق-١٣, ق-١٤, ق-١٥, ق-١٦, ق-٢٦, ق-٣١, ق-٣٩
 
   فحص بصري **مقيس** في متصفّح حقيقي — لا لقطات تُنظَر بالعين وحدها.
 
@@ -211,6 +211,14 @@ for (const [studentNo, slug, label] of STUDENTS) {
     await audit(page, 'قراءاتي')
   }
   if (slug === 'normal') {
+    await page.click('text=التقرير الدوري')
+    await page.waitForSelector('text=الأسبوع', { timeout: 8000 })
+    await page.waitForTimeout(500)
+    await page.screenshot({ path: `${OUT}/report.png`, fullPage: true })
+    await audit(page, 'التقرير الدوري')
+    await page.click('text=رجوع')
+    await page.waitForSelector('text=بطاقة الطيار', { timeout: 8000 })
+
     await page.click('text=طابور القراءات')
     await page.waitForSelector('text=طابور القراءات', { timeout: 8000 })
     await page.waitForTimeout(500)

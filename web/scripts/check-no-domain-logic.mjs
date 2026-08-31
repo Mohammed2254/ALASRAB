@@ -1,5 +1,5 @@
 /*
-  @covers ق-١١, ق-٢٥, ق-٣٠
+  @covers ق-١١, ق-٢٥, ق-٣٠, ق-٣٨
 
   فحص معماري: **الواجهة تعرض ولا تحسب** (`AGENTS.md` ٥).
 
@@ -39,6 +39,7 @@ const CONTRACT_CONSUMERS = [
   // ولا تُشتقّ هنا من `pages × وزن`.
   'src/pages/MyReadings.jsx',
   'src/pages/admin/ReadingQueue.jsx',
+  'src/pages/admin/Report.jsx',
 ]
 const VISUAL_PRIMITIVES = ['src/components/Insignia.jsx', 'src/components/Placard.jsx']
 

@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { Failed, Loading } from './components/States'
 import ReadingQueue from './pages/admin/ReadingQueue'
+import Report from './pages/admin/Report'
 import Login from './pages/Login'
 import MyReadings from './pages/MyReadings'
 import PilotDeck from './pages/PilotDeck'
@@ -31,10 +32,12 @@ function Gate() {
   const back = () => setScreen('deck')
   if (screen === 'readings') return <MyReadings onDone={back} />
   if (screen === 'queue') return <ReadingQueue onDone={back} />
+  if (screen === 'report') return <Report onDone={back} />
   return (
     <PilotDeck
       onOpenReadings={() => setScreen('readings')}
       onOpenQueue={() => setScreen('queue')}
+      onOpenReport={() => setScreen('report')}
     />
   )
 }

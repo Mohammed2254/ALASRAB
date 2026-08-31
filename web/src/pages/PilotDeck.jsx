@@ -32,7 +32,7 @@ const dateFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', {
 
 const formatDay = (iso) => (iso ? dateFormatter.format(new Date(`${iso}T00:00:00Z`)) : null)
 
-export default function PilotDeck({ onOpenReadings, onOpenQueue }) {
+export default function PilotDeck({ onOpenReadings, onOpenQueue, onOpenReport }) {
   const { user, logout } = useApp()
   const state = useAsync(() => api.deck(), [])
 
@@ -72,6 +72,15 @@ export default function PilotDeck({ onOpenReadings, onOpenQueue }) {
                   className="min-h-[48px] w-full border border-concrete/45 text-[15px] text-paint"
                 >
                   طابور القراءات
+                </button>
+              )}
+              {user.role === 'admin' && (
+                <button
+                  type="button"
+                  onClick={onOpenReport}
+                  className="min-h-[48px] w-full border border-concrete/45 text-[15px] text-paint"
+                >
+                  التقرير الدوري
                 </button>
               )}
             </nav>

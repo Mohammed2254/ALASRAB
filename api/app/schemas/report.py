@@ -2,7 +2,10 @@ from marshmallow import Schema, fields
 
 
 class WindowSchema(Schema):
-    from_ = fields.Date(data_key="from")
+    # `attribute` لا `data_key` وحده: الأخير يسمّي الحقل **خارجيًّا**، وMarshmallow
+    # يقرأ القيمة بالاسم **الداخلي** — و`from_` غير موجود في القاموس، فيخرج null.
+    # و`from` كلمة محجوزة في بايثون فلا تصلح اسمًا للحقل، فيُفصل الاسمان.
+    from_ = fields.Date(attribute="from", data_key="from")
     to = fields.Date()
     days = fields.Int()
 
