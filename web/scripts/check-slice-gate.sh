@@ -32,7 +32,11 @@ MIN_CRITERIA=12   # حارس الفراغ: البوابة لا تمرّ على �
 
 [ -f "$SPEC" ] || { echo "❌ لا مواصفة في $SPEC"; exit 2; }
 
-declared=$(grep -oE "^\| \*{0,2}ق-$DIGITS+" "$SPEC" | grep -oE "ق-$DIGITS+" | sort -u)
+# **من §٧ وحده.** جداول §٨ تعيد ذكر المعايير في خريطة الملكية، فقراءة الملفّ
+# كلّه تجعل معيارًا محذوفًا من §٧ يبقى محسوبًا لأنه ما زال مذكورًا في الخريطة —
+# فيختفي من المصدر المخوَّل بلا إنذار. النطاق: من عنوان §٧ إلى عنوان §٨.
+section=$(sed -n '/^## ٧\. معايير القبول/,/^## ٨\. الاختبار/p' "$SPEC")
+declared=$(printf '%s\n' "$section" | grep -oE "^\| \*{0,2}ق-$DIGITS+" | grep -oE "ق-$DIGITS+" | sort -u)
 covered=$(grep -rhoE "${SOURCES[@]}" "@covers +ق-$DIGITS+(, *ق-$DIGITS+)*" "${SEARCH[@]}" 2>/dev/null \
           | grep -oE "ق-$DIGITS+" | sort -u)
 
