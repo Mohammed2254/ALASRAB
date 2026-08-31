@@ -34,16 +34,23 @@ const MAX_RANK = { ...NORMAL, rank: { name: 'قائد', tier: 4 }, hours: '1560.
 const GROUNDED = { ...NORMAL, flight: { grounded: true, last_activity_on: '2026-07-31' } }
 const NO_TEAM = { ...NORMAL, team: null }
 
-/** ردّ واحد لكل مسار — أبسط من طابور، ويكشف الطلب غير المتوقَّع. */
-function mockApi({ me = IDENTITY, deck = NORMAL, meStatus = 200, deckStatus = 200 } = {}) {
+/**
+ * ردّ واحد لكل مسار — أبسط من طابور، ويكشف الطلب غير المتوقَّع.
+ *
+ * و`/me/events` يُردّ عليه صراحةً: البطاقة تجلبه مع الفتح (و-٣)، وردٌّ عامّ
+ * يعطيه شكل البطاقة فيسقط اللوح بـ`undefined.length`.
+ */
+function mockApi({ me = IDENTITY, deck = NORMAL, events = [], meStatus = 200, deckStatus = 200 } = {}) {
   globalThis.fetch = vi.fn(async (url, opts = {}) => {
-    const json = async () => (url.includes('/me/deck') ? deck : me)
+    const json = async () =>
+      url.includes('/me/events') ? { events } : url.includes('/me/deck') ? deck : me
     if (url.includes('/auth/logout')) return { ok: true, status: 204, json }
     if (url.includes('/auth/login')) {
       return opts.method === 'POST' && JSON.parse(opts.body).pin === '1234'
         ? { ok: true, status: 200, json: async () => IDENTITY }
         : { ok: false, status: 401, json: async () => ({ message: 'رقم الطالب أو الرمز غير صحيح.' }) }
     }
+    if (url.includes('/me/events')) return { ok: true, status: 200, json }
     if (url.includes('/me/deck'))
       return { ok: deckStatus === 200, status: deckStatus, json }
     return { ok: meStatus === 200, status: meStatus, json }
@@ -202,5 +209,44 @@ describe('العربية والعرض', () => {
     render(<App />)
     const name = await screen.findByText('بندر الشمري')
     expect(name.className).not.toMatch(/tracking-|tracked/)
+  })
+})
+
+describe('سجلّ الساعات (و-٣)', () => {
+  const CORRECTION = [
+    { id: 9, kind: 'quran', delta: '87.50', occurred_on: '2026-08-01', reason: null },
+    {
+      id: 10,
+      kind: 'correction',
+      delta: '-87.50',
+      occurred_on: '2026-08-01',
+      reason: 'خطأ في تصدير راصد',
+    },
+  ]
+
+  it('يعرض التصحيح بمقداره السالب وسببه — لا يخفيه', async () => {
+    /*
+      «إخفاؤها هو ما يثير الشك لا إظهارها» (ط-٤). والسالب **بإشارته**: تصحيحٌ
+      يُعرض موجبًا يقلب معناه تمامًا.
+    */
+    mockApi({ events: CORRECTION })
+    render(<App />)
+    expect(await screen.findByText('-87.50')).toBeInTheDocument()
+    expect(screen.getByText('خطأ في تصدير راصد')).toBeInTheDocument()
+    expect(screen.getByText('87.50')).toBeInTheDocument()   // الأصل ظاهر أيضًا
+  })
+
+  it('السجلّ الفارغ حالة مصمَّمة لا شاشة مكسورة', async () => {
+    mockApi({ events: [] })
+    render(<App />)
+    expect(await screen.findByText(/لا أحداث بعد/)).toBeInTheDocument()
+  })
+
+  it('لا يحسب الساعات — يعرض ما وصل نصًّا', async () => {
+    mockApi({ events: CORRECTION })
+    render(<App />)
+    await screen.findByText('-87.50')
+    // لو حسبت الواجهة لظهر 0 أو 0.00 من جمع 87.50 و−87.50.
+    expect(screen.queryByText('0.00')).not.toBeInTheDocument()
   })
 })

@@ -27,6 +27,7 @@ from app.models import (
     MasteryMultiplier,
     Membership,
     Org,
+    PointEvent,
     RankThreshold,
     Team,
     User,
@@ -132,6 +133,23 @@ def _seed_readings(org, user) -> None:
     reading.reject(org, rejected.id, reviewer_id=1, reason="الكتاب خارج القائمة المعتمدة")
 
 
+def _seed_correction(user) -> None:
+    """
+    تصحيحٌ واحد — فيُفتح سجلّ الساعات على السلوك الذي يوجبه ط-٤ لا على أحداث
+    موجبة وحدها.
+
+    **وهو ما يجعل الفحص البصري ذا معنى:** السالب بإشارته وسببه بالأحمر سلوكٌ
+    يُرى، ووجودُه في اختبار لا يثبت ظهوره — وهذا درسُ رمز `⛔` في و-١.
+    """
+    if user is None:
+        return
+    event = db.session.scalar(
+        db.select(PointEvent).where(PointEvent.user_id == user.id).order_by(PointEvent.id)
+    )
+    if event is not None:
+        ledger.reverse(event, "خطأ في تصدير راصد — صفحات مضاعفة", actor_id=1)
+
+
 def run():
     app = create_app()
     with app.app_context():
@@ -183,6 +201,7 @@ def run():
 
         # بعد إنشاء الطلاب: البذرة تحتاج مستخدمًا قائمًا.
         _seed_readings(org, db.session.scalar(db.select(User).where(User.student_no == "1002")))
+        _seed_correction(db.session.scalar(db.select(User).where(User.student_no == "1004")))
 
         print(f"✅ بذرة: منظمة {org.id} · سرب {team.id} · {len(PEOPLE)} طلاب · رمز الجميع 1234")
         for full_name, student_no, _, _ in PEOPLE:

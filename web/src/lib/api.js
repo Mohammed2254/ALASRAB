@@ -59,6 +59,8 @@ export const api = {
 
   deck: () => request('/me/deck'),
 
+  myEvents: (limit = 20) => request(`/me/events?limit=${limit}`),
+
   myReadings: () => request('/me/readings'),
   submitReading: (body) => request('/me/readings', { method: 'POST', body }),
 

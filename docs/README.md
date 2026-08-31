@@ -9,7 +9,9 @@
 | [design/API.md](design/API.md) | ٣٥ endpoint + مسارات بنيوية | ٣ |
 | [design/TRACEABILITY.md](design/TRACEABILITY.md) | **٤١ متطلَّبًا ← وحدة ← جدول ← ثابت ← اختبار** | ٣ |
 | [plans/SLICE-01.md](plans/SLICE-01.md) | **و-١ الشريحة الرأسية** — مغلقة · ١٦/١٦ | ٤ |
-| [slices/و-٤.md](slices/و-٤.md) | **و-٤ القراءة** — خطّة معتمدة · ق-١٧..٢٦ | ٤ |
+| [slices/و-٤.md](slices/و-٤.md) | **و-٤ القراءة** — منفَّذة · ق-١٧..٢٦ | ٤ |
+| [slices/و-٣.md](slices/و-٣.md) | **و-٣ سجلّ الأحداث** — منفَّذة · ق-٢٧..٣١ | ٤ |
+| [slices/و-١٠-جزئية.md](slices/و-١٠-جزئية.md) | **FR-085 التقرير** — منفَّذ · ق-٣٢..٣٥ · **FR-086 مؤجَّل** | ٤ |
 | [design/VISUAL.md](design/VISUAL.md) | «المدرّج والشارة» · الألوان · الخطوط · الناقص | ٣ |
 | [decisions/](decisions/) | خمسة ADRs | — |
 

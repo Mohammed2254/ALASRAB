@@ -54,6 +54,7 @@ export default function PilotDeck({ onOpenReadings, onOpenQueue }) {
         {(deck) => (
           <>
             <Card deck={deck} fullName={user.full_name} />
+            <EventLog />
             <nav className="mt-4 flex flex-col gap-2">
               <button
                 type="button"
@@ -238,5 +239,62 @@ function Team({ team }) {
         tone={team.rank_in_org == null ? 'muted' : 'default'}
       />
     </Placard>
+  )
+}
+
+
+/*
+  سجلّ الساعات — FR-012 · قصّة ط-٤.
+
+  **يعرض ولا يحسب:** `delta` تصل نصًّا عشريًّا بإشارتها، والتصحيح يظهر سالبًا
+  بسببه. «إخفاؤها هو ما يثير الشك لا إظهارها»: طالبٌ يرى رصيده نقص بلا سطر
+  يفسّره يظنّ خللًا أو تلاعبًا.
+*/
+const KINDS = {
+  quran: 'قرآن',
+  reading: 'قراءة',
+  attendance: 'حضور',
+  daily_question: 'السؤال اليومي',
+  correction: 'تصحيح',
+  manual: 'إضافة يدوية',
+}
+
+function EventLog() {
+  const state = useAsync(() => api.myEvents(10), [])
+
+  return (
+    <div className="mt-4">
+      <Async state={state} loadingTitle="سجلّ ساعاتي">
+        {(data) =>
+          data.events.length ? (
+            <Placard title="سجلّ ساعاتي" aside={`آخر ${data.events.length}`}>
+              {data.events.map((e) => (
+                <div key={e.id}>
+                  <Row
+                    label={KINDS[e.kind] ?? e.kind}
+                    value={
+                      <span>
+                        <bdi dir="ltr">{e.delta}</bdi>{' '}
+                        <span className="text-muted">{formatDay(e.occurred_on)}</span>
+                      </span>
+                    }
+                    tone={e.kind === 'correction' ? 'hold' : 'default'}
+                  />
+                  {e.reason ? (
+                    <p className="mb-1 text-[12px] text-hold">{e.reason}</p>
+                  ) : null}
+                </div>
+              ))}
+            </Placard>
+          ) : (
+            <Placard title="سجلّ ساعاتي">
+              <p className="py-2 text-[14px] text-muted">
+                لا أحداث بعد. أوّل إنجاز يبدأ سجلّك.
+              </p>
+            </Placard>
+          )
+        }
+      </Async>
+    </div>
   )
 }

@@ -6,13 +6,19 @@
 هنا** — وكلٌّ منها له مالك واحد في `services/`.
 """
 
-from flask import g
+from flask import g, request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 
 from ..extensions import db
 from ..models import Org
-from ..schemas import DeckSchema, MyReadingsSchema, SubmitReadingSchema, SubmittedSchema
+from ..schemas import (
+    DeckSchema,
+    EventsSchema,
+    MyReadingsSchema,
+    SubmitReadingSchema,
+    SubmittedSchema,
+)
 from ..security import login_required
 from ..services import deck as deck_service
 from ..services import reading as reading_service
@@ -96,3 +102,30 @@ class MyReadings(MethodView):
         except reading_service.ReadingError as exc:
             abort(exc.status, message=str(exc))
         return {"id": submission.id, "status": submission.status}
+
+
+@blp.route("/me/events")
+class MyEvents(MethodView):
+    @login_required
+    @blp.response(200, EventsSchema)
+    def get(self):
+        """
+        سجلّ ساعات **الطالب المصادَق عليه** (FR-012).
+
+        الهوية من الجلسة: لا معرّف في المسار ولا في الاستعلام، **فلا يوجد ما
+        يُتلاعب به** — وهذا أقوى من التحقّق من الملكية لأنه يُلغي المسار المحتاج
+        إليه.
+        """
+        limit = min(max(request.args.get("limit", 20, type=int), 1), 100)
+        return {
+            "events": [
+                {
+                    "id": e.id,
+                    "kind": e.kind,
+                    "delta": e.delta,
+                    "occurred_on": e.occurred_at.date(),
+                    "reason": e.reason,
+                }
+                for e in deck_service.recent_events(g.user.org_id, g.user.id, limit)
+            ]
+        }

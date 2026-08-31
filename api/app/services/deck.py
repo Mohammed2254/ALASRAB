@@ -99,3 +99,28 @@ def build(org: Org, user_id: int) -> Deck:
         flight=readiness.flight_state(org, user_id),
         team=team,
     )
+
+
+def recent_events(org_id: int, user_id: int, limit: int = 20) -> list[PointEvent]:
+    """
+    سجلّ ساعات الطالب، الأحدث أوّلًا (FR-012).
+
+    **قراءة خالصة** — لا إلحاق ولا تعديل. والتصحيحات تدخل كما هي بمقدارها
+    السالب وسببها: إخفاؤها هو ما يثير الشك لا إظهارها (ط-٤). طالبٌ يرى رصيده
+    نقص بلا سطر يفسّره يظنّ خللًا أو تلاعبًا.
+
+    والترتيب بـ`occurred_at` ثم `id`: حدثان في اللحظة نفسها — وهو شائع في دفعة
+    اعتماد واحدة — يحتاجان فاصلًا ثابتًا وإلا تبدّل ترتيبهما بين طلبين.
+    """
+    return list(
+        db.session.scalars(
+            select(PointEvent)
+            .where(
+                PointEvent.org_id == org_id,
+                PointEvent.user_id == user_id,
+                PointEvent.scope == "individual",
+            )
+            .order_by(PointEvent.occurred_at.desc(), PointEvent.id.desc())
+            .limit(limit)
+        )
+    )

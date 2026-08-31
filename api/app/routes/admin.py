@@ -5,15 +5,18 @@
 `team_id` هنا ولا في أي استعلام إداري.
 """
 
-from flask import g
+from datetime import timedelta
+
+from flask import g, request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 
 from ..extensions import db
 from ..models import Org
-from ..schemas import ApproveSchema, QueueSchema, RejectSchema, ReviewResultsSchema
+from ..schemas import ApproveSchema, QueueSchema, RejectSchema, ReportSchema, ReviewResultsSchema
 from ..security import admin_required
 from ..services import reading as reading_service
+from ..services import reports as reports_service
 
 blp = Blueprint("admin", __name__, url_prefix="/api", description="شاشات المشرف")
 
@@ -74,3 +77,30 @@ class RejectReading(MethodView):
         except reading_service.ReadingError as exc:
             abort(exc.status, message=str(exc))
         return {"results": [result.__dict__]}
+
+
+@blp.route("/admin/report")
+class Report(MethodView):
+    @admin_required
+    @blp.response(200, ReportSchema)
+    def get(self):
+        """
+        الملخّص الدوري — **كل رقم مشتقّ من سجلّ الأحداث** بلا جدول ملخّصات
+        يفترق عن مصدره (FR-085).
+        """
+        report = reports_service.build(_org(), request.args.get("days", 7, type=int))
+        return {
+            "window": {
+                "from": report.since.date(),
+                "to": report.since.date() + timedelta(days=report.days),
+                "days": report.days,
+            },
+            "totals": {
+                "hours": report.total_hours,
+                "active_pilots": report.active_pilots,
+                "grounded_pilots": len(report.grounded),
+            },
+            "teams": report.teams,
+            "top_movers": report.top_movers,
+            "grounded": report.grounded,
+        }
