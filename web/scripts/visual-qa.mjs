@@ -17,6 +17,17 @@ const BASE = process.env.QA_BASE ?? 'http://localhost:5173'
 const VIEWPORT = { width: 375, height: 812 }
 const MIN_TOUCH = 44
 const MIN_CONTRAST = 4.5
+/*
+  أدنى انزياح عن حافّة الإطار.
+
+  **٨px حدٌّ أرضيّ لا اختيار تصميم** (تصميمنا يستعمل ١٦): نصٌّ ملاصق للحافّة
+  يُقصّ على الأجهزة ذات الزوايا المستديرة والمناطق الآمنة، ويصعب لمسه.
+
+  أُضيف بعد أن **مرّ فحصُ التمرير الأفقي على مخالفة حقيقية**: شاشة الدخول كانت
+  بلا حشوة أفقية، فلامس العنوان والنصّ الحافّتين — و`scrollWidth` لم يتجاوز
+  `clientWidth` لأن الملاصقة لا تزيد العرض. لكل فحص عمى، وهذا كان عماه.
+*/
+const MIN_EDGE_INSET = 8
 
 const STUDENTS = [
   ['1001', 'normal', 'رصيد متوسّط'],
@@ -56,11 +67,25 @@ const MEASURE = () => {
     return (a + 0.05) / (b + 0.05)
   }
 
-  const out = { overflow: null, touch: [], spacing: [], contrast: [] }
+  const out = { overflow: null, touch: [], spacing: [], contrast: [], edges: [] }
 
   // ق-١٣ — تمرير أفقي.
   const doc = document.documentElement
   out.overflow = { scrollWidth: doc.scrollWidth, clientWidth: doc.clientWidth }
+
+  // ق-١٣ب — نصٌّ ملاصق لحافّة الإطار. يُفحص حاملُ النصّ المباشر وحده: الحاويات
+  // تمتدّ بعرض الشاشة بحقّ، والمقصوص هو الحرف لا الصندوق.
+  const vw = doc.clientWidth
+  for (const el of document.querySelectorAll('body *')) {
+    const own = [...el.childNodes]
+      .filter((n) => n.nodeType === Node.TEXT_NODE && n.textContent.trim())
+      .map((n) => n.textContent)
+      .join('')
+    if (!own.trim()) continue
+    const r = el.getBoundingClientRect()
+    if (r.width === 0) continue
+    out.edges.push({ text: own.trim().slice(0, 26), left: Math.round(r.left), right: Math.round(r.right), vw })
+  }
 
   // ق-١٤ — هدف اللمس المرسوم.
   for (const el of document.querySelectorAll(INTERACTIVE)) {
@@ -117,6 +142,11 @@ async function audit(page, label) {
   if (m.overflow.scrollWidth > m.overflow.clientWidth) {
     fail('ق-١٣', `${label}: تمرير أفقي — ${m.overflow.scrollWidth}px داخل ${m.overflow.clientWidth}px`)
   }
+  for (const e of m.edges) {
+    if (e.left < MIN_EDGE_INSET || e.right > e.vw - MIN_EDGE_INSET) {
+      fail('ق-١٣', `${label}: «${e.text}» ملاصق للحافّة [${e.left} → ${e.right}] في ${e.vw}px`)
+    }
+  }
   for (const t of m.touch) {
     if (t.w < MIN_TOUCH || t.h < MIN_TOUCH) {
       fail('ق-١٤', `${label}: «${t.label}» ${t.w}×${t.h} < ${MIN_TOUCH}`)
@@ -136,8 +166,13 @@ async function audit(page, label) {
     (a, b) => (Math.min(a.w, a.h) <= Math.min(b.w, b.h) ? a : b),
     { w: Infinity, h: Infinity, label: '—' },
   )
+  // أدنى انزياح فعليّ عن أقرب حافّة. تُحسب من القائمة مباشرةً: مُراكمٌ ابتدائيّ
+  // مصطنع يفوز على القيم الحقيقية ويعرض رقمًا كاذبًا.
+  const insets = m.edges.map((e) => Math.min(e.left, e.vw - e.right))
+  const tightestInset = insets.length ? Math.min(...insets) : '—'
   console.log(
     `  ${label.padEnd(18)} عرض ${m.overflow.scrollWidth}/${m.overflow.clientWidth} · ` +
+      `أدنى انزياح ${tightestInset}px · ` +
       `أصغر لمس ${smallest.w}×${smallest.h} · أدنى تباين ${worst.ratio}:1 · ` +
       `تباعد عربي ${m.spacing.length}`,
   )

@@ -22,13 +22,18 @@ export LC_ALL=C.UTF-8   # الأرقام العربية-الهندية متعد�
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SPEC="$ROOT/docs/plans/SLICE-01.md"
 SEARCH=("$ROOT/api/tests" "$ROOT/web/src/test" "$ROOT/web/scripts")
+# المصدر وحده. الوسم يعيش في الكود المكتوب لا في مخرَجه المترجَم، و`__pycache__`
+# يحمل نسخًا قديمة من النصوص التوثيقية. (`grep` يرفض اليوم إخراج مطابقات من ملفّ
+# ثنائي فلا تمرير كاذب — لكن الاعتماد على ذلك اعتمادٌ على تفصيل أداة، والنطاق
+# الصحيح أصلًا هو المصدر.)
+SOURCES=(--include='*.py' --include='*.js' --include='*.jsx' --include='*.mjs' --include='*.sh')
 DIGITS='[٠١٢٣٤٥٦٧٨٩]'
 MIN_CRITERIA=12   # حارس الفراغ: البوابة لا تمرّ على استخراج فاشل
 
 [ -f "$SPEC" ] || { echo "❌ لا مواصفة في $SPEC"; exit 2; }
 
 declared=$(grep -oE "^\| \*{0,2}ق-$DIGITS+" "$SPEC" | grep -oE "ق-$DIGITS+" | sort -u)
-covered=$(grep -rhoE "@covers +ق-$DIGITS+(, *ق-$DIGITS+)*" "${SEARCH[@]}" 2>/dev/null \
+covered=$(grep -rhoE "${SOURCES[@]}" "@covers +ق-$DIGITS+(, *ق-$DIGITS+)*" "${SEARCH[@]}" 2>/dev/null \
           | grep -oE "ق-$DIGITS+" | sort -u)
 
 n_declared=$(printf '%s\n' "$declared" | grep -c . || true)
@@ -66,7 +71,7 @@ echo
 echo "  المعيار → المالك:"
 for criterion in $declared; do
   owners=""
-  for file in $(grep -rlE "@covers" "${SEARCH[@]}" 2>/dev/null); do
+  for file in $(grep -rlE "${SOURCES[@]}" "@covers" "${SEARCH[@]}" 2>/dev/null); do
     if grep -oE "@covers +ق-$DIGITS+(, *ق-$DIGITS+)*" "$file" \
        | grep -oE "ق-$DIGITS+" | grep -qx "$criterion"; then
       owners+="$(basename "$file") "

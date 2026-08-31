@@ -30,7 +30,7 @@ export default function Login() {
   }
 
   return (
-    <div className="taxi-in mx-auto max-w-[420px] pt-6">
+    <div className="taxi-in mx-auto max-w-[420px] px-4 pt-6">
       <h1 className="font-display mb-1 text-[34px] leading-none">الأسراب</h1>
       <p className="mb-5 text-[13px] text-muted">ادخل برقمك ورمزك للوصول إلى بطاقتك.</p>
 
