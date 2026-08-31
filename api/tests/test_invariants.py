@@ -79,6 +79,7 @@ def test_valid_individual_event_is_accepted(seeded):
 
 
 def test_update_on_point_events_is_rejected(seeded):
+    """@covers ق-١٢"""
     e = ledger.append(
         [
             ledger.EventSpec(
@@ -98,6 +99,7 @@ def test_update_on_point_events_is_rejected(seeded):
 
 
 def test_delete_on_point_events_is_rejected(seeded):
+    """@covers ق-١٢"""
     e = ledger.append(
         [
             ledger.EventSpec(

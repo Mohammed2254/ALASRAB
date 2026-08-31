@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "lint": "oxlint src",
-    "check:arch": "node scripts/check-no-domain-logic.mjs"
+    "check:arch": "node scripts/check-no-domain-logic.mjs",
+    "check:visual": "node scripts/visual-qa.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",

@@ -30,6 +30,7 @@ def _cookie(response):
 
 
 def test_correct_credentials_return_user_and_set_cookie(client, seeded):
+    """@covers ق-١"""
     r = _login(client)
     assert r.status_code == 200
     # الردّ معشَّش تحت user كما في API.md §٣ — لا مسطّح.
@@ -55,6 +56,8 @@ def test_response_never_leaks_the_pin_or_its_hash(client, seeded):
 
 def test_unknown_student_and_wrong_pin_are_indistinguishable(client, seeded):
     """
+    @covers ق-٢
+
     التفريق بين «رقم غير موجود» و«رمز خاطئ» يحوّل الشاشة إلى أداة تعداد للطلاب.
     المقارنة هنا **حرفية**: رمز الحالة والرسالة معًا.
     """
@@ -104,6 +107,7 @@ def test_token_is_stored_hashed_not_plaintext(client, seeded):
 
 
 def test_me_without_cookie_is_401(client, seeded):
+    """@covers ق-٣"""
     assert client.get("/api/auth/me").status_code == 401
 
 
@@ -142,6 +146,8 @@ def test_logout_revokes_the_session_row(client, seeded):
 
 def test_same_cookie_is_rejected_after_logout(client, seeded):
     """
+    @covers ق-٩
+
     **لو نجح هذا الطلب لكانت الجلسة ليست في القاعدة.** نعيد ضبط الكوكي يدويًّا
     بعد الخروج لأن العميل يحذفه — والمهاجم لا يحذفه.
     """

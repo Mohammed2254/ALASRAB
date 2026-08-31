@@ -30,6 +30,8 @@ CREDS = {"student_no": "1001", "pin": "1234"}
 )
 def test_state_changing_request_is_rejected(client, seeded, case, headers):
     """
+    @covers ق-٤
+
     **غياب `Origin` رفضٌ لا تساهل:** لو كفى المهاجمَ أن يحذف ترويسة، لسقطت
     الطبقة كلها. والمطابقة نصّية تامّة — لا `startswith` يمرّر `…5173.evil`.
     """

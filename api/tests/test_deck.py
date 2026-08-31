@@ -54,6 +54,8 @@ def _auth(client):
 
 def test_full_path_from_events_through_engine_to_response(client, seeded):
     """
+    @covers ق-٥
+
     ١٠٠ صفحة × ٢.٥ (وزن اليوم) × ٢.٠ (متقن) = ٥٠٠ ساعة.
 
     السلسلة كلّها في تأكيد واحد: الحدث في القاعدة، والوزن من الإصدار الساري
@@ -101,6 +103,8 @@ def test_hours_are_summed_from_events_not_stored(client, seeded):
 
 def test_historical_event_uses_historical_rules_in_the_deck(client, seeded):
     """
+    @covers ق-١٠
+
     حدثٌ قبل الإصدار الجديد: ١٠٠ × ١.٠ × ١.٥ = ١٥٠ لا ٥٠٠.
 
     لو اختار المحرّك `now()` لظهر الطالب في رتبة لم يبلغها — والخطأ يظهر **في
@@ -125,6 +129,7 @@ def test_current_event_uses_current_rules(client, seeded):
 
 
 def test_student_with_no_events_gets_designed_empty_state(client, seeded):
+    """@covers ق-٦"""
     _auth(client)
     body = client.get(DECK).json
 
@@ -138,7 +143,7 @@ def test_student_with_no_events_gets_designed_empty_state(client, seeded):
 
 
 def test_max_rank_returns_null_next_rank(client, seeded):
-    """`null` لا شريط ممتلئ: شريط ١٠٠٪ يوحي بأن هناك ما بعده."""
+    """@covers ق-٧ — `null` لا شريط ممتلئ: شريط ١٠٠٪ يوحي بأن هناك ما بعده."""
     _achieve(seeded["org_id"], seeded["users"]["1001"], 400)  # ٢٠٠٠ ساعة
     _auth(client)
     body = client.get(DECK).json
@@ -215,6 +220,7 @@ def test_recent_activity_is_flying(client, seeded):
 
 
 def test_old_activity_is_grounded(client, seeded):
+    """@covers ق-٨"""
     _achieve(seeded["org_id"], seeded["users"]["1001"], 10, days_ago=30)
     _auth(client)
     body = client.get(DECK).json
