@@ -8,7 +8,8 @@
 | [design/RULES.md](design/RULES.md) | المحرّك · المعايرة · حدّ الاستيعاب · قاعدة «أرضي» | ٣ |
 | [design/API.md](design/API.md) | ٣٥ endpoint + مسارات بنيوية | ٣ |
 | [design/TRACEABILITY.md](design/TRACEABILITY.md) | **٤١ متطلَّبًا ← وحدة ← جدول ← ثابت ← اختبار** | ٣ |
-| [plans/SLICE-01.md](plans/SLICE-01.md) | **الشريحة الرأسية الأولى** بعناصرها الثمانية | ٤ |
+| [plans/SLICE-01.md](plans/SLICE-01.md) | **و-١ الشريحة الرأسية** — مغلقة · ١٦/١٦ | ٤ |
+| [slices/و-٤.md](slices/و-٤.md) | **و-٤ القراءة** — خطّة معتمدة · ق-١٧..٢٦ | ٤ |
 | [design/VISUAL.md](design/VISUAL.md) | «المدرّج والشارة» · الألوان · الخطوط · الناقص | ٣ |
 | [decisions/](decisions/) | خمسة ADRs | — |
 
