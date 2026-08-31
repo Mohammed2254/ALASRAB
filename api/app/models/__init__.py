@@ -1,5 +1,6 @@
 """النماذج: المخطط والقيود. لا منطق أعمال ولا استعلامات مركّبة ولا آثار جانبية."""
 
+from .audit import AuditEntry
 from .event import PointEvent
 from .org import Org
 from .reading import ReadingSubmission
@@ -9,6 +10,7 @@ from .team import Membership, Team
 from .user import User
 
 __all__ = [
+    "AuditEntry",
     "LoginAttempt",
     "MasteryMultiplier",
     "Membership",

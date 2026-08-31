@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 import Placard, { Row } from '../../components/Placard'
 import { Async } from '../../components/States'
 import { api } from '../../lib/api'
@@ -95,18 +97,68 @@ function Body({ report }) {
 
       <Placard title="طائرات أرضية" aside="للمتابعة">
         {grounded.length ? (
-          grounded.map((g) => (
-            <Row
-              key={g.user_id}
-              label={g.full_name}
-              value={formatDay(g.last_activity_on) ?? 'لا نشاط بعد'}
-              tone="hold"
-            />
-          ))
+          grounded.map((g) => <GroundedRow key={g.user_id} pilot={g} />)
         ) : (
           <p className="py-2 text-[14px] text-muted">كل الطيارين في الجوّ.</p>
         )}
       </Placard>
+    </div>
+  )
+}
+
+
+/*
+  صفّ طيار أرضيّ، ومعه إعادة تعيين الرمز (FR-004).
+
+  **موضعها هنا لا في شاشة مستقلّة:** المشرف يحتاجها حين يلاحق طالبًا لا يظهر —
+  وأشيع سبب لغيابه أنه لا يستطيع الدخول. وضعُها في مكان الملاحقة يوفّر شاشةً
+  كاملة ونقرتين.
+
+  **والرمز يُعرض مرّة واحدة** ولا سبيل لاسترجاعه — فالنصّ يقولها صراحةً.
+*/
+function GroundedRow({ pilot }) {
+  const [pin, setPin] = useState(null)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function reset() {
+    setBusy(true)
+    setError('')
+    try {
+      setPin((await api.resetPin(pilot.user_id)).pin)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div>
+      <Row
+        label={pilot.full_name}
+        value={formatDay(pilot.last_activity_on) ?? 'لا نشاط بعد'}
+        tone="hold"
+      />
+      {pin ? (
+        <p className="mb-2 text-[13px] text-taxi">
+          الرمز الجديد: <bdi dir="ltr">{pin}</bdi> — يُعرض مرّة واحدة، دوّنه الآن.
+        </p>
+      ) : (
+        <button
+          type="button"
+          onClick={reset}
+          disabled={busy}
+          className="mb-2 min-h-[44px] w-full border border-concrete/45 text-[13px] text-muted disabled:opacity-40"
+        >
+          {busy ? 'جارٍ…' : 'إعادة تعيين الرمز'}
+        </button>
+      )}
+      {error ? (
+        <p role="alert" className="mb-2 text-[13px] text-hold">
+          {error}
+        </p>
+      ) : null}
     </div>
   )
 }

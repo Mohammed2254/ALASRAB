@@ -65,6 +65,7 @@ export const api = {
   submitReading: (body) => request('/me/readings', { method: 'POST', body }),
 
   report: (days = 7) => request(`/admin/report?days=${days}`),
+  resetPin: (userId) => request(`/admin/users/${userId}/reset-pin`, { method: 'POST' }),
   readingQueue: () => request('/admin/readings'),
   approveReadings: (ids) =>
     request('/admin/readings/approve', { method: 'POST', body: { ids } }),

@@ -12,9 +12,17 @@ from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 
 from ..extensions import db
-from ..models import Org
-from ..schemas import ApproveSchema, QueueSchema, RejectSchema, ReportSchema, ReviewResultsSchema
+from ..models import Org, User
+from ..schemas import (
+    ApproveSchema,
+    QueueSchema,
+    RejectSchema,
+    ReportSchema,
+    ResetPinSchema,
+    ReviewResultsSchema,
+)
 from ..security import admin_required
+from ..services import auth as auth_service
 from ..services import reading as reading_service
 from ..services import reports as reports_service
 
@@ -104,3 +112,27 @@ class Report(MethodView):
             "top_movers": report.top_movers,
             "grounded": report.grounded,
         }
+
+
+@blp.route("/admin/users/<int:user_id>/reset-pin")
+class ResetPin(MethodView):
+    @admin_required
+    @blp.response(200, ResetPinSchema)
+    def post(self, user_id):
+        """
+        رمزٌ جديد **يُعرض مرّة واحدة** (FR-004 · `ARCHITECTURE.md` §٧.٥).
+
+        **مسارٌ مستقلّ لا حقلٌ في `PATCH /admin/teams`:** فعلٌ يُبطل كل جلسات
+        مستخدم يجب أن يكون صريحًا في العقد، فلا يُطلَق عرَضًا بتغيير لاحق في
+        مسار الأسراب (`API.md` §٦).
+
+        والنطاق `org_id` وحده — المشرف على مستوى الجمعية (§٧.٣).
+        """
+        target = db.session.get(User, user_id)
+        if target is None or target.org_id != g.user.org_id:
+            # رسالة واحدة لغير الموجود وللخارج عن المنظمة: التفريق يكشف وجود
+            # مستخدمين في منظمات أخرى.
+            abort(404, message="لا طالب بهذا المعرّف.")
+
+        new_pin = auth_service.reset_pin(g.user.org_id, target, actor_id=g.user.id)
+        return {"student_no": target.student_no, "pin": new_pin}

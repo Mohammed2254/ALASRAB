@@ -8,10 +8,11 @@ from datetime import UTC, datetime, timedelta
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerificationError, VerifyMismatchError
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 
 from ..extensions import db
 from ..models import LoginAttempt, Membership, Org, Session, User
+from . import audit
 
 SESSION_DAYS = 90
 MAX_ATTEMPTS = 5
@@ -150,6 +151,43 @@ def logout(token: str) -> None:
 def set_pin(user: User, new_pin: str) -> None:
     user.pin_hash = hash_pin(new_pin)
     db.session.commit()
+
+
+def revoke_all_sessions(user_id: int) -> int:
+    """
+    إبطال كل جلسات مستخدم. لا `commit` — المستدعي يُتمّ المعاملة.
+
+    سبب إعادة التعيين غالبًا **فقدان الجهاز**، وترك جلساته حيّة يُبطل الغرض
+    (`ARCHITECTURE.md` §٧.٥).
+    """
+    return db.session.execute(
+        update(Session)
+        .where(Session.user_id == user_id, Session.revoked.is_(False))
+        .values(revoked=True)
+    ).rowcount
+
+
+def reset_pin(org_id: int, target: User, actor_id: int) -> str:
+    """
+    رمزٌ جديد **يُعرض مرّة واحدة** ولا يُخزَّن نصًّا صريحًا أبدًا.
+
+    ثلاثة أفعال في **معاملة واحدة**: تغيير الرمز، وإبطال الجلسات، وسطر التدقيق.
+    وفصلُها يعني حالةً وسطى — رمزٌ جديد وجلساتٌ قديمة حيّة، أو تدقيقٌ لفعلٍ لم يتمّ.
+
+    و`before`/`after` **فارغان عمدًا**: «يُسجَّل منسوبًا — **بلا قيمة الـPIN**»
+    (§٧.٥). سطرُ تدقيقٍ يحمل الرمز يحوّل السجلّ نفسه إلى تسريب.
+    """
+    new_pin = f"{secrets.randbelow(10_000):04d}"
+    target.pin_hash = hash_pin(new_pin)
+    revoke_all_sessions(target.id)
+    audit.record(
+        org_id=org_id,
+        kind="pin_reset",
+        summary=f"إعادة تعيين رمز الطالب {target.student_no}",
+        actor_id=actor_id,
+    )
+    db.session.commit()
+    return new_pin
 
 
 def membership_of(user: User) -> Membership | None:
