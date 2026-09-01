@@ -84,7 +84,7 @@
 | FR | المسار | الوحدة | الجدول | الثابت | الاختبار | وحدة العمل |
 |---|---|---|---|:--:|---|:--:|
 | FR-081 | `GET·POST /admin/weights` | `services/rules_admin` | `weight_versions` `weights` | **ث-١١** | حدث ماضٍ يستعمل الوزن القديم | و-٧ |
-| FR-082 | `/admin/thresholds` + `preview` | `services/rules_admin` | `rank_thresholds` | **ث-١٣** | `demoted` فارغ · سُلّم متناقض ⇒ `422` | و-٧ |
+| FR-082 | `/admin/thresholds` + `preview` | `services/rules_admin` | `rank_thresholds` `users` | **ث-١٣أ · ث-١٣ب** | `demoted` فارغ · سُلّم متناقض ⇒ `422` | و-٧ |
 | FR-083 | `/admin/teams` | `services/teams` | `teams` `memberships` | **ث-٤** | النقل لا ينقل التاريخ · أرشفة لا حذف | و-٧ |
 | FR-084 | `GET /admin/audit` | `services/audit` | `audit_log` | — | **مفتوح لكل المشرفين** — تعويض دمج الدورين | و-٧ |
 | FR-085 | `GET /admin/report` | `services/reports` | `point_events` | — | **بلا جدول جديد** — مشتقّ من السجلّ | و-١٠ |

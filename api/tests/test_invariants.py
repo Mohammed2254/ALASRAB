@@ -341,6 +341,76 @@ def test_rejection_without_reason_is_rejected_by_database(seeded):
     db.session.rollback()
 
 
+# ═══ ث-١٣أ · ث-١٣ب — و-٧: سُلّم متّسق · الرتبة لا تنخفض ═══
+
+
+def test_inconsistent_ladder_is_rejected_by_database(seeded):
+    """
+    @covers ق-٥١
+
+    إدخالٌ يتجاوز `services/rules_admin` عمدًا — القاعدة تحمي لا التطبيق.
+    """
+    with pytest.raises(DBAPIError, match="غير متّسق"):
+        db.session.execute(
+            db.text(
+                "INSERT INTO rank_thresholds (org_id, key, name, tier, at_hours) "
+                "VALUES (:org, 'bad', 'رتبة مخالفة', 5, 50)"
+            ),
+            {"org": seeded["org_id"]},
+        )
+    db.session.rollback()
+
+
+def test_consistent_ladder_addition_is_accepted(seeded):
+    """@covers ق-٥١ — الحدّ الآخر: القيد ليس مفرطًا."""
+    db.session.execute(
+        db.text(
+            "INSERT INTO rank_thresholds (org_id, key, name, tier, at_hours) "
+            "VALUES (:org, 'ace', 'صقر', 5, 2000)"
+        ),
+        {"org": seeded["org_id"]},
+    )
+    db.session.commit()
+    assert (
+        db.session.scalar(
+            db.text("SELECT count(*) FROM rank_thresholds WHERE key='ace'")
+        )
+        == 1
+    )
+
+
+def test_highest_achieved_tier_cannot_be_lowered_by_direct_update(seeded):
+    """
+    @covers ق-٥٠
+
+    دفاعٌ ثانٍ خلف `services/rules_admin`: حتى لو أخطأ كودٌ مستقبليّ ونسي شرط
+    الارتفاع فقط، القاعدة ترفض — نفس منهج ث-٢ الذي كاد يشحن مخالفة بلا مشغّل.
+    """
+    uid = seeded["users"]["1001"]
+    db.session.execute(
+        db.text("UPDATE users SET highest_achieved_tier = 3 WHERE id = :u"), {"u": uid}
+    )
+    db.session.commit()
+
+    with pytest.raises(DBAPIError, match="لا تنخفض"):
+        db.session.execute(
+            db.text("UPDATE users SET highest_achieved_tier = 1 WHERE id = :u"), {"u": uid}
+        )
+    db.session.rollback()
+
+
+def test_highest_achieved_tier_can_be_raised(seeded):
+    """@covers ق-٥٠ — الحدّ الآخر: الارتفاع مسموح دائمًا."""
+    uid = seeded["users"]["1001"]
+    db.session.execute(
+        db.text("UPDATE users SET highest_achieved_tier = 3 WHERE id = :u"), {"u": uid}
+    )
+    db.session.commit()
+    assert db.session.scalar(
+        db.text("SELECT highest_achieved_tier FROM users WHERE id = :u"), {"u": uid}
+    ) == 3
+
+
 def test_valid_reading_rows_are_accepted(seeded):
     """@covers ق-١٩ · ق-٢٠ — الحدّ الآخر: القيود ليست مفرطة."""
     from app.models import ReadingSubmission

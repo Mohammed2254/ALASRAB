@@ -12,7 +12,7 @@ from decimal import ROUND_HALF_UP, Decimal
 from sqlalchemy import func, select
 
 from ..extensions import db
-from ..models import Membership, Org, PointEvent, RankThreshold, Team
+from ..models import Membership, Org, PointEvent, RankThreshold, Team, User
 from . import readiness
 
 CENT = Decimal("0.01")
@@ -77,6 +77,17 @@ def build(org: Org, user_id: int) -> Deck:
     # أدنى رتبة أرضيةٌ لا يُسقَط منها: رصيدٌ سالب بعد تصحيح يبقي صاحبه «طيارًا».
     reached = [i for i, r in enumerate(ladder) if hours >= r.at_hours]
     index = reached[-1] if reached else 0
+
+    # و-٧ · ت-٢: الرتبة المعروضة = max(المحسوبة الآن, أعلى رتبة بلغها الطالب
+    # تحت أي سُلّم عتبات سرى وقتًا ما). **قراءة فقط** — لا كتابة ولا commit هنا؛
+    # من يرفع القيمة المِسنَّة هو services/rules_admin وحده عند تعديل العتبات.
+    # ٠ حارسة (لا رتبة تحمل tier=0) فلا تُبحث ولا تفوز في max() قبل أوّل رتبة.
+    persisted_tier = db.session.scalar(select(User.highest_achieved_tier).where(User.id == user_id))
+    if persisted_tier:
+        persisted_index = next((i for i, r in enumerate(ladder) if r.tier == persisted_tier), None)
+        if persisted_index is not None and persisted_index > index:
+            index = persisted_index
+
     rank = ladder[index]
 
     # التالية بالنسبة إلى **الرتبة** لا إلى الساعات. لو قيست بالساعات لأعادت

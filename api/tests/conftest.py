@@ -69,6 +69,55 @@ def app():
             FOR EACH ROW EXECUTE FUNCTION point_events_append_only();
         """)
         )
+
+        # و-٧ · ث-١٣أ — سُلّم متّسق: tier أعلى ⇔ at_hours أعلى، على كل صفوف المنظمة.
+        db.session.execute(
+            db.text("""
+            CREATE OR REPLACE FUNCTION rank_thresholds_ladder_consistent() RETURNS trigger AS $$
+            DECLARE bad_tier SMALLINT;
+            BEGIN
+              SELECT tier INTO bad_tier FROM (
+                SELECT tier, at_hours, LAG(at_hours) OVER (ORDER BY tier) AS prev_hours
+                FROM rank_thresholds WHERE org_id = COALESCE(NEW.org_id, OLD.org_id)
+              ) ladder WHERE prev_hours IS NOT NULL AND at_hours <= prev_hours LIMIT 1;
+              IF bad_tier IS NOT NULL THEN
+                RAISE EXCEPTION 'سُلّم الرتب غير متّسق: تدرّج tier يجب أن يوافقه تدرّج at_hours';
+              END IF;
+              RETURN NULL;
+            END $$ LANGUAGE plpgsql;
+        """)
+        )
+        db.session.execute(
+            db.text("DROP TRIGGER IF EXISTS rank_thresholds_ladder_consistent ON rank_thresholds")
+        )
+        db.session.execute(
+            db.text("""
+            CREATE TRIGGER rank_thresholds_ladder_consistent
+              AFTER INSERT OR UPDATE OR DELETE ON rank_thresholds
+              FOR EACH ROW EXECUTE FUNCTION rank_thresholds_ladder_consistent();
+        """)
+        )
+
+        # و-٧ · ث-١٣ب — الرتبة المعروضة لا تنخفض: دفاعٌ ثانٍ خلف الخدمة.
+        db.session.execute(
+            db.text("""
+            CREATE OR REPLACE FUNCTION users_tier_never_decreases() RETURNS trigger AS $$
+            BEGIN
+              IF NEW.highest_achieved_tier < OLD.highest_achieved_tier THEN
+                RAISE EXCEPTION 'الرتبة المكتسَبة لا تنخفض: % أقلّ من %',
+                  NEW.highest_achieved_tier, OLD.highest_achieved_tier;
+              END IF;
+              RETURN NEW;
+            END $$ LANGUAGE plpgsql;
+        """)
+        )
+        db.session.execute(db.text("DROP TRIGGER IF EXISTS users_tier_never_decreases ON users"))
+        db.session.execute(
+            db.text("""
+            CREATE TRIGGER users_tier_never_decreases BEFORE UPDATE ON users
+            FOR EACH ROW EXECUTE FUNCTION users_tier_never_decreases();
+        """)
+        )
         db.session.commit()
         yield application
         db.session.remove()

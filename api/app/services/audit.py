@@ -11,8 +11,10 @@
 
 from typing import Any
 
+from sqlalchemy import select
+
 from ..extensions import db
-from ..models import AuditEntry
+from ..models import AuditEntry, User
 
 
 def record(
@@ -39,3 +41,18 @@ def record(
     )
     db.session.add(entry)
     return entry
+
+
+def list_for_org(org_id: int) -> list[tuple[AuditEntry, str]]:
+    """
+    كل السطور — **مفتوح لكل المشرفين بلا حدّ `team_id`** (FR-084 · §٧.٣).
+
+    الأحدث أوّلًا: التغيير الجديد هو ما يريد المشرف رؤيته أوّلًا عند فتح
+    الصفحة. اسم الفاعل مُلحَق بلا N+1 — قائمة تُقرَأ لا تُفكَّك سطرًا سطرًا.
+    """
+    return db.session.execute(
+        select(AuditEntry, User.full_name)
+        .join(User, User.id == AuditEntry.actor_id)
+        .where(AuditEntry.org_id == org_id)
+        .order_by(AuditEntry.at.desc(), AuditEntry.id.desc())
+    ).all()
