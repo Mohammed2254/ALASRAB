@@ -3,6 +3,14 @@
 from .audit import ResetPinSchema
 from .audit_log import AuditLogSchema
 from .auth import LoginSchema, SessionSchema
+from .fuel import (
+    ActivitiesListSchema,
+    AssessedSchema,
+    AssessSchema,
+    CreateActivitySchema,
+    CreatedActivitySchema,
+    StationSchema,
+)
 from .me import DeckSchema, EventsSchema
 from .reading import (
     ApproveSchema,
@@ -33,10 +41,15 @@ from .teams import (
 )
 
 __all__ = [
+    "ActivitiesListSchema",
     "ApproveSchema",
     "ArchivedTeamSchema",
     "ArchiveTeamSchema",
+    "AssessSchema",
+    "AssessedSchema",
     "AuditLogSchema",
+    "CreateActivitySchema",
+    "CreatedActivitySchema",
     "CreateTeamSchema",
     "CreateWeightVersionSchema",
     "CreatedTeamSchema",
@@ -51,6 +64,7 @@ __all__ = [
     "ReviewResultsSchema",
     "SaveThresholdsSchema",
     "SessionSchema",
+    "StationSchema",
     "SubmitReadingSchema",
     "SubmittedSchema",
     "TeamsListSchema",

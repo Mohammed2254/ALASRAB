@@ -27,6 +27,10 @@ from app.models import (
 from app.services.auth import hash_pin
 
 TABLES = [
+    "fuel_scores",
+    "fuel_assessments",
+    "fuel_criteria",
+    "fuel_activities",
     "point_events",
     "login_attempts",
     "sessions",
@@ -116,6 +120,62 @@ def app():
             db.text("""
             CREATE TRIGGER users_tier_never_decreases BEFORE UPDATE ON users
             FOR EACH ROW EXECUTE FUNCTION users_tier_never_decreases();
+        """)
+        )
+
+        # و-٨ · ث-١٠أ — أوزان بنود نشاط واحد تجمع ١٠٠٪. CONSTRAINT TRIGGER
+        # مؤجَّل لنهاية المعاملة لا فوريّ: إنشاء نشاط يُدرج بنوده صفًّا صفًّا،
+        # وفحصًا فوريًّا يرفض حتى الحالة الصحيحة قبل اكتمال كل الصفوف — أُثبت
+        # هذا عمليًّا على القاعدة الحقيقية قبل كتابة هذا السطر.
+        db.session.execute(
+            db.text("""
+            CREATE OR REPLACE FUNCTION fuel_criteria_sum_100() RETURNS trigger AS $$
+            DECLARE total NUMERIC;
+            BEGIN
+              SELECT COALESCE(SUM(weight_pct), 0) INTO total FROM fuel_criteria
+              WHERE activity_id = COALESCE(NEW.activity_id, OLD.activity_id);
+              IF total <> 100 THEN
+                RAISE EXCEPTION 'أوزان بنود النشاط لا تجمع 100%% — المجموع %', total;
+              END IF;
+              RETURN NULL;
+            END $$ LANGUAGE plpgsql;
+        """)
+        )
+        db.session.execute(
+            db.text("DROP TRIGGER IF EXISTS fuel_criteria_sum_100 ON fuel_criteria")
+        )
+        db.session.execute(
+            db.text("""
+            CREATE CONSTRAINT TRIGGER fuel_criteria_sum_100
+              AFTER INSERT OR UPDATE OR DELETE ON fuel_criteria
+              DEFERRABLE INITIALLY DEFERRED
+              FOR EACH ROW EXECUTE FUNCTION fuel_criteria_sum_100();
+        """)
+        )
+
+        # و-٨ · ث-١٠ب — أوزان البنود المقيَّمة فعلًا في تقييم واحد تجمع ١٠٠٪.
+        db.session.execute(
+            db.text("""
+            CREATE OR REPLACE FUNCTION fuel_scores_sum_100() RETURNS trigger AS $$
+            DECLARE total NUMERIC;
+            BEGIN
+              SELECT COALESCE(SUM(fc.weight_pct), 0) INTO total
+              FROM fuel_scores fs JOIN fuel_criteria fc ON fc.id = fs.criterion_id
+              WHERE fs.assessment_id = COALESCE(NEW.assessment_id, OLD.assessment_id);
+              IF total <> 100 THEN
+                RAISE EXCEPTION 'أوزان البنود المقيَّمة لا تجمع 100%% — المجموع %', total;
+              END IF;
+              RETURN NULL;
+            END $$ LANGUAGE plpgsql;
+        """)
+        )
+        db.session.execute(db.text("DROP TRIGGER IF EXISTS fuel_scores_sum_100 ON fuel_scores"))
+        db.session.execute(
+            db.text("""
+            CREATE CONSTRAINT TRIGGER fuel_scores_sum_100
+              AFTER INSERT OR UPDATE OR DELETE ON fuel_scores
+              DEFERRABLE INITIALLY DEFERRED
+              FOR EACH ROW EXECUTE FUNCTION fuel_scores_sum_100();
         """)
         )
         db.session.commit()

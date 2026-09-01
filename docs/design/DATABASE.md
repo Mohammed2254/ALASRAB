@@ -51,6 +51,7 @@ erDiagram
     fuel_activities ||--o{ fuel_assessments : ""
     fuel_assessments ||--o{ fuel_scores : ""
     fuel_criteria ||--o{ fuel_scores : ""
+    fuel_assessments |o--o| point_events : "يصير عند الحفظ 🆕"
 
     users ||--o{ sessions : ""
 ```
@@ -282,19 +283,73 @@ pilot_of_week(id, org_id, week_start, user_id, reason, actor_id)
 > **الدقّة الزائدة هنا ثغرة خصوصية.**
 
 ---
-### الوقود
+### الوقود 🆕 (و-٨)
 ```sql
 fuel_activities(id, org_id, key, name, litres_full, archived_at)
-fuel_criteria(id, activity_id, key, name, weight_pct, position)
-fuel_assessments(id, org_id, team_id, activity_id, occurred_on, total_pct, litres, note, actor_id)
-  UNIQUE (team_id, activity_id, occurred_on)
-fuel_scores(id, assessment_id, criterion_id, score_pct)
-```
-**الأوزان تجمع ١٠٠٪ بالضبط** — يُفرَض عند التقييم لا في المخطط: نشاط أوزانه ٩٥
-يجعل الإتقان الكامل ٩٥٪، **فيظنّ السرب أنه قصّر وهو أتقن**.
+  UNIQUE (org_id, key)
+  CHECK (litres_full > 0)
 
-**`fuel_scores` مفصّلة** ليُشرح الرقم بعد شهر: «٨٠ × ٣٥٪ = ٢٨.٠٠».
-**`occurred_on` تاريخ الوقوع لا الإدخال** — التسجيل يتأخّر أيامًا وهذا متوقَّع.
+fuel_criteria(id, activity_id, key, name, weight_pct, position)
+  UNIQUE (activity_id, key)
+  CHECK (weight_pct > 0 AND weight_pct <= 100)
+
+fuel_assessments(
+  id, org_id, team_id, activity_id, occurred_on,
+  total_pct, litres, note, actor_id,
+  point_event_id REFERENCES point_events(id)
+)
+  UNIQUE (team_id, activity_id, occurred_on)
+  CHECK (point_event_id IS NOT NULL)
+  CHECK (total_pct >= 0)
+  CHECK (litres >= 0)
+
+fuel_scores(id, assessment_id, criterion_id, score_pct)
+  UNIQUE (assessment_id, criterion_id)
+  CHECK (score_pct >= 0 AND score_pct <= 100)
+```
+
+| القيد | الخطأ الذي يمنعه |
+|---|---|
+| `uq_fuel_activity_key` | نشاطان بمفتاح متطابق في منظمة واحدة |
+| `fuel_criteria_weight_pct_range` | بندٌ وزنه صفر أو سالب أو يتجاوز ١٠٠٪ منفردًا |
+| `uq_fuel_criterion_key` | بندان بمفتاح متطابق داخل نشاط واحد |
+| `uq_fuel_assessment_per_day` | تقييم النشاط نفسه للسرب نفسه مرّتين في يوم واحد |
+| **`fuel_assessments.point_event_id IS NOT NULL`** | **تقييمٌ بلا حدث محتسَب** — مطابق حرفيًّا لصرامة `reading_submissions`، لا `external_ref` وحده (قرار مؤرَّخ، انظر أدناه) |
+| `uq_fuel_score_per_criterion` | بندٌ يُسجَّل له درجتان في تقييم واحد |
+| `fuel_scores_score_pct_range` | درجة بند خارج ٠..١٠٠ |
+
+**لماذا `point_event_id` صريح لا `external_ref` وحده؟** (قرار مؤرَّخ — و-٨)
+`external_ref` يمنع **التكرار** (idempotency) فحسب؛ لا يثبت أن الصفّ **يملك**
+حدثًا حقيقيًّا الآن. `reading_submissions` تحمل `point_event_id` صريحًا
+بالضبط لهذا: قابليةٌ للفحص المباشر بالقاعدة («هل لهذا التقييم حدث؟») لا
+اشتقاقًا من نمط نصّي. ولأن التقييم **لا حالة معلَّقة له** (خلافًا للقراءة التي
+تمرّ بـ`pending`)، فلا حاجة لقيد `CHECK` مزدوج الاتّجاه كـث-٥ — **دومًا** غير
+فارغ، فيُفرض بـ`NOT NULL` وحدها.
+
+**ث-١٠ — أوزان الوقود تجمع ١٠٠٪: دفاعٌ مزدوج على نقطتين مختلفتين**، لا نقطة
+واحدة ولا خدمة وحدها (قرار مؤرَّخ يُصحِّح `DATABASE.md` القديم في ضوء درس ث-٥):
+
+| الثابت | يحرس | الفرض | يُمسك |
+|---|---|---|---|
+| **ث-١٠أ** | تعريف البنود: مجموع `weight_pct` لكل بنود نشاط واحد = ١٠٠٪ بالضبط | `TRIGGER AFTER` على `fuel_criteria` (نفس بنية ث-١٣أ — الادّعاء يمتدّ على كل بنود النشاط، لا يُعبَّر عنه بـ`CHECK` صفّي) + فحص تمهيدي في `services/fuel.py` | نشاطًا جديدًا أو تعديلًا يُخِلّ بالمجموع |
+| **ث-١٠ب** | لحظة التقييم: مجموع `weight_pct` **للبنود التي شُملت فعلًا في هذا التقييم** (عبر `fuel_scores`) = ١٠٠٪ | `TRIGGER AFTER` على `fuel_scores` + فحص تمهيدي في `services/fuel.py` | **انجرافًا زمنيًّا**: نشاطٌ كان سليمًا عند التعريف ثم عُدِّل لاحقًا (أو عُدِّل عبر SQL خام يتجاوز ث-١٠أ) فصار مجموعه معطوبًا **قبل** أن يستعمله تقييم جديد بصمت؛ ويُمسك أيضًا تقييمًا يُغفل بندًا من بنود النشاط (تغطية جزئية) |
+
+**لماذا نقطتان لا نقطة؟** ث-١٠أ يحرس **الإعداد** (نادر التكرار، يقع مرّة لكل
+نشاط)، وث-١٠ب يحرس **الاستعمال** (يتكرّر مع كل تقييم) — ولكلٍّ فشلٌ لا يمنعه
+الآخر: تعطيل ث-١٠أ (بخطأ مستقبلي أو مشغّل مُعطَّل يدويًّا) يترك نشاطًا معطوبًا
+حيًّا حتى يُستعمَل، وث-١٠ب هو من يمسكه عند تلك اللحظة بالضبط.
+
+**`fuel_scores` مفصّلة** ليُشرح الرقم بعد شهر: «٨٠ × ٣٥٪ = ٢٨.٠٠» (FR-071).
+**`occurred_on` تاريخ الوقوع لا الإدخال** — التسجيل يتأخّر أيامًا وهذا متوقَّع
+(م-٧)، ويُحوَّل إلى `occurred_at` UTC بنفس تحويل `RULES.md` §٩.
+
+**لا تقاطع مع `rules/engine.py` ولا `weight_versions` ولا `rank_thresholds`:**
+الوقود عملة جماعية منفصلة تمامًا (`scope='team'` · `currency='fuel'`) —
+مؤكَّد بنصّ `ARCHITECTURE.md` («`rules/` لا تملك: ❌ الوقود»). `services/fuel.py`
+يحسب `litres` بحساب نسبة مئوية بسيط، **لا** عبر `Achievement`/`ruleset_at`.
+
+**الفهرس:** `fuel_assessments(org_id, team_id, occurred_on)` — محطة التزوّد
+وسجلّ التقييمات الأخيرة.
 
 ---
 ### التشغيل

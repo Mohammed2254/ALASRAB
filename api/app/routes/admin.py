@@ -14,10 +14,15 @@ from flask_smorest import Blueprint, abort
 from ..extensions import db
 from ..models import Org, User
 from ..schemas import (
+    ActivitiesListSchema,
     ApproveSchema,
     ArchivedTeamSchema,
     ArchiveTeamSchema,
+    AssessedSchema,
+    AssessSchema,
     AuditLogSchema,
+    CreateActivitySchema,
+    CreatedActivitySchema,
     CreatedTeamSchema,
     CreateTeamSchema,
     CreateWeightVersionSchema,
@@ -38,6 +43,7 @@ from ..schemas import (
 from ..security import admin_required
 from ..services import audit as audit_service
 from ..services import auth as auth_service
+from ..services import fuel as fuel_service
 from ..services import reading as reading_service
 from ..services import reports as reports_service
 from ..services import rules_admin as rules_admin_service
@@ -284,3 +290,51 @@ class AuditLog(MethodView):
                 for e, name in rows
             ]
         }
+
+
+# ═══ و-٨ — الوقود (FR-070 · FR-071) ═══
+
+
+@blp.route("/admin/fuel/activities")
+class FuelActivities(MethodView):
+    @admin_required
+    @blp.response(200, ActivitiesListSchema)
+    def get(self):
+        return {"activities": fuel_service.list_activities(g.user.org_id)}
+
+    @admin_required
+    @blp.arguments(CreateActivitySchema)
+    @blp.response(201, CreatedActivitySchema)
+    def post(self, data):
+        """إنشاءٌ **جديد** — لا تعديل على نشاط قائم. ث-١٠أ: الأوزان تجمع ١٠٠٪."""
+        try:
+            return fuel_service.create_activity(
+                _org(), data["key"], data["name"], data["litres_full"], data["criteria"]
+            )
+        except fuel_service.FuelError as exc:
+            abort(exc.status, message=str(exc))
+
+
+@blp.route("/admin/fuel/assess")
+class FuelAssess(MethodView):
+    @admin_required
+    @blp.arguments(AssessSchema)
+    @blp.response(201, AssessedSchema)
+    def post(self, data):
+        """
+        تقييمٌ **جديد**. `team_id` صريح — المشرف على مستوى الجمعية يقيّم أيّ
+        سرب (§٧.٣). ث-١٠ب: أوزان البنود المُقيَّمة فعلًا تجمع ١٠٠٪.
+        """
+        scores = {s["criterion_id"]: s["score_pct"] for s in data["scores"]}
+        try:
+            return fuel_service.assess(
+                _org(),
+                data["team_id"],
+                data["activity_id"],
+                data["occurred_on"],
+                scores,
+                data["note"],
+                g.user.id,
+            )
+        except fuel_service.FuelError as exc:
+            abort(exc.status, message=str(exc))

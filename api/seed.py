@@ -40,6 +40,10 @@ from app.services.auth import hash_pin
 
 TABLES = [
     "reading_submissions",
+    "fuel_scores",
+    "fuel_assessments",
+    "fuel_criteria",
+    "fuel_activities",
     "point_events",
     "login_attempts",
     "sessions",

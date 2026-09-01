@@ -2,6 +2,7 @@
 
 from .audit import AuditEntry
 from .event import PointEvent
+from .fuel import FuelActivity, FuelAssessment, FuelCriterion, FuelScore
 from .org import Org
 from .reading import ReadingSubmission
 from .rules import MasteryMultiplier, RankThreshold, Weight, WeightVersion
@@ -11,6 +12,10 @@ from .user import User
 
 __all__ = [
     "AuditEntry",
+    "FuelActivity",
+    "FuelAssessment",
+    "FuelCriterion",
+    "FuelScore",
     "LoginAttempt",
     "MasteryMultiplier",
     "Membership",

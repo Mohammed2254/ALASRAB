@@ -75,7 +75,7 @@
 
 | FR | المسار | الوحدة | الجدول | الثابت | الاختبار | وحدة العمل |
 |---|---|---|---|:--:|---|:--:|
-| FR-070 | `POST /admin/fuel/assess` | `services/fuel` · `ledger` | `fuel_*` `point_events` | **ث-١ · ث-١٠** | مجموع أوزان ٩٥ ⇒ `422` | و-٨ |
+| FR-070 | `POST /admin/fuel/assess` | `services/fuel` · `ledger` | `fuel_*` `point_events` | **ث-١ · ث-١٠أ · ث-١٠ب** | مجموع أوزان ٩٥ ⇒ `422` | و-٨ |
 | FR-071 | ضمن `assess` | `services/fuel` | `fuel_scores` | — | كل بند محفوظ مفصّلًا | و-٨ |
 | FR-072 | `GET /station` | `services/fuel` | `point_events` | ث-١ | وقود السرب لا الفرد | و-٨ |
 

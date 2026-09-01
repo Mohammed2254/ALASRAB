@@ -11,16 +11,18 @@ from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 
 from ..extensions import db
-from ..models import Org
+from ..models import Org, Team
 from ..schemas import (
     DeckSchema,
     EventsSchema,
     MyReadingsSchema,
+    StationSchema,
     SubmitReadingSchema,
     SubmittedSchema,
 )
 from ..security import login_required
 from ..services import deck as deck_service
+from ..services import fuel as fuel_service
 from ..services import reading as reading_service
 
 blp = Blueprint("me", __name__, url_prefix="/api", description="بطاقة الطيار")
@@ -128,4 +130,30 @@ class MyEvents(MethodView):
                 }
                 for e in deck_service.recent_events(g.user.org_id, g.user.id, limit)
             ]
+        }
+
+
+@blp.route("/station")
+class Station(MethodView):
+    @login_required
+    @blp.response(200, StationSchema)
+    def get(self):
+        """
+        محطة التزوّد — وقود سرب **الطالب المصادَق عليه** (FR-072 · و-٨).
+
+        **شاشة طيّار لا مشرف** (`docs/slices/و-٨.md`): كل عضو سرب يراه، تمامًا
+        كلوحات الصدارة، لا تقييمها الذي يملكه المشرف وحده. `team: null` لمن
+        بلا عضوية سارية — حالة مصمَّمة لا عطل (`SCOPE.md` ط-٢)، نفس عقد
+        `GET /me/deck`.
+        """
+        org = db.session.get(Org, g.user.org_id)
+        if g.membership is None:
+            return {"team": None, "tank_capacity_l": org.tank_capacity_l, "recent": []}
+
+        data = fuel_service.team_fuel(g.user.org_id, g.membership.team_id)
+        team = db.session.get(Team, g.membership.team_id)
+        return {
+            "team": {"name": team.name, "litres": data["litres"]},
+            "tank_capacity_l": org.tank_capacity_l,
+            "recent": data["recent"],
         }

@@ -411,6 +411,157 @@ def test_highest_achieved_tier_can_be_raised(seeded):
     ) == 3
 
 
+# ═══ ث-١٠أ · ث-١٠ب · و-٨ — أوزان الوقود تجمع ١٠٠٪ على نقطتين ═══
+
+
+def _make_activity(org_id, weights):
+    """نشاطٌ وبنوده — `weights` قائمة أوزان. مجموعها يُقرَّر عند COMMIT (مؤجَّل)."""
+    aid = db.session.scalar(
+        db.text(
+            "INSERT INTO fuel_activities (org_id, key, name, litres_full) "
+            "VALUES (:org, 'a'||floor(random()*1e9)::text, 'نشاط', 50) RETURNING id"
+        ),
+        {"org": org_id},
+    )
+    for i, w in enumerate(weights):
+        db.session.execute(
+            db.text(
+                "INSERT INTO fuel_criteria (activity_id, key, name, weight_pct, position) "
+                "VALUES (:aid, :key, :key, :w, :pos)"
+            ),
+            {"aid": aid, "key": f"c{i}", "w": w, "pos": i},
+        )
+    return aid
+
+
+def _insert_assessment(org_id, team_id, activity_id, actor_id, point_event_id):
+    """`point_event_id=None` يُدرَج `NULL` حرفيًّا — يستهدف ق-٦٧ عمدًا."""
+    cols = "org_id, team_id, activity_id, occurred_on, total_pct, litres, actor_id, point_event_id"
+    pe = ":pe" if point_event_id is not None else "NULL"
+    return db.session.scalar(
+        db.text(
+            f"INSERT INTO fuel_assessments ({cols}) "
+            f"VALUES (:org, :team, :act, CURRENT_DATE, 100, 50, :actor, {pe}) RETURNING id"
+        ),
+        {
+            "org": org_id,
+            "team": team_id,
+            "act": activity_id,
+            "actor": actor_id,
+            "pe": point_event_id,
+        },
+    )
+
+
+def test_activity_with_weights_summing_to_100_is_accepted(seeded):
+    """@covers ق-٦٥ — الحدّ الآخر: القيد لا يرفض إدراجًا متعدّد الصفوف صحيحًا."""
+    aid = _make_activity(seeded["org_id"], [40, 60])
+    db.session.commit()
+    assert (
+        db.session.scalar(
+            db.text("SELECT count(*) FROM fuel_criteria WHERE activity_id=:a"), {"a": aid}
+        )
+        == 2
+    )
+
+
+def test_activity_with_weights_not_summing_to_100_is_rejected(seeded):
+    """@covers ق-٦٥"""
+    _make_activity(seeded["org_id"], [40, 50])
+    with pytest.raises(DBAPIError, match="بنود النشاط"):
+        db.session.commit()
+    db.session.rollback()
+
+
+def test_assessment_scoring_all_criteria_is_accepted(seeded):
+    """@covers ق-٦٦ — الحدّ الآخر: تقييم يُغطّي كل البنود يمرّ."""
+    aid = _make_activity(seeded["org_id"], [40, 60])
+    db.session.commit()
+    criteria = db.session.execute(
+        db.text("SELECT id FROM fuel_criteria WHERE activity_id=:a ORDER BY position"), {"a": aid}
+    ).scalars().all()
+
+    event_id = ledger.append(
+        [
+            ledger.EventSpec(
+                org_id=seeded["org_id"],
+                kind="fuel",
+                delta=Decimal("47.00"),
+                team_id=seeded["team_id"],
+                occurred_at=NOW,
+            )
+        ]
+    )[0].id
+    asmt_id = _insert_assessment(
+        seeded["org_id"], seeded["team_id"], aid, seeded["users"]["1001"], event_id
+    )
+    for cid in criteria:
+        db.session.execute(
+            db.text(
+                "INSERT INTO fuel_scores (assessment_id, criterion_id, score_pct) "
+                "VALUES (:asmt, :cid, 90)"
+            ),
+            {"asmt": asmt_id, "cid": cid},
+        )
+    db.session.commit()
+    assert (
+        db.session.scalar(
+            db.text("SELECT count(*) FROM fuel_scores WHERE assessment_id=:a"), {"a": asmt_id}
+        )
+        == 2
+    )
+
+
+def test_assessment_scoring_only_some_criteria_is_rejected(seeded):
+    """
+    @covers ق-٦٦
+
+    يمسك انجرافًا/تغطية جزئية: بندٌ واحد من اثنين — وزنه وحده لا يبلغ ١٠٠٪،
+    حتى لو كان النشاط سليمًا تمامًا عند تعريفه (ث-١٠أ لا يكفي وحده).
+    """
+    aid = _make_activity(seeded["org_id"], [40, 60])
+    db.session.commit()
+    first_criterion = db.session.scalar(
+        db.text("SELECT id FROM fuel_criteria WHERE activity_id=:a ORDER BY position LIMIT 1"),
+        {"a": aid},
+    )
+
+    event_id = ledger.append(
+        [
+            ledger.EventSpec(
+                org_id=seeded["org_id"],
+                kind="fuel",
+                delta=Decimal("40.00"),
+                team_id=seeded["team_id"],
+                occurred_at=NOW,
+            )
+        ]
+    )[0].id
+    asmt_id = _insert_assessment(
+        seeded["org_id"], seeded["team_id"], aid, seeded["users"]["1001"], event_id
+    )
+    db.session.execute(
+        db.text(
+            "INSERT INTO fuel_scores (assessment_id, criterion_id, score_pct) "
+            "VALUES (:asmt, :cid, 100)"
+        ),
+        {"asmt": asmt_id, "cid": first_criterion},
+    )
+    with pytest.raises(DBAPIError, match="البنود المقيَّمة"):
+        db.session.commit()
+    db.session.rollback()
+
+
+def test_fuel_assessment_without_point_event_is_rejected(seeded):
+    """@covers ق-٦٧"""
+    aid = _make_activity(seeded["org_id"], [100])
+    db.session.commit()
+    with pytest.raises(IntegrityError):
+        _insert_assessment(seeded["org_id"], seeded["team_id"], aid, seeded["users"]["1001"], None)
+        db.session.commit()
+    db.session.rollback()
+
+
 def test_valid_reading_rows_are_accepted(seeded):
     """@covers ق-١٩ · ق-٢٠ — الحدّ الآخر: القيود ليست مفرطة."""
     from app.models import ReadingSubmission
