@@ -1,8 +1,12 @@
 import { useState } from 'react'
 
 import { Failed, Loading } from './components/States'
+import AuditLog from './pages/admin/AuditLog'
 import ReadingQueue from './pages/admin/ReadingQueue'
 import Report from './pages/admin/Report'
+import Teams from './pages/admin/Teams'
+import Thresholds from './pages/admin/Thresholds'
+import Weights from './pages/admin/Weights'
 import Login from './pages/Login'
 import MyReadings from './pages/MyReadings'
 import PilotDeck from './pages/PilotDeck'
@@ -33,11 +37,19 @@ function Gate() {
   if (screen === 'readings') return <MyReadings onDone={back} />
   if (screen === 'queue') return <ReadingQueue onDone={back} />
   if (screen === 'report') return <Report onDone={back} />
+  if (screen === 'weights') return <Weights onDone={back} />
+  if (screen === 'thresholds') return <Thresholds onDone={back} />
+  if (screen === 'teams') return <Teams onDone={back} />
+  if (screen === 'audit') return <AuditLog onDone={back} />
   return (
     <PilotDeck
       onOpenReadings={() => setScreen('readings')}
       onOpenQueue={() => setScreen('queue')}
       onOpenReport={() => setScreen('report')}
+      onOpenWeights={() => setScreen('weights')}
+      onOpenThresholds={() => setScreen('thresholds')}
+      onOpenTeams={() => setScreen('teams')}
+      onOpenAudit={() => setScreen('audit')}
     />
   )
 }

@@ -1,5 +1,5 @@
 /*
-  @covers ق-١٣, ق-١٤, ق-١٥, ق-١٦, ق-٢٦, ق-٣١, ق-٣٩, ق-٤٥
+  @covers ق-١٣, ق-١٤, ق-١٥, ق-١٦, ق-٢٦, ق-٣١, ق-٣٩, ق-٤٥, ق-٦٤
 
   فحص بصري **مقيس** في متصفّح حقيقي — لا لقطات تُنظَر بالعين وحدها.
 
@@ -273,6 +273,27 @@ for (const [studentNo, slug, label] of STUDENTS) {
     await page.waitForTimeout(500)
     await page.screenshot({ path: `${OUT}/reading-queue.png`, fullPage: true })
     await audit(page, 'طابور القراءات')
+    await page.click('text=رجوع')
+    await page.waitForSelector('text=بطاقة الطيار', { timeout: 8000 })
+
+    /*
+      و-٧ (ق-٦٤) — أربع شاشات جديدة. `getByRole('button', ...)` لا `text=` هنا:
+      عنوان شاشة الأسراب وزرّ فتحها يحملان النصّ نفسه، فيتنازع محدِّد نصّي عام.
+    */
+    for (const [label, slugPart] of [
+      ['الأوزان', 'weights'],
+      ['العتبات', 'thresholds'],
+      ['الأسراب', 'teams'],
+      ['سجلّ التغييرات', 'audit'],
+    ]) {
+      await page.getByRole('button', { name: label, exact: true }).click()
+      await page.waitForSelector(`h1:has-text("${label}")`, { timeout: 8000 })
+      await page.waitForTimeout(500)
+      await page.screenshot({ path: `${OUT}/admin-${slugPart}.png`, fullPage: true })
+      await audit(page, label)
+      await page.click('text=رجوع')
+      await page.waitForSelector('text=بطاقة الطيار', { timeout: 8000 })
+    }
   }
 
   if (consoleErrors.length) fail('صفحة', `${label}: ${consoleErrors.join(' | ')}`)

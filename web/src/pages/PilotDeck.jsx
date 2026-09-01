@@ -32,7 +32,15 @@ const dateFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', {
 
 const formatDay = (iso) => (iso ? dateFormatter.format(new Date(`${iso}T00:00:00Z`)) : null)
 
-export default function PilotDeck({ onOpenReadings, onOpenQueue, onOpenReport }) {
+export default function PilotDeck({
+  onOpenReadings,
+  onOpenQueue,
+  onOpenReport,
+  onOpenWeights,
+  onOpenThresholds,
+  onOpenTeams,
+  onOpenAudit,
+}) {
   const { user, logout } = useApp()
   const state = useAsync(() => api.deck(), [])
 
@@ -81,6 +89,43 @@ export default function PilotDeck({ onOpenReadings, onOpenQueue, onOpenReport })
                   className="min-h-[48px] w-full border border-concrete/45 text-[15px] text-paint"
                 >
                   التقرير الدوري
+                </button>
+              )}
+              {/* و-٧ — نفس منطق الإخفاء: راحة لا حماية. */}
+              {user.role === 'admin' && (
+                <button
+                  type="button"
+                  onClick={onOpenWeights}
+                  className="min-h-[48px] w-full border border-concrete/45 text-[15px] text-paint"
+                >
+                  الأوزان
+                </button>
+              )}
+              {user.role === 'admin' && (
+                <button
+                  type="button"
+                  onClick={onOpenThresholds}
+                  className="min-h-[48px] w-full border border-concrete/45 text-[15px] text-paint"
+                >
+                  العتبات
+                </button>
+              )}
+              {user.role === 'admin' && (
+                <button
+                  type="button"
+                  onClick={onOpenTeams}
+                  className="min-h-[48px] w-full border border-concrete/45 text-[15px] text-paint"
+                >
+                  الأسراب
+                </button>
+              )}
+              {user.role === 'admin' && (
+                <button
+                  type="button"
+                  onClick={onOpenAudit}
+                  className="min-h-[48px] w-full border border-concrete/45 text-[15px] text-paint"
+                >
+                  سجلّ التغييرات
                 </button>
               )}
             </nav>

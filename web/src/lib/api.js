@@ -71,4 +71,22 @@ export const api = {
     request('/admin/readings/approve', { method: 'POST', body: { ids } }),
   rejectReading: (id, reason) =>
     request(`/admin/readings/${id}/reject`, { method: 'POST', body: { reason } }),
+
+  // و-٧
+  weights: () => request('/admin/weights'),
+  createWeightVersion: (body) => request('/admin/weights', { method: 'POST', body }),
+
+  thresholds: () => request('/admin/thresholds'),
+  saveThresholds: (thresholds) =>
+    request('/admin/thresholds', { method: 'POST', body: { thresholds } }),
+  previewThresholds: (thresholds) =>
+    request('/admin/thresholds/preview', { method: 'POST', body: { thresholds } }),
+
+  teams: () => request('/admin/teams'),
+  createTeam: (body) => request('/admin/teams', { method: 'POST', body }),
+  archiveTeam: (id) => request(`/admin/teams/${id}`, { method: 'PATCH', body: { archived: true } }),
+  transferMember: (teamId, userId) =>
+    request(`/admin/teams/${teamId}/members`, { method: 'POST', body: { user_id: userId } }),
+
+  auditLog: () => request('/admin/audit'),
 }

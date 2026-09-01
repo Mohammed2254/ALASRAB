@@ -1,5 +1,5 @@
 /*
-  @covers ق-١١, ق-٢٥, ق-٣٠, ق-٣٨, ق-٤٥
+  @covers ق-١١, ق-٢٥, ق-٣٠, ق-٣٨, ق-٤٥, ق-٦٣
 
   فحص معماري: **الواجهة تعرض ولا تحسب** (`AGENTS.md` ٥).
 
@@ -40,6 +40,13 @@ const CONTRACT_CONSUMERS = [
   'src/pages/MyReadings.jsx',
   'src/pages/admin/ReadingQueue.jsx',
   'src/pages/admin/Report.jsx',
+  // و-٧ (ق-٦٣): أربع شاشات إدارية جديدة تستهلك عقود الأوزان والعتبات والأسراب
+  // والتدقيق — نموذجٌ يعرض القيم المستلَمة ويرسلها كما هي، بلا حساب رتبة ولا
+  // مقارنة عتبة.
+  'src/pages/admin/Weights.jsx',
+  'src/pages/admin/Thresholds.jsx',
+  'src/pages/admin/Teams.jsx',
+  'src/pages/admin/AuditLog.jsx',
 ]
 const VISUAL_PRIMITIVES = ['src/components/Insignia.jsx', 'src/components/Placard.jsx']
 
