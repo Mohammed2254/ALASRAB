@@ -51,15 +51,59 @@ const MEASURE = () => {
   const channel = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
   const luminance = ([r, g, b]) =>
     0.2126 * channel(r / 255) + 0.7152 * channel(g / 255) + 0.0722 * channel(b / 255)
-  const parse = (css) => (css.match(/[\d.]+/g) ?? []).slice(0, 4).map(Number)
+  /*
+    المتصفّح يعيد الألوان **بصيغتين مختلفتي المدى**، وخلطهما كان عمى الأداة:
+    `rgb(10, 12, 16)` و`rgba(...)` بمدى **0–255**، بينما Chromium يعيد كل لون
+    ذي شفافية (وهو ما تولّده `bg-apron/78` في Tailwind) بصيغة
+    `color(srgb 0.078 0.098 0.133 / 0.78)` بمدى **0–1**.
 
-  // الخلفية الفعلية: العنصر قد يكون شفّافًا، فتُورَّث من أوّل سلف غير شفّاف.
+    قسمةُ الثانية على 255 كانت تجعل اللوح **أسود شبه نقيّ** — وهو أفضل خلفية
+    ممكنة لنصّ فاتح — فتُبلَّغ نسبٌ أعلى من الحقيقة بمعامل ثابت 1.159، ويمرّ
+    ما كان يجب أن يسقط. أُثبت عمليًّا: نصّ `#797979` نسبته الحقيقية 4.16:1
+    عبر البوابة وقد أُبلغ 4.82:1.
+
+    واسم فضاء اللون يُنزَع أوّلًا: `display-p3` يحمل رقمًا في اسمه فيلوّث
+    الالتقاط لو التُقطت الأرقام من النصّ كما هو.
+  */
+  const parse = (css) => {
+    const s = String(css).trim()
+    const open = s.indexOf('(')
+    if (open < 0) return [] // 'transparent' أو اسم لوني — لا قنوات
+    const unit = s.startsWith('color(')
+    const body = s.slice(open + 1, s.lastIndexOf(')')).replace(unit ? /^\s*[a-z0-9-]+\s+/i : /^$/, '')
+    const nums = (body.match(/[\d.]+/g) ?? []).map(Number)
+    if (nums.length < 3) return []
+    const rgb = nums.slice(0, 3).map((v) => (unit ? v * 255 : v))
+    return nums.length > 3 ? [...rgb, nums[3]] : rgb
+  }
+
+  /*
+    الخلفية الفعلية = **تركيب** الطبقات لا أوّل طبقة «كافية».
+
+    الصيغة السابقة كانت تقبل أوّل سلف شفافيته > 0.5 وتعامله كأنه معتم، فتُهمل
+    ما تحته. واللوح عندنا 0.78 فوق الأسفلت، وتركيبهما `#12161E` — وهو الرقم
+    الذي توثّقه `VISUAL.md`. فالتركيب هنا ليس تدقيقًا زائدًا بل هو ما يجعل
+    الرقم المقيس مساويًا للرقم الموثَّق.
+  */
   const backgroundOf = (el) => {
+    const layers = []
     for (let node = el; node; node = node.parentElement) {
-      const bg = parse(getComputedStyle(node).backgroundColor)
-      if (bg.length >= 3 && (bg[3] === undefined || bg[3] > 0.5)) return bg.slice(0, 3)
+      const c = parse(getComputedStyle(node).backgroundColor)
+      if (c.length < 3) continue
+      const alpha = c.length > 3 ? c[3] : 1
+      if (alpha <= 0) continue
+      layers.push([c[0], c[1], c[2], alpha])
+      if (alpha >= 0.999) break
     }
-    return [0, 0, 0]
+    // بلا أرضية معتمة لا يوجد رقم صادق. والافتراض الصامت (أسود) يرفع النسبة
+    // ويُمرّر المخالفة — وهو الفخّ نفسه، فيُعلَن العجز بدل تخمينه (الدرس ٥).
+    if (!layers.length || layers[layers.length - 1][3] < 0.999) return null
+    let out = layers[layers.length - 1].slice(0, 3)
+    for (let i = layers.length - 2; i >= 0; i--) {
+      const [r, g, b, a] = layers[i]
+      out = [r, g, b].map((v, k) => a * v + (1 - a) * out[k])
+    }
+    return out
   }
 
   const contrast = (fg, bg) => {
@@ -126,11 +170,13 @@ const MEASURE = () => {
     if (!own.trim()) continue
     const style = getComputedStyle(el)
     const fg = parse(style.color).slice(0, 3)
-    const ratio = contrast(fg, backgroundOf(el))
+    const bg = backgroundOf(el)
+    // عجزٌ مُعلَن لا مُخمَّن: نصٌّ بلا أرضية معتمة تحته لا نسبة صادقة له.
+    const ratio = fg.length < 3 || bg === null ? null : contrast(fg, bg)
     out.contrast.push({
       text: own.trim().slice(0, 26),
       size: style.fontSize,
-      ratio: Math.round(ratio * 100) / 100,
+      ratio: ratio === null ? null : Math.round(ratio * 100) / 100,
     })
   }
   return out
@@ -156,12 +202,15 @@ async function audit(page, label) {
     fail('ق-١٥', `${label}: «${s.text}» letter-spacing=${s.letterSpacing} على نصّ عربي`)
   }
   for (const c of m.contrast) {
-    if (c.ratio < MIN_CONTRAST) {
+    if (c.ratio === null) {
+      fail('ق-١٦', `${label}: «${c.text}» (${c.size}) تعذّر قياس تباينه — لا أرضية معتمة تحته`)
+    } else if (c.ratio < MIN_CONTRAST) {
       fail('ق-١٦', `${label}: «${c.text}» (${c.size}) تباين ${c.ratio}:1 < ${MIN_CONTRAST}`)
     }
   }
 
-  const worst = m.contrast.reduce((a, b) => (a.ratio <= b.ratio ? a : b), { ratio: Infinity })
+  const measured = m.contrast.filter((c) => c.ratio !== null)
+  const worst = measured.reduce((a, b) => (a.ratio <= b.ratio ? a : b), { ratio: Infinity })
   const smallest = m.touch.reduce(
     (a, b) => (Math.min(a.w, a.h) <= Math.min(b.w, b.h) ? a : b),
     { w: Infinity, h: Infinity, label: '—' },
