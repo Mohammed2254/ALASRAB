@@ -2,6 +2,8 @@ import { useState } from 'react'
 
 import { Failed, Loading } from './components/States'
 import AuditLog from './pages/admin/AuditLog'
+import FuelActivities from './pages/admin/FuelActivities'
+import FuelAssess from './pages/admin/FuelAssess'
 import ReadingQueue from './pages/admin/ReadingQueue'
 import Report from './pages/admin/Report'
 import Teams from './pages/admin/Teams'
@@ -10,6 +12,7 @@ import Weights from './pages/admin/Weights'
 import Login from './pages/Login'
 import MyReadings from './pages/MyReadings'
 import PilotDeck from './pages/PilotDeck'
+import Station from './pages/Station'
 import { AppStateProvider, useApp } from './state/AppState'
 
 /*
@@ -41,6 +44,9 @@ function Gate() {
   if (screen === 'thresholds') return <Thresholds onDone={back} />
   if (screen === 'teams') return <Teams onDone={back} />
   if (screen === 'audit') return <AuditLog onDone={back} />
+  if (screen === 'station') return <Station onDone={back} />
+  if (screen === 'fuelActivities') return <FuelActivities onDone={back} />
+  if (screen === 'fuelAssess') return <FuelAssess onDone={back} />
   return (
     <PilotDeck
       onOpenReadings={() => setScreen('readings')}
@@ -50,6 +56,9 @@ function Gate() {
       onOpenThresholds={() => setScreen('thresholds')}
       onOpenTeams={() => setScreen('teams')}
       onOpenAudit={() => setScreen('audit')}
+      onOpenStation={() => setScreen('station')}
+      onOpenFuelActivities={() => setScreen('fuelActivities')}
+      onOpenFuelAssess={() => setScreen('fuelAssess')}
     />
   )
 }

@@ -121,59 +121,60 @@ react-router · نمط Repository فوق SQLAlchemy · صنف CRUD عامّ · �
 
 ## ٥· الحالة الرقمية
 
-كل رقم أدناه **نُفِّذ أمره فعلًا** على حالة المستودع عند `38d2d01`، إلّا ما
-وُسِم صراحةً بأنه يدويّ.
+كل رقم أدناه **نُفِّذ أمره فعلًا** على حالة المستودع عند `<HEAD>` (التزام
+الواجهة، و-٨)، إلّا ما وُسِم صراحةً بأنه يدويّ.
 
 | المقياس | القيمة | كيف تتحقّق |
 |---|---|---|
 | متطلَّبات في SCOPE | **٤١** | `grep -o 'FR-[0-9]\{3\}' docs/product/SCOPE.md \| sort -u \| wc -l` |
-| جداول قائمة فعلًا | **١٤** من ٢٤ مصمَّمًا | `SELECT count(*) FROM pg_tables WHERE schemaname='public'` |
-| دوالّ اختبار خلفية | **١٧٢** | `grep -h 'def test_' api/tests/*.py \| wc -l` |
-| **حالات** pytest | **١٩٩** | `pytest -q` — الفرق عن ١٧٢ هو توسيع `parametrize` |
-| اختبارات الواجهة | **٢٥** | `npm test` |
-| معايير القبول | **٦٤ معلَنًا / ٦٤ مملوكًا** | `bash web/scripts/check-slice-gate.sh` |
-| الوحدات المغلقة | **٦** من ١٠ | و-١ · و-٤ · و-٣ · و-١٠ـجزئية · و-٢ · و-٧ |
+| جداول قائمة فعلًا | **١٨** من ٢٤ مصمَّمًا | `SELECT count(*) FROM pg_tables WHERE schemaname='public'` |
+| دوالّ اختبار خلفية | **١٩٦** | `grep -h 'def test_' api/tests/*.py \| wc -l` |
+| **حالات** pytest | **٢٢٣** | `pytest -q` — الفرق عن ١٩٦ هو توسيع `parametrize` |
+| اختبارات الواجهة | **٣١** | `npm test` |
+| معايير القبول | **٧٧ معلَنًا / ٧٧ مملوكًا** | `bash web/scripts/check-slice-gate.sh` |
+| الوحدات المغلقة | **٧** من ١٠ | و-١ · و-٤ · و-٣ · و-١٠ـجزئية · و-٢ · و-٧ · و-٨ |
 
-> ⚠️ **تنبيه صدق:** «١٨ من ٤١ متطلَّبًا منجَز» (`FR-081..084` أضافها و-٧) رقمٌ
-> **اشتُقّ ميكانيكيًّا** هذه المرّة من `TRACEABILITY.md` — لا يدويًّا كسلفه:
+> ⚠️ **تنبيه صدق:** «٢١ من ٤١ متطلَّبًا منجَز» (`FR-070..072` أضافها و-٨)
+> **اشتُقّ ميكانيكيًّا** من `TRACEABILITY.md` — لا يدويًّا:
 > ```bash
 > grep -E '^\| FR-[0-9]{3} \|' docs/design/TRACEABILITY.md \
->   | awk -F'|' '{print $2, $(NF-1)}' | grep -E ' (و-١|و-٢|و-٣|و-٤|و-١٠|و-٧)$'
+>   | awk -F'|' '{print $2, $(NF-1)}' \
+>   | grep -E ' (و-١|و-٢|و-٣|و-٤|و-١٠|و-٧|و-٨)$'
 > ```
-> يُخرج ١٩ سطرًا، ناقص `FR-086` **المؤجَّل صراحةً** مع و-٥ (يحتاج `raw_rows`) ⇒ **١٨**.
+> يُخرج ٢٢ سطرًا، ناقص `FR-086` **المؤجَّل صراحةً** مع و-٥ (يحتاج `raw_rows`) ⇒ **٢١**.
 >
-> ولا تخلط **١٧٢ دالّة اختبار** بـ**١٩٩ حالة pytest** — الرقمان يقيسان شيئين
-> مختلفين، وأي جمع بينهما وبين ٢٥ اختبار واجهة يعطي رقمًا لا معنى له.
+> ولا تخلط **١٩٦ دالّة اختبار** بـ**٢٢٣ حالة pytest** — الرقمان يقيسان شيئين
+> مختلفين، وأي جمع بينهما وبين ٣١ اختبار واجهة يعطي رقمًا لا معنى له.
 
 ---
 
 ## ٦· ما بُني بالضبط
 
-### التوثيق (٢١ ملفًّا)
+### التوثيق (٢٢ ملفًّا)
 
 `AGENTS.md` · `docs/product/SCOPE.md` (FR-001..FR-086، الافتراضات ف-١..ف-١٠،
 §10.3 معايير عابرة للشاشات) · `docs/design/{ARCHITECTURE,DATABASE,RULES,API,TRACEABILITY,VISUAL}.md`
-· `docs/plans/SLICE-01.md` (**مجمَّد**) · `docs/slices/{و-٤,و-٣,و-١٠-جزئية,و-٢,و-٧}.md`
+· `docs/plans/SLICE-01.md` (**مجمَّد**) · `docs/slices/{و-٤,و-٣,و-١٠-جزئية,و-٢,و-٧,و-٨}.md`
 · ستة ADRs.
 
 **ADRs:** ١ دفتر الأحداث · ٢ القيد في القاعدة · ٣ الجلسات في القاعدة ·
 ٤ راصد مصدرًا واليدوي استثناءً · ٥ تأجيل وحدة القياس خلف حدّ الاستيراد ·
 ٦ كوكي + CSRF.
 
-### الخلفية (٤٣ ملفًّا · ~٣٧٣٥ سطرًا)
+### الخلفية (٤٧ ملفًّا · ~٤٤٢٦ سطرًا)
 
 ```
 api/app/__init__.py        create_app · فحص Origin · /health · معالج أخطاء JSON
 api/app/config.py          Config · TestConfig · EXPOSE_API_DOCS (مطفأ افتراضًا)
 api/app/security.py        login_required · admin_required · role_of · current_identity
-api/app/models/            audit · event · org · reading · rules(+highest_achieved_tier) · session · team · user
-api/app/rules/engine.py    Achievement · RuleSet · ruleset_at · hours_for
-api/app/schemas/           audit · audit_log 🆕 · auth · me · reading · report · rules_admin 🆕 · teams 🆕
-api/app/routes/            admin(+8 مسارات و-٧) · auth · me
-api/app/services/          audit(+list_for_org) · auth · deck(+قراءة المِسنَن) · ledger · readiness · reading · reports · rules_admin 🆕 · teams 🆕
-api/seed.py                بذرة حتمية عبر TRUNCATE … RESTART IDENTITY
+api/app/models/            audit · event · fuel 🆕 · org · reading · rules(+highest_achieved_tier) · session · team · user
+api/app/rules/engine.py    Achievement · RuleSet · ruleset_at · hours_for — الوقود لا يمرّ من هنا
+api/app/schemas/           audit · audit_log · auth · fuel 🆕 · me · reading · report · rules_admin · teams
+api/app/routes/            admin(+11 مسارًا و-٧/و-٨) · auth · me(+/station)
+api/app/services/          audit · auth · deck(+قراءة المِسنَن) · fuel 🆕 · ledger(بلا تعديل) · readiness · reading · reports · rules_admin · teams
+api/seed.py                بذرة حتمية عبر TRUNCATE … RESTART IDENTITY (+جداول الوقود)
 api/migrations/versions/   75f3cbd7db7e (أساس) · 3c0fdc962416 (قراءات) · 4f30424304cb (تدقيق)
-                            · 82af7773c3c8 (ث-١٣أ/ث-١٣ب — و-٧)
+                            · 82af7773c3c8 (ث-١٣أ/ث-١٣ب — و-٧) · 0f51d36d558b (ث-١٠أ/ث-١٠ب — و-٨)
 ```
 
 **`services/ledger.py`** — `EventSpec` مجمَّد، و`append(specs)` ذرّي،
@@ -212,20 +213,35 @@ FR-037 · و-٧): `kind` · `summary` · `before`/`after` JSONB قابلان ل�
 **`services/teams.py`** — أرشفة لا حذف (`archived_at`)، ونقلٌ يُغلق العضوية
 القديمة لا يحذفها — «النقل لا ينقل التاريخ» (م-١٠).
 
-### الواجهة (٢٣ ملفًّا · ~٢٩٩٤ سطرًا)
+**`services/fuel.py`** (و-٨) — **أوّل عملة ثانية في الدفتر، وأثبتت أن
+`ledger.py` لم يحتج تعديلًا واحدًا**: القيد `currency_scope_match` يستوعب
+`fuel`/`team` منذ و-١. ث-١٠ دفاعٌ مزدوج (`fuel_criteria_sum_100` عند التعريف
+· `fuel_scores_sum_100` عند التقييم) بمشغّلَي `CONSTRAINT TRIGGER … DEFERRABLE
+INITIALLY DEFERRED` **لا `AFTER` فوريّ** — مشغّل فوريّ رفض حتى إدخالًا صحيحًا
+(٤٠٪+٦٠٪) لأنه فحص بعد الصفّ الأوّل وحده، مؤجَّلٌ لنهاية المعاملة بعد إثبات
+هذا عمليًّا. و`fuel_assessments.point_event_id` عمود صريح `NOT NULL` **بلا**
+`external_ref` — منحُ الحدث `external_ref` من نفس المفتاح الطبيعي (سرب+نشاط+يوم)
+كان يصطدم بقيد `point_events` أوّلًا فيسقط تكرارٌ بـ٥٠٠ خام بدل ٤٠٩ الموثَّق،
+فحُذف كليًّا: منع التكرار مملوك بالكامل لقيد `fuel_assessments`.
+
+### الواجهة (٢٧ ملفًّا · ~٣٦١٩ سطرًا)
 
 ```
 web/src/App.jsx                        بوّابة: checking|error|in|out + حالة الشاشة
 web/src/lib/api.js                     عميل API وحيد · BASE='/api' · ApiError
 web/src/state/{AppState,useAsync}.jsx  هوية الجلسة · loading/ready/error
 web/src/components/{Placard,States,Insignia}.jsx
-web/src/pages/{Login,PilotDeck,MyReadings}.jsx
-web/src/pages/admin/{ReadingQueue,Report,Weights,Thresholds,Teams,AuditLog}.jsx
-web/src/test/{deck,admin-rules}.test.jsx  ١٩ + ٦ اختبارًا
-web/scripts/check-no-domain-logic.mjs  فحص AST (ق-١١,٢٥,٣٠,٣٨,٤٥,٦٣)
+web/src/pages/{Login,PilotDeck,MyReadings,Station}.jsx
+web/src/pages/admin/{ReadingQueue,Report,Weights,Thresholds,Teams,AuditLog,FuelActivities,FuelAssess}.jsx
+web/src/test/{deck,admin-rules,fuel}.test.jsx  ١٩ + ٦ + ٦ اختبارًا
+web/scripts/check-no-domain-logic.mjs  فحص AST (ق-١١,٢٥,٣٠,٣٨,٤٥,٦٣,٧٦)
 web/scripts/check-slice-gate.sh        بوابة معيار↔مالك بقائمة بيان
-web/scripts/visual-qa.mjs              قياس عند ٣٧٥px (ق-١٣,١٤,١٥,١٦,٢٦,٣١,٣٩,٤٥,٦٤)
+web/scripts/visual-qa.mjs              قياس عند ٣٧٥px (ق-١٣,١٤,١٥,١٦,٢٦,٣١,٣٩,٤٥,٦٤,٧٧)
 ```
+
+**محطة التزوّد شاشة طيّار لا مشرف** (`docs/slices/و-٨.md`) — `@login_required`
+على `GET /station`، وزرّها في `PilotDeck.jsx` يظهر **لكل طيّار** بلا شرط
+`role === 'admin'`، خلافًا لكل أزرار و-٧/و-٨ الإدارية الأخرى.
 
 ---
 
@@ -305,13 +321,14 @@ npm run build
 
 | الوحدة | المحتوى | الوزن | الحاجز |
 |---|---|---|---|
-| **و-٨** | الوقود | **كامل** (مُصعَّدة) | ٤ جداول جديدة · أوّل كتابة `fuel` في الدفتر |
 | **و-٦** | — | **لم تُفرَز** | فرزها أوّلًا |
 | **و-٥** | استيراد راصد | كامل | **س-١**: عيّنة تصدير راصد حقيقية |
 | **FR-086** | — | — | مؤجَّل مع و-٥ (يحتاج `raw_rows`) |
 
-**و-٧ أُغلقت** (`baa6262` + التزام الواجهة) — التفصيل الكامل في §١٢.٢ أدناه.
-**الترتيب المعتمَد التالي:** و-٨. يحتاج **إذنًا مستقلًّا**.
+**و-٧ و-٨ أُغلقتا** — التفصيل الكامل في §١٢.٢ و§١٢.٣ أدناه. **الوحدات
+الأربع كاملة الوزن المُصعَّدة أصلًا (و-٢·و-٤·و-٧·و-٨) أُنجزت كلّها.**
+**الباقي:** فرز و-٦، ثم و-٥ إن وصلت عيّنة راصد حقيقية (س-١) — كلاهما يحتاج
+**إذنًا مستقلًّا**.
 
 ### مفتوح ومعروف
 
@@ -322,7 +339,7 @@ npm run build
 
 ---
 
-## ١٠· أحد عشر درسًا كلّفت أخطاءً حقيقية
+## ١٠· ثلاثة عشر درسًا كلّفت أخطاءً حقيقية
 
 1. **حاوية المستودع المرجعي حُذفت.** مجلّدان باسم `api` جعلا Compose يشتقّ اسم
    المشروع نفسه فأزال `asrab-db`. ⇒ **`name:` صريح في كل ملفّ compose**، والتحقّق
@@ -354,6 +371,18 @@ npm run build
     ١٫١٥٩ — أُثبت عمليًّا بزرع نصّ نسبته الحقيقية ٤٫١٦:١ (ساقط)، فأبلغته
     الأداة العَمياء ٤٫٨٢:١ (ناجح)، وأسقطته الأداة بعد الإصلاح بـ٤٫١٦:١ بالضبط.
     ⇒ **أداة القياس نفسها تحتاج فحصًا دوريًّا، لا فقط ما تقيسه.**
+12. **مشغّلٌ فوريّ رفض حتى الإدخال الصحيح.** `fuel_criteria_sum_100` (ث-١٠أ)
+    `AFTER FOR EACH ROW` فحص المجموع بعد كل صفّ على حدة، فرفض نشاطًا بندَاه
+    ٤٠٪+٦٠٪ لأن الصفّ الأوّل وحده (٤٠٪) لا يبلغ ١٠٠٪ — **قبل** أن يُدرَج
+    الثاني. ⇒ **قيدٌ يمتدّ على إدراج متعدّد الصفوف يحتاج
+    `CONSTRAINT TRIGGER … DEFERRABLE INITIALLY DEFERRED`**، لا `AFTER` فوريًّا
+    — يُفحص مرّة واحدة بعد استقرار كل الصفوف عند `COMMIT`.
+13. **`external_ref` حتميّ اصطدم بقيده الخاصّ قبل قيد العمل.** منح حدث الوقود
+    `external_ref` من نفس المفتاح الطبيعي لتقييمه (سرب+نشاط+يوم) جعل تكرارًا
+    يصطدم بـ`uq_event_external_ref` في `point_events` **قبل** أن يصل قيد
+    `fuel_assessments` المخصَّص، فسقط بـ`500` خام بدل `409` الموثَّق. ⇒ **حين
+    يملك قيدٌ عملٌ مخصَّص مفتاحًا طبيعيًّا، لا يُمنَح نفسَ المفتاح لقيد عامّ
+    آخر في مسار أسبق — أيّهما يُستشار أوّلًا يفوز، ولو كان الخطأ.**
 
 **ودرس حاكم:** جدولٌ مذكور كاعتمادية — ولو بغموض — **كافٍ للتصعيد**. لا تؤجّل
 الحكم إلى «يحتاج قرارًا» والأدلّة تحسمه أصلًا.
@@ -450,7 +479,7 @@ vitest ١٩ ✓ · oxlint ٠ · `check:arch` ✓ · البوابة ٤٥/٤٥ · 
 
 **و-٢ = COMPLETE.**
 
-### ١٢.٢ و-٧ (آخر وحدة مغلقة)
+### ١٢.٢ و-٧
 
 **الالتزامان `baa6262` (خلفية) و`38d2d01` (واجهة).**
 
@@ -505,6 +534,70 @@ vitest ١٩ ✓ · oxlint ٠ · `check:arch` ✓ · البوابة ٤٥/٤٥ · 
 فعليًّا — نفس نمط زرّ الأوزان القائم، لا عطل جديد).
 
 **و-٧ = COMPLETE.**
+
+### ١٢.٣ و-٨ (آخر وحدة مغلقة)
+
+**الالتزامان `71ecc9c` (خلفية) و`<HEAD>` (واجهة).**
+
+**ما بُني:** هجرة `0f51d36d558b` (أربعة جداول وقود + مشغّلا ث-١٠أ/ث-١٠ب) ·
+`models/fuel.py` (`FuelActivity` · `FuelCriterion` · `FuelAssessment`
+بعمود `point_event_id` صريح · `FuelScore`) · `services/fuel.py` — **بلا أي
+تعديل على `services/ledger.py`** · مساران إداريّان (`/admin/fuel/activities`
+· `/admin/fuel/assess`) ومسار طيّار واحد (`GET /station`، `@login_required`
+لا `@admin_required`) · ثلاث شاشات (`FuelActivities` · `FuelAssess` ·
+`Station`) · `docs/slices/و-٨.md` (١٣ معيارًا).
+
+**الاستطلاع أثبت أن `ledger.py` لم يحتج تعديلًا واحدًا** — القيد
+`currency_scope_match` يستوعب `fuel`/`team` منذ و-١، وهذا مكتوبٌ صراحةً في
+`ARCHITECTURE.md` قبل بناء أي وحدة («`rules/` لا تملك: ❌ الوقود»). المخاطرة
+الحقيقية كانت في ثابتٍ لم يُختبَر نمطه من قبل: مجموع نسب مئوية عبر صفوف على
+نقطتين زمنيّتين مختلفتين.
+
+**قرار: ث-١٠ دفاعٌ مزدوج لا خدمة وحدها.** `DATABASE.md` القديم نصّ «تُفرَض
+عند التقييم لا في المخطط» — كُتب **قبل** درس ث-٥/ث-١٣أ. لا تراجع عن درسٍ
+تعلّمناه لأن وثيقة أقدم تقول غير ذلك. ث-١٠أ يحرس تعريف البنود (مجموع
+`weight_pct` لكل نشاط)، ث-١٠ب يحرس لحظة التقييم (مجموع البنود المُقيَّمة
+فعلًا) — يمسك **انجرافًا** بعد تعريف سليم أو **تغطية جزئية**، لا يكرّر ث-١٠أ.
+
+**عيبان حقيقيّان اكتُشفا بالتنفيذ الفعلي لا بالتخطيط** — موثَّقان بالتفصيل
+كدرسين ١٢ و١٣ في §١٠: مشغّلٌ فوريّ رفض إدخالًا صحيحًا (أُصلح إلى
+`CONSTRAINT TRIGGER … DEFERRABLE INITIALLY DEFERRED`)، و`external_ref`
+حتميّ اصطدم بقيده الخاصّ قبل قيد العمل (`fuel_assessments`) فسقط تكرارٌ
+بـ٥٠٠ بدل ٤٠٩ (حُذف `external_ref` من حدث الوقود كليًّا).
+
+**إثبات القيود على مستوى القاعدة قبل أي كود خدمة:** أربع مخالفات ثبتت على
+`asrab_v2` الحقيقية عبر `psql` — إدخال ٤٠٪+٦٠٪ صحيح (قبل الإصلاح: رُفض خطأً؛
+بعده: قُبل) · إدخال ٤٠٪+٥٠٪ خاطئ (رُفض عند `COMMIT`) · تغطية جزئية في
+التقييم (رُفضت) · `point_event_id=NULL` (رُفض) — **كلّها قبل كتابة
+`services/fuel.py`**.
+
+**دورات الإثبات العدائي المعزولة (بلا دفعات على الآليّتين الجديدتين):**
+
+| المعيار | المخالفة المزروعة | السقوط الفعلي |
+|---|---|---|
+| ق-٦٥ | إسقاط الفحص التمهيدي في `create_activity` | `500` خام (`ProgrammingError`) بدل `422` نظيفة |
+| ق-٦٦ | إسقاط الفحص التمهيدي في `assess` | `500` خام بدل `422` نظيفة |
+| ق-٧٠ | إسقاط `try/except IntegrityError` حول إدراج التقييم | `500` خام (`IntegrityError`) بدل `409` نظيفة |
+| ق-٦٨ | `* Decimal("0.5")` زائدة في معادلة اللترات | `23.50` بدل `47.00` — رقمٌ خاطئ لا انهيار |
+
+وثلاث دورات على الحرّاس (`GET/POST /admin/fuel/activities` ·
+`POST /admin/fuel/assess`، تبديل `@admin_required`→`@login_required`) —
+كلٌّ سقط بـ`200`/`422` بدل `403`. **وكلٌّ استُعيد بايتًا ببايت (`diff`)، وأُعيد
+التشغيل نظيفًا** — كل ملفّ مُطابَق صراحةً بعد الاستعادة، لا افتُرض.
+
+**الحصيلة:** pytest ٢٢٣ ✓ (١٩٦ دالّة + ٢٧ `parametrize`) · ruff نظيف ·
+`flask db check` بلا عمليات جديدة · vitest ٣١ ✓ · oxlint ٠ · `check:arch` ✓
+(١٢ ملفّ، منها ٣ جديدة) · البوابة ٧٧/٧٧ · القياس البصري ✓ على ١٦ شاشة
+(٣ جديدة، مقاسة ومُعايَنة بالعين) · البناء ✓.
+
+**ملاحظة بيئة — لا تُصلَح:** جلسة الإثبات العدائي اليدوي على `asrab_v2`
+تركت حدثَي وقود يتيمَين (`kind='fuel'`, `team_id=1`) لا يمكن حذفهما — ث-٢
+يمنع `DELETE` على `point_events` **حتى من مشرف قاعدة البيانات**، وهذا هو
+المقصود بالضبط. تظهر فقط في محطة تزوّد السرب المحلّية (`47.00` لترًا بلا
+تقييم مطابق) ولا تمسّ أي اختبار (قاعدة منفصلة `asrab_v2_test`) ولا أي كود
+ملتزَم. تُمحى تلقائيًّا بأوّل `python seed.py`.
+
+**و-٨ = COMPLETE.**
 
 ---
 

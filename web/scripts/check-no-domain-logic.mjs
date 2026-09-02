@@ -1,5 +1,5 @@
 /*
-  @covers ق-١١, ق-٢٥, ق-٣٠, ق-٣٨, ق-٤٥, ق-٦٣
+  @covers ق-١١, ق-٢٥, ق-٣٠, ق-٣٨, ق-٤٥, ق-٦٣, ق-٧٦
 
   فحص معماري: **الواجهة تعرض ولا تحسب** (`AGENTS.md` ٥).
 
@@ -47,6 +47,10 @@ const CONTRACT_CONSUMERS = [
   'src/pages/admin/Thresholds.jsx',
   'src/pages/admin/Teams.jsx',
   'src/pages/admin/AuditLog.jsx',
+  // و-٨ (ق-٧٦): محطة التزوّد وشاشتا إدارة الوقود — عملة جديدة، لا حساب جديد.
+  'src/pages/Station.jsx',
+  'src/pages/admin/FuelActivities.jsx',
+  'src/pages/admin/FuelAssess.jsx',
 ]
 const VISUAL_PRIMITIVES = ['src/components/Insignia.jsx', 'src/components/Placard.jsx']
 

@@ -89,4 +89,10 @@ export const api = {
     request(`/admin/teams/${teamId}/members`, { method: 'POST', body: { user_id: userId } }),
 
   auditLog: () => request('/admin/audit'),
+
+  // و-٨
+  fuelActivities: () => request('/admin/fuel/activities'),
+  createFuelActivity: (body) => request('/admin/fuel/activities', { method: 'POST', body }),
+  assessFuel: (body) => request('/admin/fuel/assess', { method: 'POST', body }),
+  station: () => request('/station'),
 }

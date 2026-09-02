@@ -40,6 +40,9 @@ export default function PilotDeck({
   onOpenThresholds,
   onOpenTeams,
   onOpenAudit,
+  onOpenStation,
+  onOpenFuelActivities,
+  onOpenFuelAssess,
 }) {
   const { user, logout } = useApp()
   const state = useAsync(() => api.deck(), [])
@@ -70,6 +73,17 @@ export default function PilotDeck({
                 className="min-h-[48px] w-full border border-taxi text-[15px] text-taxi"
               >
                 قراءاتي
+              </button>
+              {/*
+                و-٨: محطة التزوّد شاشة **طيّار لا مشرف** — كل عضو سرب يراها،
+                خلافًا لكل أزرار و-٧/و-٨ الإدارية التالية (`docs/slices/و-٨.md`).
+              */}
+              <button
+                type="button"
+                onClick={onOpenStation}
+                className="min-h-[48px] w-full border border-concrete/45 text-[15px] text-paint"
+              >
+                محطة التزوّد
               </button>
               {/* الدور من الخادم لا من الواجهة: إخفاء الزرّ راحةٌ لا حماية،
                   والصلاحية محروسة بـ@admin_required. */}
@@ -126,6 +140,24 @@ export default function PilotDeck({
                   className="min-h-[48px] w-full border border-concrete/45 text-[15px] text-paint"
                 >
                   سجلّ التغييرات
+                </button>
+              )}
+              {user.role === 'admin' && (
+                <button
+                  type="button"
+                  onClick={onOpenFuelActivities}
+                  className="min-h-[48px] w-full border border-concrete/45 text-[15px] text-paint"
+                >
+                  أنشطة الوقود
+                </button>
+              )}
+              {user.role === 'admin' && (
+                <button
+                  type="button"
+                  onClick={onOpenFuelAssess}
+                  className="min-h-[48px] w-full border border-concrete/45 text-[15px] text-paint"
+                >
+                  تقييم نشاط
                 </button>
               )}
             </nav>

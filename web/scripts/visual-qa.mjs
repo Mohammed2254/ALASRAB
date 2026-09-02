@@ -1,5 +1,5 @@
 /*
-  @covers ق-١٣, ق-١٤, ق-١٥, ق-١٦, ق-٢٦, ق-٣١, ق-٣٩, ق-٤٥, ق-٦٤
+  @covers ق-١٣, ق-١٤, ق-١٥, ق-١٦, ق-٢٦, ق-٣١, ق-٣٩, ق-٤٥, ق-٦٤, ق-٧٧
 
   فحص بصري **مقيس** في متصفّح حقيقي — لا لقطات تُنظَر بالعين وحدها.
 
@@ -285,6 +285,9 @@ for (const [studentNo, slug, label] of STUDENTS) {
       ['العتبات', 'thresholds'],
       ['الأسراب', 'teams'],
       ['سجلّ التغييرات', 'audit'],
+      ['محطة التزوّد', 'station'],
+      ['أنشطة الوقود', 'fuel-activities'],
+      ['تقييم نشاط', 'fuel-assess'],
     ]) {
       await page.getByRole('button', { name: label, exact: true }).click()
       await page.waitForSelector(`h1:has-text("${label}")`, { timeout: 8000 })
