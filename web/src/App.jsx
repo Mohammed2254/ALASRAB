@@ -16,51 +16,40 @@ import Station from './pages/Station'
 import { AppStateProvider, useApp } from './state/AppState'
 
 /*
-  شاشتان تحكمهما حالة الجلسة — **بلا موجّه مسارات**.
+  حالة شاشة واحدة — **بلا موجّه مسارات**، قرارٌ مؤرَّخ أُعيد النظر فيه فعليًّا
+  عند و-٩ كما وعد `docs/slices/و-٤.md`، لا مؤجَّلًا بصمت: لا دليل حاجة إلى
+  عناوين تُشارَك أو تُحفَظ لهذه اللوحات الداخلية (`HANDOFF.md` §٤ يضع
+  `react-router` ضمن «مرفوض عمدًا بلا دليل حاجة» — لم يظهر الدليل).
 
-  التبديل هنا ليس تنقّلًا بل بوّابة مصادقة: الدخول ليس عنوانًا يُزار بل الحالة
-  التي يراها من ليس داخلًا. وإضافة `react-router` لشاشتين تعني اعتمادية وتحميلًا
-  ومفهومًا زائدًا بلا مشكلة يحلّها اليوم. يُضاف حين تصير الوجهات وجهات.
+  **٩أ بدلًا منه:** سجلّ شاشات (`SCREENS`) لا سلسلة `if` متمدِّدة. أضف شاشة
+  جديدة بسطر واحد هنا، لا فرعٍ جديد (`docs/slices/و-٩.md`).
 */
+const SCREENS = {
+  readings: MyReadings,
+  queue: ReadingQueue,
+  report: Report,
+  weights: Weights,
+  thresholds: Thresholds,
+  teams: Teams,
+  audit: AuditLog,
+  station: Station,
+  fuelActivities: FuelActivities,
+  fuelAssess: FuelAssess,
+}
+
 function Gate() {
   const { status, error, refresh } = useApp()
-  /*
-    ثلاث شاشات بحالة واحدة — **وما زال بلا موجّه مسارات.**
-
-    التبديل هنا بوّابة مصادقة ثم عرضٌ داخليّ، لا تنقّلٌ بعناوين. والموجّه يُضاف
-    في و-٩ حين تصير الوجهات وجهات لها روابط تُشارَك وتُحفَظ.
-  */
   const [screen, setScreen] = useState('deck')
 
   if (status === 'checking') return <Shell><Loading title="جارٍ التحقّق" /></Shell>
   if (status === 'error') return <Shell><Failed error={error} onRetry={refresh} /></Shell>
   if (status !== 'in') return <Login />
 
-  const back = () => setScreen('deck')
-  if (screen === 'readings') return <MyReadings onDone={back} />
-  if (screen === 'queue') return <ReadingQueue onDone={back} />
-  if (screen === 'report') return <Report onDone={back} />
-  if (screen === 'weights') return <Weights onDone={back} />
-  if (screen === 'thresholds') return <Thresholds onDone={back} />
-  if (screen === 'teams') return <Teams onDone={back} />
-  if (screen === 'audit') return <AuditLog onDone={back} />
-  if (screen === 'station') return <Station onDone={back} />
-  if (screen === 'fuelActivities') return <FuelActivities onDone={back} />
-  if (screen === 'fuelAssess') return <FuelAssess onDone={back} />
-  return (
-    <PilotDeck
-      onOpenReadings={() => setScreen('readings')}
-      onOpenQueue={() => setScreen('queue')}
-      onOpenReport={() => setScreen('report')}
-      onOpenWeights={() => setScreen('weights')}
-      onOpenThresholds={() => setScreen('thresholds')}
-      onOpenTeams={() => setScreen('teams')}
-      onOpenAudit={() => setScreen('audit')}
-      onOpenStation={() => setScreen('station')}
-      onOpenFuelActivities={() => setScreen('fuelActivities')}
-      onOpenFuelAssess={() => setScreen('fuelAssess')}
-    />
-  )
+  // 'deck' (الحالة الابتدائية) بلا مدخل في السجلّ عمدًا — البطاقة هي الشاشة
+  // الافتراضية لا وجهة تُفتَح، فتُعرَض حين لا يطابق المفتاح شيئًا.
+  const ActiveScreen = SCREENS[screen]
+  if (ActiveScreen) return <ActiveScreen onDone={() => setScreen('deck')} />
+  return <PilotDeck onNavigate={setScreen} />
 }
 
 function Shell({ children }) {

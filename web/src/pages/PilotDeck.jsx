@@ -1,4 +1,5 @@
 import Insignia from '../components/Insignia'
+import NavBar from '../components/NavBar'
 import Placard, { Row } from '../components/Placard'
 import { Async } from '../components/States'
 import { api } from '../lib/api'
@@ -32,18 +33,7 @@ const dateFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', {
 
 const formatDay = (iso) => (iso ? dateFormatter.format(new Date(`${iso}T00:00:00Z`)) : null)
 
-export default function PilotDeck({
-  onOpenReadings,
-  onOpenQueue,
-  onOpenReport,
-  onOpenWeights,
-  onOpenThresholds,
-  onOpenTeams,
-  onOpenAudit,
-  onOpenStation,
-  onOpenFuelActivities,
-  onOpenFuelAssess,
-}) {
+export default function PilotDeck({ onNavigate }) {
   const { user, logout } = useApp()
   const state = useAsync(() => api.deck(), [])
 
@@ -66,101 +56,7 @@ export default function PilotDeck({
           <>
             <Card deck={deck} fullName={user.full_name} />
             <EventLog />
-            <nav className="mt-4 flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={onOpenReadings}
-                className="min-h-[48px] w-full border border-taxi text-[15px] text-taxi"
-              >
-                قراءاتي
-              </button>
-              {/*
-                و-٨: محطة التزوّد شاشة **طيّار لا مشرف** — كل عضو سرب يراها،
-                خلافًا لكل أزرار و-٧/و-٨ الإدارية التالية (`docs/slices/و-٨.md`).
-              */}
-              <button
-                type="button"
-                onClick={onOpenStation}
-                className="min-h-[48px] w-full border border-concrete/45 text-[15px] text-paint"
-              >
-                محطة التزوّد
-              </button>
-              {/* الدور من الخادم لا من الواجهة: إخفاء الزرّ راحةٌ لا حماية،
-                  والصلاحية محروسة بـ@admin_required. */}
-              {user.role === 'admin' && (
-                <button
-                  type="button"
-                  onClick={onOpenQueue}
-                  className="min-h-[48px] w-full border border-concrete/45 text-[15px] text-paint"
-                >
-                  طابور القراءات
-                </button>
-              )}
-              {user.role === 'admin' && (
-                <button
-                  type="button"
-                  onClick={onOpenReport}
-                  className="min-h-[48px] w-full border border-concrete/45 text-[15px] text-paint"
-                >
-                  التقرير الدوري
-                </button>
-              )}
-              {/* و-٧ — نفس منطق الإخفاء: راحة لا حماية. */}
-              {user.role === 'admin' && (
-                <button
-                  type="button"
-                  onClick={onOpenWeights}
-                  className="min-h-[48px] w-full border border-concrete/45 text-[15px] text-paint"
-                >
-                  الأوزان
-                </button>
-              )}
-              {user.role === 'admin' && (
-                <button
-                  type="button"
-                  onClick={onOpenThresholds}
-                  className="min-h-[48px] w-full border border-concrete/45 text-[15px] text-paint"
-                >
-                  العتبات
-                </button>
-              )}
-              {user.role === 'admin' && (
-                <button
-                  type="button"
-                  onClick={onOpenTeams}
-                  className="min-h-[48px] w-full border border-concrete/45 text-[15px] text-paint"
-                >
-                  الأسراب
-                </button>
-              )}
-              {user.role === 'admin' && (
-                <button
-                  type="button"
-                  onClick={onOpenAudit}
-                  className="min-h-[48px] w-full border border-concrete/45 text-[15px] text-paint"
-                >
-                  سجلّ التغييرات
-                </button>
-              )}
-              {user.role === 'admin' && (
-                <button
-                  type="button"
-                  onClick={onOpenFuelActivities}
-                  className="min-h-[48px] w-full border border-concrete/45 text-[15px] text-paint"
-                >
-                  أنشطة الوقود
-                </button>
-              )}
-              {user.role === 'admin' && (
-                <button
-                  type="button"
-                  onClick={onOpenFuelAssess}
-                  className="min-h-[48px] w-full border border-concrete/45 text-[15px] text-paint"
-                >
-                  تقييم نشاط
-                </button>
-              )}
-            </nav>
+            <NavBar isAdmin={user.role === 'admin'} onNavigate={onNavigate} />
           </>
         )}
       </Async>
