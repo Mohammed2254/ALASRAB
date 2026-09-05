@@ -6,6 +6,7 @@ import AuditLog from './pages/admin/AuditLog'
 import FuelActivities from './pages/admin/FuelActivities'
 import FuelAssess from './pages/admin/FuelAssess'
 import AdminNotes from './pages/admin/Notes'
+import QuranEdit from './pages/admin/QuranEdit'
 import ReadingQueue from './pages/admin/ReadingQueue'
 import Report from './pages/admin/Report'
 import Teams from './pages/admin/Teams'
@@ -53,6 +54,7 @@ const SCREENS = {
   notes: AdminNotes,
   adminWeekPilot: AdminWeekPilot,
   attendance: Attendance,
+  quranEdit: QuranEdit,
 }
 
 function Gate() {

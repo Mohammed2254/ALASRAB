@@ -24,14 +24,15 @@ describe('NavBar — و-٩أ', () => {
     expect(screen.getAllByRole('button')).toHaveLength(8)
   })
 
-  it('مشرف (isAdmin=true) يرى الأزرار التسعة عشر كلّها', () => {
+  it('مشرف (isAdmin=true) يرى الأزرار العشرين كلّها', () => {
     render(<NavBar isAdmin={true} onNavigate={() => {}} />)
-    expect(screen.getAllByRole('button')).toHaveLength(19)
+    expect(screen.getAllByRole('button')).toHaveLength(20)
     for (const label of [
       'قراءاتي', 'محطة التزوّد', 'صدارة الأفراد', 'صدارة الأسراب', 'مشهد التشكيل',
       'سؤال اليوم', 'طيار الأسبوع', 'أرسل ملاحظة', 'طابور القراءات', 'التقرير الدوري',
       'الأوزان', 'العتبات', 'الأسراب', 'سجلّ التغييرات',
       'أنشطة الوقود', 'تقييم نشاط', 'الملاحظات', 'اختيار طيار الأسبوع', 'الحضور',
+      'التصحيح والتعديل القرآني',
     ]) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
     }

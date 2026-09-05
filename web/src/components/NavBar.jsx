@@ -36,6 +36,7 @@ const NAV_ITEMS = [
   { key: 'notes', label: 'الملاحظات', tone: 'secondary', adminOnly: true },
   { key: 'adminWeekPilot', label: 'اختيار طيار الأسبوع', tone: 'secondary', adminOnly: true },
   { key: 'attendance', label: 'الحضور', tone: 'secondary', adminOnly: true },
+  { key: 'quranEdit', label: 'التصحيح والتعديل القرآني', tone: 'secondary', adminOnly: true },
 ]
 
 const TONE_CLASS = {

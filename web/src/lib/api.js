@@ -119,4 +119,11 @@ export const api = {
   recordAttendance: (absentUserIds) =>
     request('/admin/attendance', { method: 'POST', body: { absent_user_ids: absentUserIds } }),
   undoAttendance: () => request('/admin/attendance/undo', { method: 'POST' }),
+
+  // و-٦
+  quranStudents: () => request('/admin/quran/students'),
+  quranEvents: (userId) => request(`/admin/quran/events?user_id=${userId}`),
+  quranEntry: (body) => request('/admin/quran/entry', { method: 'POST', body }),
+  reverseEvent: (eventId, reason) =>
+    request(`/admin/events/${eventId}/reverse`, { method: 'POST', body: { reason } }),
 }

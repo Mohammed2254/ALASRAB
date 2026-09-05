@@ -1,5 +1,5 @@
 /*
-  @covers ق-١١, ق-٢٥, ق-٣٠, ق-٣٨, ق-٤٥, ق-٦٣, ق-٧٦, ق-٩١, ق-١٠٥, ق-١٢١, ق-١٣٧
+  @covers ق-١١, ق-٢٥, ق-٣٠, ق-٣٨, ق-٤٥, ق-٦٣, ق-٧٦, ق-٩١, ق-١٠٥, ق-١٢١, ق-١٣٧, ق-١٥٦
 
   فحص معماري: **الواجهة تعرض ولا تحسب** (`AGENTS.md` ٥).
 
@@ -65,6 +65,9 @@ const CONTRACT_CONSUMERS = [
   'src/pages/SubmitNote.jsx',
   // و-٩هـ: الحضور — `already_recorded`/`undo_until`/`absent_user_ids`/`hours_each`.
   'src/pages/admin/Attendance.jsx',
+  // و-٦: التصحيح والتعديل القرآني — `delta` يصل محسوبًا من `rules/engine`
+  // عبر `POST /admin/quran/entry`، ويُعرض كما وصل بلا حساب أو مقارنة عليه.
+  'src/pages/admin/QuranEdit.jsx',
 ]
 const VISUAL_PRIMITIVES = ['src/components/Insignia.jsx', 'src/components/Placard.jsx']
 
