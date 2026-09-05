@@ -171,14 +171,14 @@ point_events(
   scope, user_id, team_id, currency,
   delta        NUMERIC(8,2),
   kind, reason, actor_id,
-  external_ref, raw_row_id,
+  external_ref,
   occurred_at, created_at
 )
 
 CHECK (scope='individual' AND user_id IS NOT NULL AND team_id IS NULL AND currency='hours'
     OR scope='team'       AND team_id IS NOT NULL AND user_id IS NULL AND currency='fuel')
 
-CHECK (kind <> 'correction' OR reason IS NOT NULL)          -- ث-٧
+CHECK (kind IN ('correction','manual') → reason IS NOT NULL) -- ث-٧ (وسّعت لتشمل الإدخال اليدوي، و-٦)
 UNIQUE (org_id, external_ref) WHERE external_ref IS NOT NULL -- ث-٣ (فهرس جزئي)
 TRIGGER point_events_no_mutation BEFORE UPDATE OR DELETE     -- ث-٢
 ```
@@ -187,10 +187,17 @@ TRIGGER point_events_no_mutation BEFORE UPDATE OR DELETE     -- ث-٢
 |---|---|
 | `delta NUMERIC(8,2)` **لا `INTEGER`** | وزن المراجعة `0.25`، وخطأ `float` يتراكم عبر آلاف الصفوف حتى يظهر في الترتيب |
 | `occurred_at` **≠** `created_at` | *متى وقع* غير *متى سُجّل*. الفرق هو ما يسمح بالتسجيل المتأخّر **وباختيار إصدار الأوزان الساري وقتها** |
-| `reason` إلزامي على التصحيحات | التصحيح بلا سبب يبدو تلاعبًا |
+| `reason` إلزامي على التصحيحات **والإدخال اليدوي** | كلاهما يبدو تلاعبًا بلا سبب مكتوب (و-٦) |
 | `actor_id` | من فعل — أساس التدقيق |
 | `external_ref` | idempotency: اللصق مرّتين لا يضاعف |
-| `raw_row_id` | يربط الحدث بالصفّ الخام — أساس إعادة الحساب |
+
+> **⚠️ تصحيح (و-٦، ٢٠٢٦-٠٩-٠٥):** كانت هذه الوثيقة تذكر عمود `raw_row_id`
+> ("يربط الحدث بالصفّ الخام") **كأنه مبنيّ — وهو غير موجود** في
+> `models/event.py` (تحقَّق بـ`grep`؛ الدرس ١٧ في `HANDOFF.md`). وقد **حُسم
+> صراحةً** أن `FR-036` (الإدخال اليدوي) **لا يرتبط بـ`raw_row_id` ولا
+> بـ`raw_rows`** — الإدخال اليدوي مختلف دلاليًّا عن الاستيراد الخام (`HANDOFF.md`
+> §٩). أي عمود ربط بين `point_events` والصفّ الخام **مؤجَّل بالكامل إلى تصميم
+> و-٥** حين يُفكّ حجبها بعيّنة راصد (س-١)، ولا وجود له اليوم.
 
 > ### 🚫 **لا `UPDATE` ولا `DELETE` على هذا الجدول أبدًا.**
 > التصحيح **حدث معاكس** بسبب مكتوب. وهذا ما يجعل **مرونة تعديل البيانات
@@ -411,7 +418,7 @@ login_attempts(id, org_id, student_no, ok, at)
 | ث-٤ | عضوية واحدة سارية لكل طالب | فهرس فريد جزئي | عضوية ثانية بلا `left_at` ⇒ رفض |
 | ث-٥ | طلب معتمد ⇔ له حدث | `CHECK (approved ⇔ point_event_id IS NOT NULL)` | اعتماد بلا حدث ⇒ رفض |
 | ث-٦ | الرفض يوجب سببًا | `CHECK (rejected → review_reason IS NOT NULL)` | رفض بلا سبب ⇒ رفض |
-| ث-٧ | التصحيح يوجب سببًا | `CHECK (kind='correction' → reason IS NOT NULL)` | حدث معاكس بلا سبب ⇒ رفض |
+| ث-٧ | التصحيح **أو الإدخال اليدوي** يوجب سببًا | `CHECK (kind IN ('correction','manual') → reason IS NOT NULL)` | حدث معاكس أو إدخال يدويّ بلا سبب ⇒ رفض |
 | ث-٨ | إجابة واحدة لكل سؤال | فهرس فريد | إجابة ثانية ⇒ `409` |
 | ث-٩ | طيار أسبوع واحد | فهرس فريد | اختيار ثانٍ ⇒ رفض |
 | ث-١٠ | أوزان الوقود تجمع ١٠٠٪ | **`services/fuel.py`** — لأن الجمع عبر صفوف لا يُعبَّر عنه بـ`CHECK` صفّي | مجموع ٩٥ ⇒ `422` |

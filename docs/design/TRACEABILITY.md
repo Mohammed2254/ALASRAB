@@ -52,10 +52,10 @@
 
 | FR | المسار | الوحدة | الجدول | الثابت | الاختبار | وحدة العمل |
 |---|---|---|---|:--:|---|:--:|
-| FR-035 | `POST /admin/events/{id}/reverse` | `services/ledger` | `point_events` | **ث-٢ · ث-٧** | بلا سبب ⇒ `422` · `UPDATE` مباشر ⇒ استثناء | و-٦ |
-| FR-036 | `POST /admin/quran/entry` | `ingest/manual` · `ledger` | `point_events` `raw_rows` | ث-٧ | الحدث منسوب وبسبب | و-٦ |
-| FR-037 | **أثر جانبي** لكل تعديل | `services/ledger` | `audit_log` | — | كل تصحيح يظهر في `/admin/audit` | و-٦ |
-| FR-080 | نفس مسار FR-035 | `services/ledger` | `point_events` | ث-٢ | — | و-٦ |
+| FR-035 | `POST /admin/events/{id}/reverse` | `services/quran` · `services/ledger` | `point_events` `audit_log` | **ث-٢ · ث-٧** | بلا سبب ⇒ `422` · `UPDATE` مباشر ⇒ استثناء | و-٦ |
+| FR-036 | `POST /admin/quran/entry` | `services/quran` · `rules/engine` · `services/ledger` | `point_events` `audit_log` | ث-٧ | الحدث منسوب وبسبب — **مستقلّ عن `raw_row_id`** (ليس استيرادًا خامًا، `HANDOFF.md` §٩) | و-٦ |
+| FR-037 | **أثر جانبي** لكل تعديل | `services/quran` · `services/audit` | `audit_log` | — | كل تصحيح/إضافة يظهر في `/admin/audit` بـ`kind='quran_correction'`، **ذرّيّ مع الحدث** (`append_pending`+`commit` واحد) | و-٦ |
+| FR-080 | نفس مسار FR-035 | `services/quran` · `services/ledger` | `point_events` | ث-٢ | — | و-٦ |
 
 ## اللوحات والتفاعل
 

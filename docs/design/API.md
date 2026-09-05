@@ -380,8 +380,20 @@
 |---|---|---|---|
 | `/admin/paste/preview` | POST | **معاينة بلا كتابة** | FR-030 · FR-031 · FR-032 |
 | `/admin/paste/commit` | POST | تنفيذ بعد المعاينة | FR-033 · FR-034 |
+| `/admin/quran/students` | GET | قائمة الطلاب (لاختيار الهدف) | FR-036 (بنية تحتية) |
+| `/admin/quran/events` | GET | أحدث أحداث طالب — `?user_id=` | FR-035 (بنية تحتية) |
 | `/admin/quran/entry` | POST | إضافة سجلّ ناقص يدويًّا | FR-036 |
 | `/admin/events/{id}/reverse` | POST | تصحيح بحدث معاكس | FR-035 · FR-080 |
+
+> **`quran/students` و`quran/events` بلا قصّة FR مستقلّة** — نفس منطق
+> `fuel/activities` (و-٨): بلا قائمة طلاب لاختيار الهدف، وبلا قائمة أحداثه
+> ليُختار أيّها يُصحَّح، الشاشتان `POST` أعلاه **غير قابلتين للاستعمال
+> فعليًّا**. `quran/students` يعيد إنتاج فلترة `_roster` القائمة في
+> `services/entry.py` (مستخدِمون نشِطون بعضوية سارية) — **مكرَّرة عمدًا لا
+> مستوردة**، نفس نمط `_local_start_of_day_utc` (`RULES.md` §٩). `quran/events`
+> يُعيد استعمال `services/deck.recent_events` **مباشرةً بلا تكرار** — دالّة
+> قراءة عامّة مُصدَّرة أصلًا وتُستدعى من مسارات أخرى (كـ`services/audit`)،
+> فالتكرار هنا لا مبرّر تقنيًّا له.
 
 **`POST /admin/paste/preview`** — **لا يكتب شيئًا**:
 ```json
@@ -413,7 +425,51 @@
 ```
 > `reason` **إلزامي**. `422` بدونه. تصحيحٌ بلا سبب يبدو تلاعبًا في بطاقة الطالب.
 > و**لا `UPDATE` ولا `DELETE`** — هذا هو ما يجعل مرونة التعديل الكاملة ممكنة
-> بلا فقدان التاريخ.
+> بلا فقدان التاريخ. `id` من منظمة أخرى أو غير موجود ⇒ `404`. **تصحيح حدثٍ
+> هو نفسه حدثٌ قابل للتصحيح** — لا حارس يمنع تصحيح تصحيح (سابقة قائمة منذ
+> و-١، `test_deck.py::test_double_correction_shows_negative_balance`؛
+> `ledger.reverse()` عام على أي `PointEvent` بصرف النظر عن `kind`ه). و**يكتب
+> `audit_log` بـ`kind='quran_correction'`** ذرّيًّا مع الحدث (FR-037).
+
+**`GET /admin/quran/students`** — لملء قائمة اختيار الهدف:
+```json
+← 200 { "students": [ { "id": 7, "full_name": "أحمد سالم" } ] }
+```
+**نفس فلترة `services/entry._roster`**: مستخدِمون نشِطون بعضوية سارية،
+**على مستوى الجمعية كلّها** (§٧.٣) لا فريق المشرف وحده.
+
+**`GET /admin/quran/events?user_id=7`** — أحدث ٢٠ حدثًا لطالب، ليختار
+المشرف أيّها يُصحَّح:
+```json
+← 200 { "events": [
+  { "id": 5012, "kind": "quran", "delta": "10.00",
+    "occurred_on": "2026-08-20", "reason": null }
+] }
+```
+`user_id` من منظمة أخرى أو غير موجود ⇒ `404`. **قراءة خالصة** —
+`services/deck.recent_events` نفسها التي تخدم `GET /me/events` (FR-012).
+
+**`POST /admin/quran/entry`**
+```json
+→ { "user_id": 7, "occurred_on": "2026-08-20", "activity_type": "memorize",
+    "quantity": "3", "mastery": "mastered",
+    "reason": "غاب عن تصدير راصد هذا الأسبوع" }
+← 201 { "id": 5099, "delta": "7.50", "kind": "manual" }
+```
+| القرار | لماذا |
+|---|---|
+| `reason` **إلزامي** | `422` بدونه — نفس منطق `reverse` (ADR-004)، مفروض في القاعدة أيضًا (ث-٧ موسَّعة) |
+| `mastery` **اختياري** | `Achievement.mastery` نفسه اختياري في `rules/engine` — غيابه multiplier=١ |
+| `delta` **محسوبة لا مُدخَلة** | تمرّ بـ`rules/engine.hours_for` كأي إنجاز (AGENTS ٥ · لا حساب خارج المحرّك) |
+| `activity_type` **بلا وزن ساري** وقت `occurred_on` | `422` برسالة `rules/engine` نفسها — لا `500` |
+| `occurred_on` **مستقبليّ** | رفض — نفس قيد `SubmitReadingSchema.read_on` |
+| `user_id` من منظمة أخرى | `404` |
+| **بلا `raw_row_id`** | مستقلّ عن اللصق تمامًا — انظر تصحيح `DATABASE.md` |
+
+**كلا المسارين يكتبان `audit_log` بـ`kind='quran_correction'`** ذرّيًّا مع
+الحدث نفسه (FR-037): `ledger.append_pending()` (`flush` لا `commit`، نمط
+ث-١٧) ثم `audit.record()` ثم `commit` واحد — فشلٌ في أيّهما **لا يترك حدثًا
+يتيمًا بلا أثر تدقيق**.
 
 ### اعتماد القراءات
 | المسار | الطريقة | الغرض | FR |
