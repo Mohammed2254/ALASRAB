@@ -156,10 +156,10 @@ def test_same_external_ref_cannot_be_inserted_twice(seeded):
 
 
 def test_null_external_ref_repeats_freely(seeded):
-    """الفهرس جزئي: الأحداث اليدوية بلا مرجع خارجي تتكرّر بلا قيد."""
+    """الفهرس جزئي: الأحداث بلا مرجع خارجي تتكرّر بلا قيد."""
     spec = ledger.EventSpec(
         org_id=seeded["org_id"],
-        kind="manual",
+        kind="quran",
         delta=Decimal("1"),
         user_id=seeded["users"]["1001"],
         occurred_at=NOW,
@@ -169,7 +169,7 @@ def test_null_external_ref_repeats_freely(seeded):
     assert db.session.scalar(db.select(db.func.count(PointEvent.id))) == 2
 
 
-# ═══ ث-٧ — التصحيح يوجب سببًا ═══
+# ═══ ث-٧ — التصحيح أو الإدخال اليدوي يوجب سببًا ═══
 
 
 def test_correction_without_reason_is_rejected_by_database(seeded):
@@ -184,6 +184,36 @@ def test_correction_without_reason_is_rejected_by_database(seeded):
             kind="correction",
         )
     db.session.rollback()
+
+
+def test_manual_entry_without_reason_is_rejected_by_database(seeded):
+    """التوسيع في و-٦: نفس ث-٧، والآن يشمل `kind='manual'` لا `correction` وحده."""
+    with pytest.raises((IntegrityError, DBAPIError)):
+        _raw_insert(
+            org_id=seeded["org_id"],
+            scope="individual",
+            user_id=seeded["users"]["1001"],
+            team_id=None,
+            currency="hours",
+            delta=10,
+            kind="manual",
+        )
+    db.session.rollback()
+
+
+def test_manual_entry_with_reason_is_accepted_by_database(seeded):
+    """المقابل الإيجابي: نفس القيد لا يرفض غير المخالف — سقوطٌ للسبب المُدَّعى بالضبط."""
+    _raw_insert(
+        org_id=seeded["org_id"],
+        scope="individual",
+        user_id=seeded["users"]["1001"],
+        team_id=None,
+        currency="hours",
+        delta=10,
+        kind="manual",
+        reason="غاب عن تصدير راصد",
+    )
+    assert db.session.scalar(db.select(db.func.count(PointEvent.id))) == 1
 
 
 def test_reverse_produces_opposite_event_with_reason(seeded):

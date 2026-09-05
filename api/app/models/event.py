@@ -47,10 +47,12 @@ class PointEvent(db.Model):
         ),
         CheckConstraint("scope IN ('individual','team')", name="scope_valid"),
         CheckConstraint("currency IN ('hours','fuel')", name="currency_valid"),
-        # ث-٧ — التصحيح بلا سبب يبدو تلاعبًا في بطاقة الطالب.
+        # ث-٧ — التصحيح أو الإدخال اليدوي بلا سبب يبدو تلاعبًا في بطاقة الطالب.
+        # وُسِّع في و-٦ ليشمل 'manual' (FR-036 "بسبب إلزامي") — كان يغطّي
+        # 'correction' وحده منذ و-١.
         CheckConstraint(
-            "kind <> 'correction' OR reason IS NOT NULL",
-            name="correction_needs_reason",
+            "kind NOT IN ('correction', 'manual') OR reason IS NOT NULL",
+            name="correction_or_manual_needs_reason",
         ),
         # ث-٣ — الـidempotency: إعادة استيراد نفس الأسبوع لا تمنح النقاط مرتين.
         # هذا تحديدًا ما يكسر أنظمة كهذه: أحدهم يعيد الرفع، تتضاعف النقاط، ويفقد
