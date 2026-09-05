@@ -75,6 +75,21 @@ def append(specs: list[EventSpec]) -> list[PointEvent]:
     return rows
 
 
+def append_pending(specs: list[EventSpec]) -> list[PointEvent]:
+    """
+    كـ`append` — لكن `flush` لا `commit` (و-٩ج).
+
+    للمستدعي الذي يحتاج التزام الحدث **مع** كتابة أخرى في نفس المعاملة —
+    مثل `engagement.answer()`: صفّ `answers.point_event_id` يجب ألّا يمرّ
+    بحالة «إجابة صحيحة بلا حدث» ولو للحظة، فيلتزم الاثنان معًا بـ`commit`
+    واحد يملكه المستدعي. `id` الصف متاح فور `flush` قبل الالتزام.
+    """
+    rows = [_row(s) for s in specs]
+    db.session.add_all(rows)
+    db.session.flush()
+    return rows
+
+
 def reverse(event: PointEvent, reason: str, actor_id: int) -> PointEvent:
     """
     التصحيح **حدث معاكس** لا `UPDATE` — والمشغّل في القاعدة يمنع البديل (ث-٢).

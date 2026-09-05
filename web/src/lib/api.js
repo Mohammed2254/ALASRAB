@@ -95,4 +95,28 @@ export const api = {
   createFuelActivity: (body) => request('/admin/fuel/activities', { method: 'POST', body }),
   assessFuel: (body) => request('/admin/fuel/assess', { method: 'POST', body }),
   station: () => request('/station'),
+
+  // و-٩ب
+  pilotsBoard: () => request('/boards/pilots'),
+  teamsBoard: () => request('/boards/teams'),
+  formation: (scope = 'team') => request(`/boards/formation?scope=${scope}`),
+
+  // و-٩ج
+  todayQuestion: () => request('/questions/today'),
+  answerQuestion: (id, choiceId) =>
+    request(`/questions/${id}/answer`, { method: 'POST', body: { choice_id: choiceId } }),
+
+  // و-٩د
+  submitNote: (body) => request('/notes', { method: 'POST', body: { body } }),
+  weekPilot: () => request('/week/pilot'),
+  chooseWeekPilot: (userId, reason) =>
+    request('/admin/week/pilot', { method: 'POST', body: { user_id: userId, reason } }),
+  adminNotes: () => request('/admin/notes'),
+  markNoteRead: (id) => request(`/admin/notes/${id}`, { method: 'PATCH', body: { read: true } }),
+
+  // و-٩هـ
+  attendance: () => request('/admin/attendance'),
+  recordAttendance: (absentUserIds) =>
+    request('/admin/attendance', { method: 'POST', body: { absent_user_ids: absentUserIds } }),
+  undoAttendance: () => request('/admin/attendance/undo', { method: 'POST' }),
 }

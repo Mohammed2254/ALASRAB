@@ -10,21 +10,28 @@ import NavBar from '../components/NavBar'
 */
 
 describe('NavBar — و-٩أ', () => {
-  it('طيّار (isAdmin=false) يرى زرَّين فقط', () => {
+  it('طيّار (isAdmin=false) يرى ثمانية أزرار فقط', () => {
     render(<NavBar isAdmin={false} onNavigate={() => {}} />)
     expect(screen.getByRole('button', { name: 'قراءاتي' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'محطة التزوّد' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'صدارة الأفراد' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'صدارة الأسراب' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'مشهد التشكيل' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'سؤال اليوم' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'طيار الأسبوع' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'أرسل ملاحظة' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'الأوزان' })).not.toBeInTheDocument()
-    expect(screen.getAllByRole('button')).toHaveLength(2)
+    expect(screen.getAllByRole('button')).toHaveLength(8)
   })
 
-  it('مشرف (isAdmin=true) يرى الأزرار العشرة كلّها', () => {
+  it('مشرف (isAdmin=true) يرى الأزرار التسعة عشر كلّها', () => {
     render(<NavBar isAdmin={true} onNavigate={() => {}} />)
-    expect(screen.getAllByRole('button')).toHaveLength(10)
+    expect(screen.getAllByRole('button')).toHaveLength(19)
     for (const label of [
-      'قراءاتي', 'محطة التزوّد', 'طابور القراءات', 'التقرير الدوري',
+      'قراءاتي', 'محطة التزوّد', 'صدارة الأفراد', 'صدارة الأسراب', 'مشهد التشكيل',
+      'سؤال اليوم', 'طيار الأسبوع', 'أرسل ملاحظة', 'طابور القراءات', 'التقرير الدوري',
       'الأوزان', 'العتبات', 'الأسراب', 'سجلّ التغييرات',
-      'أنشطة الوقود', 'تقييم نشاط',
+      'أنشطة الوقود', 'تقييم نشاط', 'الملاحظات', 'اختيار طيار الأسبوع', 'الحضور',
     ]) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
     }

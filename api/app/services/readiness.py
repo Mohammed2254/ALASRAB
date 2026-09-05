@@ -8,6 +8,7 @@
 (ARCHITECTURE §٣ — مصفوفة الملكية).
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 
@@ -28,23 +29,44 @@ class Flight:
 
 
 def flight_state(org: Org, user_id: int, now: datetime | None = None) -> Flight:
-    """
-    أرضيّ ⟺ آخر حدث نشاط أقدم من `orgs.grounded_after_days`.
+    """طيّار واحد — غلافٌ على `flight_states` (المصدر الوحيد لصيغة الحساب)."""
+    return flight_states(org, [user_id], now)[user_id]
 
-    والعتبة **عمود إعداد لا رقم في الكود** (ف-٢): تغيير القاعدة صفٌّ لا نشر.
-    والعودة تلقائية — أوّل حدث يعيده طائرًا بلا تدخّل مشرف.
+
+def flight_states(
+    org: Org, user_ids: Sequence[int], now: datetime | None = None
+) -> dict[int, Flight]:
     """
-    last = db.session.scalar(
-        select(func.max(PointEvent.occurred_at)).where(
+    نسخة مجمَّعة — استعلام واحد لعدّة طيّارين، لا `flight_state` في حلقة.
+
+    اللوحات (و-٩ب) تحتاج حالة عضو سرب كامل دفعة واحدة، وعقدها الموثَّق يشترط
+    **استعلام واحد بلا N+1**؛ استدعاء `flight_state` في حلقة كان سينتهكه رغم
+    مروره في `reports.py` (تقرير مشرف غير مقيَّد بهذا الشرط). أرضيّ ⟺ آخر حدث
+    نشاط أقدم من `orgs.grounded_after_days` — نفس تعريف `flight_state` تمامًا،
+    والعتبة **عمود إعداد لا رقم في الكود** (ف-٢).
+    """
+    if not user_ids:
+        return {}
+
+    rows = db.session.execute(
+        select(PointEvent.user_id, func.max(PointEvent.occurred_at))
+        .where(
             PointEvent.org_id == org.id,
-            PointEvent.user_id == user_id,
+            PointEvent.user_id.in_(user_ids),
             PointEvent.kind.in_(ACTIVITY_KINDS),
         )
-    )
-    if last is None:
-        # طالبٌ لم يبدأ بعدُ ليس متأخّرًا. وسمُه أرضيًّا في أوّل يوم هو أسوأ ما
-        # تفعله منصة تحفيز بمن لم يُتَح له أن يُنجز شيئًا.
-        return Flight(grounded=False, last_activity_on=None)
+        .group_by(PointEvent.user_id)
+    ).all()
+    last_by_user = dict(rows)
 
     cutoff = (now or datetime.now(UTC)) - timedelta(days=org.grounded_after_days)
-    return Flight(grounded=last < cutoff, last_activity_on=last.date())
+    result = {}
+    for user_id in user_ids:
+        last = last_by_user.get(user_id)
+        if last is None:
+            # طالبٌ لم يبدأ بعدُ ليس متأخّرًا. وسمُه أرضيًّا في أوّل يوم هو أسوأ
+            # ما تفعله منصة تحفيز بمن لم يُتَح له أن يُنجز شيئًا.
+            result[user_id] = Flight(grounded=False, last_activity_on=None)
+        else:
+            result[user_id] = Flight(grounded=last < cutoff, last_activity_on=last.date())
+    return result

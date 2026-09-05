@@ -19,6 +19,12 @@
 const NAV_ITEMS = [
   { key: 'readings', label: 'قراءاتي', tone: 'primary', adminOnly: false },
   { key: 'station', label: 'محطة التزوّد', tone: 'secondary', adminOnly: false },
+  { key: 'pilotsBoard', label: 'صدارة الأفراد', tone: 'secondary', adminOnly: false },
+  { key: 'teamsBoard', label: 'صدارة الأسراب', tone: 'secondary', adminOnly: false },
+  { key: 'formation', label: 'مشهد التشكيل', tone: 'secondary', adminOnly: false },
+  { key: 'question', label: 'سؤال اليوم', tone: 'secondary', adminOnly: false },
+  { key: 'weekPilot', label: 'طيار الأسبوع', tone: 'secondary', adminOnly: false },
+  { key: 'submitNote', label: 'أرسل ملاحظة', tone: 'secondary', adminOnly: false },
   { key: 'queue', label: 'طابور القراءات', tone: 'secondary', adminOnly: true },
   { key: 'report', label: 'التقرير الدوري', tone: 'secondary', adminOnly: true },
   { key: 'weights', label: 'الأوزان', tone: 'secondary', adminOnly: true },
@@ -27,6 +33,9 @@ const NAV_ITEMS = [
   { key: 'audit', label: 'سجلّ التغييرات', tone: 'secondary', adminOnly: true },
   { key: 'fuelActivities', label: 'أنشطة الوقود', tone: 'secondary', adminOnly: true },
   { key: 'fuelAssess', label: 'تقييم نشاط', tone: 'secondary', adminOnly: true },
+  { key: 'notes', label: 'الملاحظات', tone: 'secondary', adminOnly: true },
+  { key: 'adminWeekPilot', label: 'اختيار طيار الأسبوع', tone: 'secondary', adminOnly: true },
+  { key: 'attendance', label: 'الحضور', tone: 'secondary', adminOnly: true },
 ]
 
 const TONE_CLASS = {

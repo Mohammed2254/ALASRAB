@@ -355,13 +355,13 @@ def test_decimals_are_strings_and_percentage_is_a_number(client, seeded):
     assert body["hours"].count(".") == 1 and len(body["hours"].split(".")[1]) == 2
 
 
-def test_rank_in_org_is_null_until_unit_nine(client, seeded):
+def test_rank_in_org_matches_boards_teams(client, seeded):
     """
-    FR-051 يملكه `services/standings` في و-٩. `null` تعني «غير محسوب بعد».
-    **حقلٌ فارغ أصدق من رقمٍ مكرَّر** يفترق عن الصدارة عند أوّل تعديل.
+    و-٩ب — FR-051: `rank_in_org` يساوي موضع السرب في `GET /boards/teams`
+    نفسه، لا حسابًا موازيًا. سربٌ واحد في البذرة ⇒ رتبته ١ حتمًا.
     """
     _auth(client)
-    assert client.get(DECK).json["team"]["rank_in_org"] is None
+    assert client.get(DECK).json["team"]["rank_in_org"] == 1
 
 
 def test_team_is_null_when_membership_is_absent(client, seeded):

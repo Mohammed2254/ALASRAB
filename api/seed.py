@@ -70,7 +70,6 @@ WEIGHTS = [
     ("review", "0.6"),
     ("reading", "0.15"),
     ("attendance", "3.0"),
-    ("daily_question", "2.0"),
 ]
 MULTIPLIERS = [("mastered", "1.5"), ("accepted", "1.0"), ("repeat", "0.5")]
 

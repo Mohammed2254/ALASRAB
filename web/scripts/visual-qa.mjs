@@ -1,5 +1,5 @@
 /*
-  @covers ق-١٣, ق-١٤, ق-١٥, ق-١٦, ق-٢٦, ق-٣١, ق-٣٩, ق-٤٥, ق-٦٤, ق-٧٧
+  @covers ق-١٣, ق-١٤, ق-١٥, ق-١٦, ق-٢٦, ق-٣١, ق-٣٩, ق-٤٥, ق-٦٤, ق-٧٧, ق-٩٢, ق-١٠٦, ق-١٢٢, ق-١٣٨
 
   فحص بصري **مقيس** في متصفّح حقيقي — لا لقطات تُنظَر بالعين وحدها.
 
@@ -288,6 +288,19 @@ for (const [studentNo, slug, label] of STUDENTS) {
       ['محطة التزوّد', 'station'],
       ['أنشطة الوقود', 'fuel-activities'],
       ['تقييم نشاط', 'fuel-assess'],
+      // و-٩ب (ق-٩٢) — لوحتا الصدارة ومشهد التشكيل.
+      ['صدارة الأفراد', 'pilots-board'],
+      ['صدارة الأسراب', 'teams-board'],
+      ['مشهد التشكيل', 'formation'],
+      // و-٩ج (ق-١٠٦) — سؤال اليوم.
+      ['سؤال اليوم', 'question'],
+      // و-٩د (ق-١٢٢) — طيار الأسبوع والملاحظات.
+      ['طيار الأسبوع', 'week-pilot'],
+      ['أرسل ملاحظة', 'submit-note'],
+      ['الملاحظات', 'notes'],
+      ['اختيار طيار الأسبوع', 'choose-week-pilot'],
+      // و-٩هـ (ق-١٣٨) — الحضور.
+      ['الحضور', 'attendance'],
     ]) {
       await page.getByRole('button', { name: label, exact: true }).click()
       await page.waitForSelector(`h1:has-text("${label}")`, { timeout: 8000 })
@@ -323,4 +336,4 @@ if (failures.length) {
   for (const f of failures) console.error(`   ${f}`)
   process.exit(1)
 }
-console.log('\n✅ ق-١٣ · ق-١٤ · ق-١٥ · ق-١٦ · ق-٢٦ · ق-٣١ — مقيسة ومجتازة.')
+console.log('\n✅ ق-١٣ · ق-١٤ · ق-١٥ · ق-١٦ · ق-٢٦ · ق-٣١ · ق-٩٢ · ق-١٠٦ · ق-١٢٢ · ق-١٣٨ — مقيسة ومجتازة.')

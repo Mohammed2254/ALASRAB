@@ -1,18 +1,27 @@
 import { useState } from 'react'
 
 import { Failed, Loading } from './components/States'
+import Attendance from './pages/admin/Attendance'
 import AuditLog from './pages/admin/AuditLog'
 import FuelActivities from './pages/admin/FuelActivities'
 import FuelAssess from './pages/admin/FuelAssess'
+import AdminNotes from './pages/admin/Notes'
 import ReadingQueue from './pages/admin/ReadingQueue'
 import Report from './pages/admin/Report'
 import Teams from './pages/admin/Teams'
 import Thresholds from './pages/admin/Thresholds'
+import AdminWeekPilot from './pages/admin/WeekPilot'
 import Weights from './pages/admin/Weights'
+import DailyQuestion from './pages/DailyQuestion'
+import Formation from './pages/Formation'
 import Login from './pages/Login'
 import MyReadings from './pages/MyReadings'
 import PilotDeck from './pages/PilotDeck'
+import PilotsBoard from './pages/PilotsBoard'
 import Station from './pages/Station'
+import SubmitNote from './pages/SubmitNote'
+import TeamsBoard from './pages/TeamsBoard'
+import WeekPilot from './pages/WeekPilot'
 import { AppStateProvider, useApp } from './state/AppState'
 
 /*
@@ -35,6 +44,15 @@ const SCREENS = {
   station: Station,
   fuelActivities: FuelActivities,
   fuelAssess: FuelAssess,
+  pilotsBoard: PilotsBoard,
+  teamsBoard: TeamsBoard,
+  formation: Formation,
+  question: DailyQuestion,
+  submitNote: SubmitNote,
+  weekPilot: WeekPilot,
+  notes: AdminNotes,
+  adminWeekPilot: AdminWeekPilot,
+  attendance: Attendance,
 }
 
 function Gate() {

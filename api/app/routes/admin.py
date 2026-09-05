@@ -15,18 +15,26 @@ from ..extensions import db
 from ..models import Org, User
 from ..schemas import (
     ActivitiesListSchema,
+    AdminNotesListSchema,
     ApproveSchema,
     ArchivedTeamSchema,
     ArchiveTeamSchema,
     AssessedSchema,
     AssessSchema,
+    AttendanceStatusSchema,
     AuditLogSchema,
+    ChooseWeekPilotSchema,
+    ChosenWeekPilotSchema,
     CreateActivitySchema,
     CreatedActivitySchema,
     CreatedTeamSchema,
     CreateTeamSchema,
     CreateWeightVersionSchema,
+    MarkedNoteSchema,
+    MarkNoteReadSchema,
     QueueSchema,
+    RecordAttendanceSchema,
+    RecordedAttendanceSchema,
     RejectSchema,
     ReportSchema,
     ResetPinSchema,
@@ -37,12 +45,15 @@ from ..schemas import (
     ThresholdsSchema,
     TransferMemberSchema,
     TransferredMemberSchema,
+    UndoneAttendanceSchema,
     WeightsSchema,
     WeightVersionIdSchema,
 )
 from ..security import admin_required
 from ..services import audit as audit_service
 from ..services import auth as auth_service
+from ..services import engagement as engagement_service
+from ..services import entry as entry_service
 from ..services import fuel as fuel_service
 from ..services import reading as reading_service
 from ..services import reports as reports_service
@@ -338,3 +349,74 @@ class FuelAssess(MethodView):
             )
         except fuel_service.FuelError as exc:
             abort(exc.status, message=str(exc))
+
+
+@blp.route("/admin/notes")
+class AdminNotes(MethodView):
+    @admin_required
+    @blp.response(200, AdminNotesListSchema)
+    def get(self):
+        """الملاحظات — بلا مصدر ولا قناة ردّ أصلًا (ث-١٢ · م-٥)."""
+        return {"notes": engagement_service.list_notes(g.user.org_id)}
+
+
+@blp.route("/admin/notes/<int:note_id>")
+class AdminNoteDetail(MethodView):
+    @admin_required
+    @blp.arguments(MarkNoteReadSchema)
+    @blp.response(200, MarkedNoteSchema)
+    def patch(self, _data, note_id):
+        """تعليم مقروءة فقط — لا حذف ولا رجوع (م-٥)."""
+        try:
+            return engagement_service.mark_note_read(g.user.org_id, note_id)
+        except engagement_service.EngagementError as exc:
+            abort(exc.status, message=str(exc))
+
+
+@blp.route("/admin/week/pilot")
+class AdminWeekPilot(MethodView):
+    @admin_required
+    @blp.arguments(ChooseWeekPilotSchema)
+    @blp.response(201, ChosenWeekPilotSchema)
+    def post(self, data):
+        """اختيار طيار الأسبوع — واحدٌ لكل أسبوع (ث-٩ · FR-062 · م-٦)."""
+        try:
+            row = engagement_service.choose_week_pilot(
+                _org(), g.user.id, data["user_id"], data["reason"]
+            )
+        except engagement_service.EngagementError as exc:
+            abort(exc.status, message=str(exc))
+        pilot = db.session.get(User, row.user_id)
+        return {"user_id": row.user_id, "full_name": pilot.full_name, "week_start": row.week_start}
+
+
+@blp.route("/admin/attendance")
+class Attendance(MethodView):
+    @admin_required
+    @blp.response(200, AttendanceStatusSchema)
+    def get(self):
+        """قائمة السرب وحالة الأسبوع الحالي — للشاشة عند الفتح (FR-041)."""
+        return entry_service.week_status(_org())
+
+    @admin_required
+    @blp.arguments(RecordAttendanceSchema)
+    @blp.response(201, RecordedAttendanceSchema)
+    def post(self, data):
+        """**الجميع حاضر افتراضًا** — الطلب يحمل الغائبين فقط (FR-041 · FR-042)."""
+        try:
+            return entry_service.record(_org(), g.user.id, data["absent_user_ids"])
+        except entry_service.AttendanceError as exc:
+            abort(exc.status, message=str(exc))
+
+
+@blp.route("/admin/attendance/undo")
+class AttendanceUndo(MethodView):
+    @admin_required
+    @blp.response(200, UndoneAttendanceSchema)
+    def post(self):
+        """تراجعٌ عن دفعة الأسبوع الحالي كاملةً، خلال ٥ دقائق (FR-042)."""
+        try:
+            count = entry_service.undo(_org(), g.user.id)
+        except entry_service.AttendanceError as exc:
+            abort(exc.status, message=str(exc))
+        return {"reversed": count}

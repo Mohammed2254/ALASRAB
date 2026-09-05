@@ -3,6 +3,24 @@
 from .audit import ResetPinSchema
 from .audit_log import AuditLogSchema
 from .auth import LoginSchema, SessionSchema
+from .engagement import (
+    AdminNotesListSchema,
+    AnsweredSchema,
+    AnswerSchema,
+    ChooseWeekPilotSchema,
+    ChosenWeekPilotSchema,
+    MarkedNoteSchema,
+    MarkNoteReadSchema,
+    SubmitNoteSchema,
+    TodayQuestionSchema,
+    WeekPilotSchema,
+)
+from .entry import (
+    AttendanceStatusSchema,
+    RecordAttendanceSchema,
+    RecordedAttendanceSchema,
+    UndoneAttendanceSchema,
+)
 from .fuel import (
     ActivitiesListSchema,
     AssessedSchema,
@@ -30,6 +48,7 @@ from .rules_admin import (
     WeightsSchema,
     WeightVersionIdSchema,
 )
+from .standings import FormationSchema, PilotsBoardSchema, TeamsBoardSchema
 from .teams import (
     ArchivedTeamSchema,
     ArchiveTeamSchema,
@@ -42,12 +61,18 @@ from .teams import (
 
 __all__ = [
     "ActivitiesListSchema",
+    "AdminNotesListSchema",
+    "AnswerSchema",
+    "AnsweredSchema",
     "ApproveSchema",
     "ArchivedTeamSchema",
     "ArchiveTeamSchema",
     "AssessSchema",
     "AssessedSchema",
+    "AttendanceStatusSchema",
     "AuditLogSchema",
+    "ChooseWeekPilotSchema",
+    "ChosenWeekPilotSchema",
     "CreateActivitySchema",
     "CreatedActivitySchema",
     "CreateTeamSchema",
@@ -55,9 +80,15 @@ __all__ = [
     "CreatedTeamSchema",
     "DeckSchema",
     "EventsSchema",
+    "FormationSchema",
     "LoginSchema",
+    "MarkedNoteSchema",
+    "MarkNoteReadSchema",
     "MyReadingsSchema",
+    "PilotsBoardSchema",
     "QueueSchema",
+    "RecordAttendanceSchema",
+    "RecordedAttendanceSchema",
     "RejectSchema",
     "ResetPinSchema",
     "ReportSchema",
@@ -65,13 +96,18 @@ __all__ = [
     "SaveThresholdsSchema",
     "SessionSchema",
     "StationSchema",
+    "SubmitNoteSchema",
     "SubmitReadingSchema",
     "SubmittedSchema",
+    "TeamsBoardSchema",
     "TeamsListSchema",
     "ThresholdsPreviewSchema",
     "ThresholdsSchema",
+    "TodayQuestionSchema",
     "TransferMemberSchema",
     "TransferredMemberSchema",
+    "UndoneAttendanceSchema",
+    "WeekPilotSchema",
     "WeightVersionIdSchema",
     "WeightsSchema",
 ]

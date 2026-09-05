@@ -22,9 +22,9 @@ class FlightSchema(Schema):
 
 class TeamSchema(Schema):
     name = fields.Str()
-    # قابل للعدم بعقدٍ معلَن: ترتيب السرب FR-051 يملكه `services/standings` في
-    # الوحدة ٩. `null` تعني «غير محسوب بعد» لا «لا سرب» — وغياب السرب نفسه
-    # يُمثَّل بـ`team: null` (API.md §٤).
+    # محسوب في `services/standings::team_rank` (و-٩ب، FR-051) — نفس ترتيب
+    # `GET /boards/teams`. `null` نظريًّا بلا حالة تنتجه اليوم (كل سرب في هذا
+    # الترتيب سرب الطالب نفسه بالضرورة)، أُبقي قابلًا للعدم دفاعًا لا وعدًا.
     rank_in_org = fields.Int(allow_none=True)
 
 

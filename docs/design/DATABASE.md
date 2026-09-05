@@ -267,8 +267,9 @@ entry_defaults(id, org_id, activity_type, quantity, label, aliases JSONB)
 ### التفاعل
 ```sql
 daily_questions(id, org_id, day, prompt, choices JSONB, correct_id, note, reward_hours)
-answers(id, org_id, user_id, question_id, choice_id, correct)
+answers(id, org_id, user_id, question_id, choice_id, correct, point_event_id)
   UNIQUE (user_id, question_id)
+  CHECK ((NOT correct AND point_event_id IS NULL) OR (correct AND point_event_id IS NOT NULL))  -- ث-١٧
 
 notes(id, org_id, body, day, read_at)
 pilot_of_week(id, org_id, week_start, user_id, reason, actor_id)
@@ -420,6 +421,8 @@ login_attempts(id, org_id, student_no, ok, at)
 | ث-١٣ب | **الرتبة المعروضة لا تنخفض** بتغيير العتبات | `services/rules_admin.py` يكتب `users.highest_achieved_tier` (يزيد فقط) + **`TRIGGER` يرفض أي تحديث ينقصه** — دفاعٌ مزدوج: الخدمة تقرّر متى يرتفع، والقاعدة تمنع أن ينخفض ولو بخطأ مستقبلي في الخدمة | تحديثٌ مباشر بقيمة أقلّ ⇒ استثناء · معاينة تُظهر `demoted` فارغًا دائمًا |
 | ث-١٤ | «أرضي» محسوبة لا مخزَّنة | **بنية الجدول** — لا عمود `grounded` | فحص المخطط: لا عمود في `users` |
 | ث-١٥ | كل إلحاق يمرّ بـ`ledger` | **مراجعة + `grep`** — لا يُفرض تقنيًّا | `grep -rn "PointEvent(" app/ --exclude=ledger.py` ⇒ فارغ |
+| ث-١٦ | سؤال يومٌ واحد لكل منظمة | `UNIQUE(org_id, day)` على `daily_questions` (و-٩ج) | سؤالان لنفس اليوم ⇒ استثناء من القاعدة |
+| ث-١٧ | `answers.correct` و`point_event_id` لا يفترقان — دفاعٌ مزدوج (نمط ث-١٣ب) | `CHECK` على `answers` + `services/engagement.py::answer` (يكتب الاثنين بـ`commit` واحد عبر `ledger.append_pending`) (و-٩د) | إجابة صحيحة بلا حدث، أو خاطئة بحدث — استثناء من القاعدة في الحالتين |
 
 ### ث-٢ — الثابت الذي كاد يسقط
 

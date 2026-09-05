@@ -11,19 +11,29 @@ from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 
 from ..extensions import db
-from ..models import Org, Team
+from ..models import Org, Team, User
 from ..schemas import (
+    AnsweredSchema,
+    AnswerSchema,
     DeckSchema,
     EventsSchema,
+    FormationSchema,
     MyReadingsSchema,
+    PilotsBoardSchema,
     StationSchema,
+    SubmitNoteSchema,
     SubmitReadingSchema,
     SubmittedSchema,
+    TeamsBoardSchema,
+    TodayQuestionSchema,
+    WeekPilotSchema,
 )
 from ..security import login_required
 from ..services import deck as deck_service
+from ..services import engagement as engagement_service
 from ..services import fuel as fuel_service
 from ..services import reading as reading_service
+from ..services import standings as standings_service
 
 blp = Blueprint("me", __name__, url_prefix="/api", description="بطاقة الطيار")
 
@@ -43,6 +53,14 @@ class Deck(MethodView):
         org = db.session.get(Org, g.user.org_id)
         card = deck_service.build(org, g.user.id)
 
+        team = None
+        if card.team is not None:
+            team = {
+                "name": card.team.name,
+                # FR-051 (و-٩ب) — نفس ترتيب `GET /boards/teams` تمامًا، لا حساب موازٍ.
+                "rank_in_org": standings_service.team_rank(org, card.team.id),
+            }
+
         return {
             "rank": {"name": card.rank.name, "tier": card.rank.tier},
             "hours": card.hours,
@@ -58,9 +76,118 @@ class Deck(MethodView):
                 "grounded": card.flight.grounded,
                 "last_activity_on": card.flight.last_activity_on,
             },
-            # rank_in_org مؤجَّل إلى و-٩ (FR-051) — ولا يُحسب هنا كحلٍّ مؤقّت.
-            "team": None if card.team is None else {"name": card.team.name, "rank_in_org": None},
+            "team": team,
         }
+
+
+@blp.route("/boards/pilots")
+class PilotsBoard(MethodView):
+    @login_required
+    @blp.response(200, PilotsBoardSchema)
+    def get(self):
+        """صدارة الأفراد — نافذة الأسبوع الحالي (FR-050 · API.md §٥)."""
+        org = db.session.get(Org, g.user.org_id)
+        return {"pilots": standings_service.pilots_board(org)}
+
+
+@blp.route("/boards/teams")
+class TeamsBoard(MethodView):
+    @login_required
+    @blp.response(200, TeamsBoardSchema)
+    def get(self):
+        """صدارة الأسراب بالمعدّل، فكّ التعادل بـ`code` (FR-051 · FR-052)."""
+        org = db.session.get(Org, g.user.org_id)
+        return {"teams": standings_service.teams_board(org)}
+
+
+@blp.route("/boards/formation")
+class Formation(MethodView):
+    @login_required
+    @blp.response(200, FormationSchema)
+    def get(self):
+        """مشهد التشكيل — محكوم بف-١ (FR-053)."""
+        scope = request.args.get("scope", "team")
+        if scope not in ("team", "general"):
+            abort(422, message="scope يجب أن يكون team أو general")
+        org = db.session.get(Org, g.user.org_id)
+        return standings_service.formation(org, g.user.id, scope)
+
+
+def _question_payload(question, answered):
+    return {
+        "id": question.id,
+        "prompt": question.prompt,
+        "choices": question.choices,
+        "answered": None
+        if answered is None
+        else {
+            "choice_id": answered.choice_id,
+            "correct": answered.correct,
+            "correct_id": answered.correct_id,
+            "note": answered.note,
+            "awarded_hours": answered.awarded_hours,
+        },
+    }
+
+
+@blp.route("/questions/today")
+class TodayQuestion(MethodView):
+    @login_required
+    @blp.response(200, TodayQuestionSchema)
+    def get(self):
+        """سؤال اليوم — بتوقيت المنظمة (FR-060)."""
+        org = db.session.get(Org, g.user.org_id)
+        question, answered = engagement_service.today(org, g.user.id)
+        return {"question": None if question is None else _question_payload(question, answered)}
+
+
+@blp.route("/questions/<int:question_id>/answer")
+class AnswerQuestion(MethodView):
+    @login_required
+    @blp.arguments(AnswerSchema)
+    @blp.response(200, AnsweredSchema)
+    def post(self, data, question_id):
+        """إجابة واحدة لكل سؤال — القيد في القاعدة لا بإخفاء الزرّ (FR-060 · ث-٨)."""
+        org = db.session.get(Org, g.user.org_id)
+        try:
+            result = engagement_service.answer(org, g.user.id, question_id, data["choice_id"])
+        except engagement_service.EngagementError as exc:
+            abort(exc.status, message=str(exc))
+        return {
+            "choice_id": result.choice_id,
+            "correct": result.correct,
+            "correct_id": result.correct_id,
+            "note": result.note,
+            "awarded_hours": result.awarded_hours,
+        }
+
+
+@blp.route("/notes")
+class SubmitNote(MethodView):
+    @login_required
+    @blp.arguments(SubmitNoteSchema)
+    @blp.response(201)
+    def post(self, data):
+        """ملاحظة مجهولة — بلا `id` في الردّ (FR-061 · ث-١٢)."""
+        org = db.session.get(Org, g.user.org_id)
+        try:
+            engagement_service.submit_note(org, data["body"])
+        except engagement_service.EngagementError as exc:
+            abort(exc.status, message=str(exc))
+
+
+@blp.route("/week/pilot")
+class WeekPilot(MethodView):
+    @login_required
+    @blp.response(200, WeekPilotSchema)
+    def get(self):
+        """طيار الأسبوع الحالي وسببه — `null` إن لم يُختَر بعد (FR-062)."""
+        org = db.session.get(Org, g.user.org_id)
+        row = engagement_service.week_pilot(org)
+        if row is None:
+            return {"pilot": None}
+        pilot = db.session.get(User, row.user_id)
+        return {"pilot": {"full_name": pilot.full_name, "reason": row.reason}}
 
 
 @blp.route("/me/readings")

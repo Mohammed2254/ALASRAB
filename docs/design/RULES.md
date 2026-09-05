@@ -112,7 +112,12 @@ class RuleSet:
 | `review` | ٠.٦ | | `accepted` | ×١.٠ |
 | `reading` | ٠.١٥ | | `repeat` | ×٠.٥ |
 | `attendance` | ٣.٠ | | | |
-| `daily_question` | ٢.٠ | | | |
+
+> **لا `daily_question` هنا — أُزيل عمدًا (و-٩ج).** كان وزنًا شاذًّا في
+> `seed.py` لم يستعمله كودٌ قطّ: مكافأة السؤال اليومي (FR-060) عمود
+> `daily_questions.reward_hours` مباشرةً — خاصّية *هذا السؤال بعينه*، لا
+> نشاطًا عامًّا يُعاد وزنه مع الزمن عبر `WeightVersion`. راجع
+> `docs/slices/و-٩.md`.
 
 **والبذرة تصل إليها عبر المحرّك لا حولها:** تصف إنجازات (صفحات وتقدير)، ويشتقّ
 `ruleset_at(occurred_at).hours_for()` الساعات. بذرةٌ تكتب `delta` رقمًا تتجاوز

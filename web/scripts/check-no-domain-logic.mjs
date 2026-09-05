@@ -1,5 +1,5 @@
 /*
-  @covers ق-١١, ق-٢٥, ق-٣٠, ق-٣٨, ق-٤٥, ق-٦٣, ق-٧٦
+  @covers ق-١١, ق-٢٥, ق-٣٠, ق-٣٨, ق-٤٥, ق-٦٣, ق-٧٦, ق-٩١, ق-١٠٥, ق-١٢١, ق-١٣٧
 
   فحص معماري: **الواجهة تعرض ولا تحسب** (`AGENTS.md` ٥).
 
@@ -51,6 +51,20 @@ const CONTRACT_CONSUMERS = [
   'src/pages/Station.jsx',
   'src/pages/admin/FuelActivities.jsx',
   'src/pages/admin/FuelAssess.jsx',
+  // و-٩ب: لوحتا الصدارة ومشهد التشكيل — `hours`/`avg_hours`/`size_pct`/
+  // `rank_in_org`/`grounded` تصل محسوبة من `services/standings`.
+  'src/pages/PilotsBoard.jsx',
+  'src/pages/TeamsBoard.jsx',
+  'src/pages/Formation.jsx',
+  // و-٩ج: سؤال اليوم — `correct`/`correct_id`/`awarded_hours` من عقد الإجابة.
+  'src/pages/DailyQuestion.jsx',
+  // و-٩د: طيار الأسبوع والملاحظات — `hours` (اختيار المرشّح) و`read_at`.
+  'src/pages/WeekPilot.jsx',
+  'src/pages/admin/WeekPilot.jsx',
+  'src/pages/admin/Notes.jsx',
+  'src/pages/SubmitNote.jsx',
+  // و-٩هـ: الحضور — `already_recorded`/`undo_until`/`absent_user_ids`/`hours_each`.
+  'src/pages/admin/Attendance.jsx',
 ]
 const VISUAL_PRIMITIVES = ['src/components/Insignia.jsx', 'src/components/Placard.jsx']
 
