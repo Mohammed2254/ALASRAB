@@ -309,6 +309,29 @@ for (const [studentNo, slug, label] of STUDENTS) {
       await page.waitForTimeout(500)
       await page.screenshot({ path: `${OUT}/admin-${slugPart}.png`, fullPage: true })
       await audit(page, label)
+
+      /*
+        و-٦ (ق-١٥٦) — حالتان فرعيّتان شرطيّتان لا يبلغهما مسار الالتقاط أعلاه
+        (نفس عمق كل شاشة أخرى بحالة فرعية شرطية، الدرس ١٩): قائمة أحداث
+        الطالب لا تُرسَم إلا بعد اختيار طالب، وصندوق سبب التصحيح لا يُرسَم
+        إلا بعد الضغط على «تصحيح». تُلتقَطان وتُقاسان صراحةً هنا بدل تركهما
+        خارج تغطية الأداة بصمت.
+      */
+      if (slugPart === 'quran-edit') {
+        await page.selectOption('#qe_student', { index: 1 })
+        await page.waitForSelector('text=أحداث الطالب', { timeout: 8000 })
+        await page.waitForTimeout(300)
+        await page.screenshot({ path: `${OUT}/admin-quran-edit-events.png`, fullPage: true })
+        await audit(page, `${label} — أحداث الطالب`)
+
+        await page.getByRole('button', { name: 'تصحيح', exact: true }).first().click()
+        await page.waitForSelector('text=سبب التصحيح — إلزاميّ', { timeout: 8000 })
+        await page.waitForTimeout(300)
+        await page.screenshot({ path: `${OUT}/admin-quran-edit-correcting.png`, fullPage: true })
+        await audit(page, `${label} — صندوق التصحيح`)
+        await page.getByRole('button', { name: 'إلغاء', exact: true }).click()
+      }
+
       await page.click('text=رجوع')
       await page.waitForSelector('text=بطاقة الطيار', { timeout: 8000 })
     }
