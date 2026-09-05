@@ -15,6 +15,8 @@ from ..extensions import db
 from ..models import Org, User
 from ..schemas import (
     ActivitiesListSchema,
+    AddedQuranEntrySchema,
+    AddQuranEntrySchema,
     AdminNotesListSchema,
     ApproveSchema,
     ArchivedTeamSchema,
@@ -33,13 +35,17 @@ from ..schemas import (
     MarkedNoteSchema,
     MarkNoteReadSchema,
     QueueSchema,
+    QuranEventsListSchema,
     RecordAttendanceSchema,
     RecordedAttendanceSchema,
     RejectSchema,
     ReportSchema,
     ResetPinSchema,
+    ReversedEventSchema,
+    ReverseEventSchema,
     ReviewResultsSchema,
     SaveThresholdsSchema,
+    StudentsListSchema,
     TeamsListSchema,
     ThresholdsPreviewSchema,
     ThresholdsSchema,
@@ -55,6 +61,7 @@ from ..services import auth as auth_service
 from ..services import engagement as engagement_service
 from ..services import entry as entry_service
 from ..services import fuel as fuel_service
+from ..services import quran as quran_service
 from ..services import reading as reading_service
 from ..services import reports as reports_service
 from ..services import rules_admin as rules_admin_service
@@ -420,3 +427,88 @@ class AttendanceUndo(MethodView):
         except entry_service.AttendanceError as exc:
             abort(exc.status, message=str(exc))
         return {"reversed": count}
+
+
+# ═══ و-٦ — التصحيح والتعديل القرآني (FR-035 · FR-036 · FR-037 · FR-080) ═══
+
+
+@blp.route("/admin/quran/students")
+class QuranStudents(MethodView):
+    @admin_required
+    @blp.response(200, StudentsListSchema)
+    def get(self):
+        """قائمة اختيار الهدف — **على مستوى الجمعية** (§٧.٣)، بنية تحتية لـFR-036."""
+        return {
+            "students": [
+                {"id": u.id, "full_name": u.full_name}
+                for u in quran_service.roster(g.user.org_id)
+            ]
+        }
+
+
+@blp.route("/admin/quran/events")
+class QuranEvents(MethodView):
+    @admin_required
+    @blp.response(200, QuranEventsListSchema)
+    def get(self):
+        """أحدث أحداث طالب، ليختار المشرف أيّها يُصحَّح — بنية تحتية لـFR-035."""
+        user_id = request.args.get("user_id", type=int)
+        if user_id is None:
+            abort(422, message="user_id إلزاميّ.")
+        try:
+            events = quran_service.recent_events_for(_org(), user_id)
+        except quran_service.QuranError as exc:
+            abort(exc.status, message=str(exc))
+        return {
+            "events": [
+                {
+                    "id": e.id,
+                    "kind": e.kind,
+                    "delta": e.delta,
+                    "occurred_on": e.occurred_at.date(),
+                    "reason": e.reason,
+                }
+                for e in events
+            ]
+        }
+
+
+@blp.route("/admin/events/<int:event_id>/reverse")
+class ReverseEvent(MethodView):
+    @admin_required
+    @blp.arguments(ReverseEventSchema)
+    @blp.response(201, ReversedEventSchema)
+    def post(self, data, event_id):
+        """
+        FR-035 · FR-080 — تصحيحٌ **حدث معاكس بسبب إلزامي**، لا `UPDATE` ولا
+        `DELETE` أبدًا (`ADR-004`). يكتب `audit_log` ذرّيًّا مع الحدث (FR-037).
+        """
+        try:
+            return quran_service.reverse(_org(), event_id, data["reason"], g.user.id)
+        except quran_service.QuranError as exc:
+            abort(exc.status, message=str(exc))
+
+
+@blp.route("/admin/quran/entry")
+class QuranEntry(MethodView):
+    @admin_required
+    @blp.arguments(AddQuranEntrySchema)
+    @blp.response(201, AddedQuranEntrySchema)
+    def post(self, data):
+        """
+        FR-036 — إضافة سجلّ ناقص يدويًّا. **الساعات محسوبة عبر `rules/engine`**
+        لا مُدخَلة (AGENTS ٥)، و**بلا `raw_row_id`** (مستقلّ عن اللصق).
+        """
+        try:
+            return quran_service.add_entry(
+                _org(),
+                data["user_id"],
+                data["occurred_on"],
+                data["activity_type"],
+                data["quantity"],
+                data["mastery"],
+                data["reason"],
+                g.user.id,
+            )
+        except quran_service.QuranError as exc:
+            abort(exc.status, message=str(exc))

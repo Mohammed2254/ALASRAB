@@ -30,6 +30,14 @@ from .fuel import (
     StationSchema,
 )
 from .me import DeckSchema, EventsSchema
+from .quran import (
+    AddedQuranEntrySchema,
+    AddQuranEntrySchema,
+    QuranEventsListSchema,
+    ReversedEventSchema,
+    ReverseEventSchema,
+    StudentsListSchema,
+)
 from .reading import (
     ApproveSchema,
     MyReadingsSchema,
@@ -61,6 +69,8 @@ from .teams import (
 
 __all__ = [
     "ActivitiesListSchema",
+    "AddedQuranEntrySchema",
+    "AddQuranEntrySchema",
     "AdminNotesListSchema",
     "AnswerSchema",
     "AnsweredSchema",
@@ -87,15 +97,19 @@ __all__ = [
     "MyReadingsSchema",
     "PilotsBoardSchema",
     "QueueSchema",
+    "QuranEventsListSchema",
     "RecordAttendanceSchema",
     "RecordedAttendanceSchema",
     "RejectSchema",
     "ResetPinSchema",
     "ReportSchema",
+    "ReversedEventSchema",
+    "ReverseEventSchema",
     "ReviewResultsSchema",
     "SaveThresholdsSchema",
     "SessionSchema",
     "StationSchema",
+    "StudentsListSchema",
     "SubmitNoteSchema",
     "SubmitReadingSchema",
     "SubmittedSchema",

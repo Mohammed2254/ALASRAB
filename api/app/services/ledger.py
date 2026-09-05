@@ -90,26 +90,39 @@ def append_pending(specs: list[EventSpec]) -> list[PointEvent]:
     return rows
 
 
+def _reverse_spec(event: PointEvent, reason: str, actor_id: int) -> EventSpec:
+    if not reason or not reason.strip():
+        raise ValueError("التصحيح يوجب سببًا مكتوبًا.")
+
+    return EventSpec(
+        org_id=event.org_id,
+        kind="correction",
+        delta=-event.delta,
+        occurred_at=event.occurred_at,  # لا now(): التصحيح يخصّ لحظة الأصل
+        user_id=event.user_id,
+        team_id=event.team_id,
+        reason=reason.strip(),
+        actor_id=actor_id,
+    )
+
+
 def reverse(event: PointEvent, reason: str, actor_id: int) -> PointEvent:
     """
     التصحيح **حدث معاكس** لا `UPDATE` — والمشغّل في القاعدة يمنع البديل (ث-٢).
 
     والسبب إلزامي: تصحيحٌ بلا سبب يظهر في بطاقة الطالب كتلاعب.
     """
-    if not reason or not reason.strip():
-        raise ValueError("التصحيح يوجب سببًا مكتوبًا.")
+    return append([_reverse_spec(event, reason, actor_id)])[0]
 
-    return append(
-        [
-            EventSpec(
-                org_id=event.org_id,
-                kind="correction",
-                delta=-event.delta,
-                occurred_at=event.occurred_at,  # لا now(): التصحيح يخصّ لحظة الأصل
-                user_id=event.user_id,
-                team_id=event.team_id,
-                reason=reason.strip(),
-                actor_id=actor_id,
-            )
-        ]
-    )[0]
+
+def reverse_pending(event: PointEvent, reason: str, actor_id: int) -> PointEvent:
+    """
+    كـ`reverse` — لكن `flush` لا `commit` (و-٦)، تقابل `reverse` كما
+    `append_pending` تقابل `append`.
+
+    للمستدعي الذي يحتاج التزام التصحيح **مع** كتابة أخرى في نفس المعاملة —
+    مثل `services/quran.reverse`: سطر `audit_log` (FR-037) يجب ألّا يفترق عن
+    الحدث الذي يوثّقه بمعاملتين منفصلتين، فيلتزم الاثنان معًا بـ`commit` واحد
+    يملكه المستدعي.
+    """
+    return append_pending([_reverse_spec(event, reason, actor_id)])[0]
