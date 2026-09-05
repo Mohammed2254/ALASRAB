@@ -273,6 +273,22 @@ for (const [studentNo, slug, label] of STUDENTS) {
     await page.waitForTimeout(500)
     await page.screenshot({ path: `${OUT}/reading-queue.png`, fullPage: true })
     await audit(page, 'طابور القراءات')
+
+    /*
+      الدرس ١٩ — صندوق سبب الرفض لا يُرسَم إلا بعد الضغط على «رفض» لطلبٍ
+      بعينه. يُقاس هنا صراحةً، ثم يُطوى مجدَّدًا **بلا** ضغط «تأكيد الرفض» —
+      هذا قياس لا فعل إداريّ فعليّ على طلب حقيقيّ.
+    */
+    const rejectButtons = page.getByRole('button', { name: 'رفض', exact: true })
+    if (await rejectButtons.count()) {
+      await rejectButtons.first().click()
+      await page.waitForSelector('text=سبب الرفض — يراه الطالب', { timeout: 8000 })
+      await page.waitForTimeout(300)
+      await page.screenshot({ path: `${OUT}/reading-queue-rejecting.png`, fullPage: true })
+      await audit(page, 'طابور القراءات — صندوق الرفض')
+      await rejectButtons.first().click() // طيّ الصندوق بلا تأكيد
+    }
+
     await page.click('text=رجوع')
     await page.waitForSelector('text=بطاقة الطيار', { timeout: 8000 })
 
@@ -309,6 +325,20 @@ for (const [studentNo, slug, label] of STUDENTS) {
       await page.waitForTimeout(500)
       await page.screenshot({ path: `${OUT}/admin-${slugPart}.png`, fullPage: true })
       await audit(page, label)
+
+      /*
+        الدرس ١٩ — حقول درجات البنود لا تُرسَم إلا بعد اختيار سرب ونشاط.
+        تُختار قيمتان حقيقيّتان (أوّل خيار في كلٍّ) ليظهر قسم الدرجات، ثم
+        يُقاس صراحةً بلا إرسال التقييم فعليًّا.
+      */
+      if (slugPart === 'fuel-assess') {
+        await page.selectOption('#fa_team', { index: 1 })
+        await page.selectOption('#fa_activity', { index: 1 })
+        await page.waitForSelector('text=الدرجات', { timeout: 8000 })
+        await page.waitForTimeout(300)
+        await page.screenshot({ path: `${OUT}/admin-fuel-assess-scores.png`, fullPage: true })
+        await audit(page, `${label} — درجات البنود`)
+      }
 
       /*
         و-٦ (ق-١٥٦) — حالتان فرعيّتان شرطيّتان لا يبلغهما مسار الالتقاط أعلاه
