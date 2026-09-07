@@ -219,7 +219,7 @@ TRIGGER point_events_no_mutation BEFORE UPDATE OR DELETE     -- ث-٢
 ```sql
 reading_submissions(
   id, org_id, user_id,
-  read_on DATE, pages INT, book_title,
+  read_on DATE, pages INT, book_title, activity_type,
   status, reviewer_id, review_reason, reviewed_at,
   point_event_id REFERENCES point_events(id),
   created_at
@@ -229,14 +229,24 @@ reading_submissions(
   CHECK (status='approved' AND point_event_id IS NOT NULL
       OR status<>'approved' AND point_event_id IS NULL)
   CHECK (status='rejected' → review_reason IS NOT NULL)
-  UNIQUE (user_id, read_on, book_title)
+  CHECK (activity_type <> 'tahdir' OR EXTRACT(DOW FROM read_on) IN (0,1,2,3)) -- ث-١٨ (و-١١)
+  UNIQUE (user_id, read_on, book_title, activity_type)
 ```
+
+**`activity_type` 🆕 (و-١١):** نصّ مفتوح — نفس فلسفة `weights.activity_type`
+(`ADR-005`): `'reading'` (القائم) و`'tahdir'` (تحضير القراءة) اليوم، وأيّ برنامج
+قراءة مستقبليّ **صفٌّ لا هجرة**. **`kind` على `point_events` يبقى `'reading'`
+للاثنين معًا** — لا يتغيّر — لأن `services/readiness.py` يحسب «أرضي» من
+`kind IN ('quran','reading')`؛ لو حمل تحضير `kind` مختلفًا لخرج من هذا الحساب
+بصمت. **نفس نمط `seed.py`:** إنجازات متعدّدة الأنواع (`activity_type` مختلف)
+تحت `kind` واحد ثابت (`'quran'` هناك، `'reading'` هنا).
 
 | القيد | الخطأ الذي يمنعه |
 |---|---|
 | `approved ⇔ point_event_id` | طلب معتمد بلا ساعات، أو ساعات بلا اعتماد |
 | `rejected → review_reason` | رفض بلا سبب يراه الطالب |
-| `UNIQUE(user, day, book)` | إرسال مزدوج بنقرتين |
+| `UNIQUE(user, day, book, activity_type)` 🆕 | إرسال مزدوج بنقرتين — **موسَّع** ليسمح بقراءة وتحضير بنفس اليوم والعنوان معًا بلا تصادم |
+| `tahdir → EXTRACT(DOW) IN (0..3)` 🆕 (ث-١٨) | تحضير بتاريخ خميس/جمعة/سبت — `EXTRACT(DOW)`: أحد=٠..سبت=٦ |
 
 **الحدث يُنشأ بـ`occurred_at = read_on`** لا `reviewed_at` — تأخّر المشرف أسبوعًا
 لا ينقل إنجاز الطالب إلى أسبوع آخر (FR-023).
@@ -430,6 +440,7 @@ login_attempts(id, org_id, student_no, ok, at)
 | ث-١٥ | كل إلحاق يمرّ بـ`ledger` | **مراجعة + `grep`** — لا يُفرض تقنيًّا | `grep -rn "PointEvent(" app/ --exclude=ledger.py` ⇒ فارغ |
 | ث-١٦ | سؤال يومٌ واحد لكل منظمة | `UNIQUE(org_id, day)` على `daily_questions` (و-٩ج) | سؤالان لنفس اليوم ⇒ استثناء من القاعدة |
 | ث-١٧ | `answers.correct` و`point_event_id` لا يفترقان — دفاعٌ مزدوج (نمط ث-١٣ب) | `CHECK` على `answers` + `services/engagement.py::answer` (يكتب الاثنين بـ`commit` واحد عبر `ledger.append_pending`) (و-٩د) | إجابة صحيحة بلا حدث، أو خاطئة بحدث — استثناء من القاعدة في الحالتين |
+| ث-١٨ | تحضير القراءة **الأحد–الأربعاء حصرًا** — دفاعٌ مزدوج | `CHECK (activity_type<>'tahdir' OR EXTRACT(DOW FROM read_on) IN (0,1,2,3))` + `services/reading.py` (فحص قبل الإدراج، رسالة عربية واضحة) (و-١١) | تحضير بتاريخ خميس/جمعة/سبت ⇒ رفض من الخدمة **و**من القاعدة لو التُفَّ عليها |
 
 ### ث-٢ — الثابت الذي كاد يسقط
 

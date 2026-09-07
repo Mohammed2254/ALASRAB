@@ -37,6 +37,15 @@
 | FR-023 | **قيد** داخل `approve` | `services/reading` · `ledger` | `point_events` | — | اعتماد متأخّر ⇒ `occurred_at = read_on` | و-٤ |
 | FR-024 | `GET /me/readings` | `services/reading` | `reading_submissions` | ث-٦ | المرفوض يعرض سببه للطالب | و-٤ |
 
+## تحضير القراءة 🆕
+
+| FR | المسار | الوحدة | الجدول | الثابت | الاختبار | وحدة العمل |
+|---|---|---|---|:--:|---|:--:|
+| FR-090 | `POST /me/tahdir` | `services/reading` | `reading_submissions` | **ث-٥ · ث-١٨** | يوم خميس/جمعة/سبت ⇒ رفض | و-١١ |
+| FR-091 | **قيد** — لا endpoint | `services/reading` | `reading_submissions` | ث-٥ | إرسال ⇒ رصيد لم يتغيّر | و-١١ |
+| FR-092 | `GET /admin/tahdir` · `POST /admin/readings/approve` (مُعاد استعماله) · `POST /admin/tahdir/entry` | `services/reading` · `ledger` · `audit` | `reading_submissions` `point_events` `audit_log` | — | إضافة مباشرة ذرّية مع سطر تدقيق | و-١١ |
+| FR-093 | `GET /me/tahdir` · `GET /admin/tahdir/report` | `services/reading` | `reading_submissions` | — | ٤/٤ أيام ⇒ ١٠٠٪ · ٣/٤ ⇒ متعثّر | و-١١ |
+
 ## القرآن — اللصق
 
 | FR | المسار | الوحدة | الجدول | الثابت | الاختبار | وحدة العمل |
