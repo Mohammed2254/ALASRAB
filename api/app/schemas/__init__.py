@@ -39,13 +39,18 @@ from .quran import (
     StudentsListSchema,
 )
 from .reading import (
+    AdminEntryResultSchema,
+    AdminTahdirEntrySchema,
     ApproveSchema,
     MyReadingsSchema,
+    OrgTahdirReportSchema,
     QueueSchema,
     RejectSchema,
     ReviewResultsSchema,
     SubmitReadingSchema,
+    SubmitTahdirSchema,
     SubmittedSchema,
+    TahdirReportSchema,
 )
 from .report import ReportSchema
 from .rules_admin import (
@@ -71,7 +76,9 @@ __all__ = [
     "ActivitiesListSchema",
     "AddedQuranEntrySchema",
     "AddQuranEntrySchema",
+    "AdminEntryResultSchema",
     "AdminNotesListSchema",
+    "AdminTahdirEntrySchema",
     "AnswerSchema",
     "AnsweredSchema",
     "ApproveSchema",
@@ -95,6 +102,7 @@ __all__ = [
     "MarkedNoteSchema",
     "MarkNoteReadSchema",
     "MyReadingsSchema",
+    "OrgTahdirReportSchema",
     "PilotsBoardSchema",
     "QueueSchema",
     "QuranEventsListSchema",
@@ -113,6 +121,8 @@ __all__ = [
     "SubmitNoteSchema",
     "SubmitReadingSchema",
     "SubmittedSchema",
+    "SubmitTahdirSchema",
+    "TahdirReportSchema",
     "TeamsBoardSchema",
     "TeamsListSchema",
     "ThresholdsPreviewSchema",

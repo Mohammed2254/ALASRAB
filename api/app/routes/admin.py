@@ -17,7 +17,9 @@ from ..schemas import (
     ActivitiesListSchema,
     AddedQuranEntrySchema,
     AddQuranEntrySchema,
+    AdminEntryResultSchema,
     AdminNotesListSchema,
+    AdminTahdirEntrySchema,
     ApproveSchema,
     ArchivedTeamSchema,
     ArchiveTeamSchema,
@@ -34,6 +36,7 @@ from ..schemas import (
     CreateWeightVersionSchema,
     MarkedNoteSchema,
     MarkNoteReadSchema,
+    OrgTahdirReportSchema,
     QueueSchema,
     QuranEventsListSchema,
     RecordAttendanceSchema,
@@ -126,6 +129,71 @@ class RejectReading(MethodView):
         except reading_service.ReadingError as exc:
             abort(exc.status, message=str(exc))
         return {"results": [result.__dict__]}
+
+
+# ═══ و-١١ — تحضير القراءة (FR-090..093) ═══
+
+
+@blp.route("/admin/tahdir")
+class TahdirQueue(MethodView):
+    @admin_required
+    @blp.response(200, QueueSchema)
+    def get(self):
+        """
+        طابور تحضير القراءة وحده — **مُصفًّى عن `/admin/readings`** (FR-092
+        بنية تحتية). الاعتماد والرفض عبر `/admin/readings/approve`·`reject`
+        القائمين حرفيًّا — عامّان على معرّف الطلب بصرف النظر عن `activity_type`.
+        """
+        return {
+            "submissions": [
+                {
+                    "id": s.id,
+                    "student_name": name,
+                    "read_on": s.read_on,
+                    "pages": s.pages,
+                    "book_title": s.book_title,
+                    "created_at": s.created_at,
+                }
+                for s, name in reading_service.pending_queue(
+                    g.user.org_id, activity_type=reading_service.TAHDIR
+                )
+            ]
+        }
+
+
+@blp.route("/admin/tahdir/entry")
+class TahdirEntry(MethodView):
+    @admin_required
+    @blp.arguments(AdminTahdirEntrySchema)
+    @blp.response(201, AdminEntryResultSchema)
+    def post(self, data):
+        """
+        إضافة مباشرة نيابةً عن طالب — **معتمَدة فورًا** (FR-092، نمط
+        `POST /admin/quran/entry` من و-٦). نفس قيود `/me/tahdir` تسري هنا
+        حرفيًّا — لا استثناء إداريّ ليوم الأسبوع أو الحدّ الأدنى.
+        """
+        try:
+            result = reading_service.admin_submit(
+                _org(),
+                g.user.id,
+                data["user_id"],
+                data["read_on"],
+                data["pages"],
+                data["book_title"],
+                activity_type=data["activity_type"],
+            )
+        except reading_service.ReadingError as exc:
+            abort(exc.status, message=str(exc))
+        return {"id": result.submission_id, "status": result.status, "hours": result.hours}
+
+
+@blp.route("/admin/tahdir/report")
+class TahdirReport(MethodView):
+    @admin_required
+    @blp.response(200, OrgTahdirReportSchema)
+    def get(self):
+        """تقرير أسبوعيّ لكل طلاب الجمعية (FR-093) — **يشمل من لم يُرسل شيئًا**."""
+        return reading_service.org_weekly_report(_org())
 
 
 @blp.route("/admin/report")

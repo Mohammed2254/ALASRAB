@@ -68,3 +68,66 @@ class ReviewResultSchema(Schema):
 
 class ReviewResultsSchema(Schema):
     results = fields.List(fields.Nested(ReviewResultSchema))
+
+
+# ═══ و-١١ — تحضير القراءة (FR-090..093) ═══
+# `MyReadingSchema`/`MyReadingsSchema`/`QueueItemSchema`/`QueueSchema` أعلاه
+# **تُعاد استعمالها حرفيًّا** لتحضير القراءة — نفس شكل الصفّ تمامًا.
+
+
+class SubmitTahdirSchema(Schema):
+    """نفس `SubmitReadingSchema` بحدّ أدنى ٧ صفحات (FR-090) — لا حدّ أعلى."""
+
+    read_on = fields.Date(required=True)
+    pages = fields.Int(required=True, validate=validate.Range(min=7, max=3000))
+    book_title = fields.Str(required=True, validate=validate.Length(min=1, max=200))
+
+
+class TahdirDaySchema(Schema):
+    date = fields.Date()
+    weekday = fields.Str()
+    completed = fields.Bool()
+    pages = fields.Int()
+
+
+class TahdirWeekSchema(Schema):
+    week_start = fields.Date()
+    days = fields.List(fields.Nested(TahdirDaySchema))
+    pages_total = fields.Int()
+    target_pages = fields.Int()
+    percent = fields.Float()
+    struggling = fields.Bool()
+
+
+class TahdirReportSchema(Schema):
+    submissions = fields.List(fields.Nested(MyReadingSchema))
+    week = fields.Nested(TahdirWeekSchema)
+
+
+class AdminTahdirEntrySchema(Schema):
+    user_id = fields.Int(required=True)
+    read_on = fields.Date(required=True)
+    pages = fields.Int(required=True, validate=validate.Range(min=1, max=3000))
+    book_title = fields.Str(required=True, validate=validate.Length(min=1, max=200))
+    # اختياريّ — نفس المسار يخدم القراءة العادية أيضًا (`"reading"`).
+    activity_type = fields.Str(load_default="tahdir", validate=validate.Length(min=1, max=50))
+
+
+class AdminEntryResultSchema(Schema):
+    id = fields.Int()
+    status = fields.Str()
+    hours = fields.Decimal(as_string=True, allow_none=True)
+
+
+class OrgTahdirRowSchema(Schema):
+    user_id = fields.Int()
+    full_name = fields.Str()
+    days_completed = fields.Int()
+    pages_total = fields.Int()
+    percent = fields.Float()
+    struggling = fields.Bool()
+
+
+class OrgTahdirReportSchema(Schema):
+    week_start = fields.Date()
+    students = fields.List(fields.Nested(OrgTahdirRowSchema))

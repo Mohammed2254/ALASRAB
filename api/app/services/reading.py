@@ -7,19 +7,30 @@
 """
 
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta
+from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from ..extensions import db
-from ..models import Org, PointEvent, ReadingSubmission
+from ..models import Membership, Org, PointEvent, ReadingSubmission, User
 from ..rules.engine import Achievement, ruleset_at
-from . import ledger
+from . import audit, ledger
 
 ACTIVITY = "reading"
 KIND = "reading"
+
+# و-١١ — تحضير القراءة. `kind` على الحدث يبقى `'reading'` للبرنامجين معًا
+# (`services/readiness.py` يحسب «أرضي» من `kind IN ('quran','reading')`) —
+# `activity_type` وحده يميّز الوزن، نفس سابقة `seed.py` (إنجازات متعدّدة
+# تحت `kind` ثابت واحد).
+TAHDIR = "tahdir"
+TAHDIR_MIN_PAGES = 7
+TAHDIR_WEEK_TARGET_PAGES = 28
+# Python `date.weekday()`: الاثنين=٠..الأحد=٦. الأحد–الأربعاء المطلوبة = {٦,٠,١,٢}.
+TAHDIR_ALLOWED_WEEKDAYS = {6, 0, 1, 2}
 
 
 class ReadingError(Exception):
@@ -59,13 +70,28 @@ def occurred_at_for(org: Org, read_on: date) -> datetime:
     return datetime.combine(read_on, time.min, tzinfo=ZoneInfo(org.timezone)).astimezone(UTC)
 
 
-def submit(org: Org, user_id: int, read_on: date, pages: int, book_title: str) -> ReadingSubmission:
+def _check_tahdir_day(read_on: date) -> None:
+    """ث-١٨ — تحضير القراءة الأحد–الأربعاء حصرًا. القاعدة تحرسه أيضًا (دفاع مزدوج)."""
+    if read_on.weekday() not in TAHDIR_ALLOWED_WEEKDAYS:
+        raise ReadingError("تحضير القراءة يكون من الأحد إلى الأربعاء فقط.")
+
+
+def submit(
+    org: Org,
+    user_id: int,
+    read_on: date,
+    pages: int,
+    book_title: str,
+    activity_type: str = ACTIVITY,
+) -> ReadingSubmission:
     """
-    طلبٌ معلَّق **لا يمنح ساعات** (FR-021): `point_event_id` يبقى فارغًا، وث-٥
-    في القاعدة يمنع غير ذلك.
+    طلبٌ معلَّق **لا يمنح ساعات** (FR-021 · FR-091): `point_event_id` يبقى
+    فارغًا، وث-٥ في القاعدة يمنع غير ذلك.
     """
     if read_on > local_today(org):
         raise ReadingError("لا يمكن تسجيل قراءة بتاريخ لم يأتِ بعد.")
+    if activity_type == TAHDIR:
+        _check_tahdir_day(read_on)
 
     submission = ReadingSubmission(
         org_id=org.id,
@@ -73,6 +99,7 @@ def submit(org: Org, user_id: int, read_on: date, pages: int, book_title: str) -
         read_on=read_on,
         pages=pages,
         book_title=book_title.strip(),
+        activity_type=activity_type,
         status="pending",
     )
     db.session.add(submission)
@@ -84,27 +111,131 @@ def submit(org: Org, user_id: int, read_on: date, pages: int, book_title: str) -
     return submission
 
 
-def list_for_user(user_id: int) -> list[tuple[ReadingSubmission, PointEvent | None]]:
-    """طلبات الطالب الأحدث أوّلًا، ومعها حدثها إن اعتُمد — بلا N+1."""
+def admin_submit(
+    org: Org,
+    actor_id: int,
+    user_id: int,
+    read_on: date,
+    pages: int,
+    book_title: str,
+    activity_type: str = TAHDIR,
+) -> Review:
+    """
+    FR-092 — إضافة مباشرة نيابةً عن طالب: **معتمَدة فورًا**، بلا مرور بحالة
+    معلَّقة (نمط `services/quran.add_entry`، و-٦). نفس فحوص `submit()` تسري
+    هنا حرفيًّا — لا استثناء إداريّ لقواعد التاريخ أو يوم الأسبوع.
+
+    ذرّيّة مع `audit_log`: `ledger.append_pending` (`flush` لا `commit`) ثم
+    `audit.record` ثم `commit` واحد — فشلٌ في أيّهما لا يترك حدثًا يتيمًا.
+    """
+    if read_on > local_today(org):
+        raise ReadingError("لا يمكن تسجيل قراءة بتاريخ لم يأتِ بعد.")
+    if activity_type == TAHDIR:
+        _check_tahdir_day(read_on)
+
+    target = db.session.get(User, user_id)
+    if target is None or target.org_id != org.id:
+        raise ReadingError("لا طالب بهذا المعرّف.", status=404)
+
+    occurred_at = occurred_at_for(org, read_on)
+    try:
+        hours = ruleset_at(org.id, occurred_at).hours_for(
+            Achievement(
+                user_id=user_id,
+                occurred_at=occurred_at,
+                activity_type=activity_type,
+                quantity=Decimal(pages),
+            )
+        )
+    except ValueError as exc:
+        raise ReadingError(str(exc)) from exc
+
+    event = ledger.append_pending(
+        [
+            ledger.EventSpec(
+                org_id=org.id,
+                kind=KIND,
+                delta=hours,
+                user_id=user_id,
+                occurred_at=occurred_at,
+                actor_id=actor_id,
+            )
+        ]
+    )[0]
+
+    submission = ReadingSubmission(
+        org_id=org.id,
+        user_id=user_id,
+        read_on=read_on,
+        pages=pages,
+        book_title=book_title.strip(),
+        activity_type=activity_type,
+        status="approved",
+        reviewer_id=actor_id,
+        reviewed_at=datetime.now(UTC),
+        point_event_id=event.id,
+    )
+    db.session.add(submission)
+    label = "تحضير" if activity_type == TAHDIR else "قراءة"
+    summary = f"إضافة {label} مباشرة: {pages} صفحة لـ{target.full_name} ({book_title.strip()})"
+    try:
+        # `flush` يُدرج فعليًّا فيصطدم بقيد `UNIQUE` هنا لا عند `commit` —
+        # كلاهما داخل هذا الحارس الواحد، وإلا مرّ تكرارٌ بـ`500` خام
+        # (اكتُشف عدائيًّا: التقاط `submission.id` قبل `commit` كان يترك
+        # الإدراج نفسه بلا حماية).
+        db.session.flush()  # لالتقاط submission.id قبل بناء سطر التدقيق
+        audit.record(
+            org_id=org.id,
+            kind="reading_admin_entry",
+            summary=summary,
+            actor_id=actor_id,
+            after={"event_id": event.id, "submission_id": submission.id, "delta": str(event.delta)},
+        )
+        db.session.commit()
+    except IntegrityError as exc:
+        db.session.rollback()
+        raise ReadingError("سجّلت هذا الكتاب في هذا اليوم من قبل.", status=409) from exc
+
+    return Review(submission.id, "approved", str(hours))
+
+
+def list_for_user(
+    user_id: int, activity_type: str = ACTIVITY
+) -> list[tuple[ReadingSubmission, PointEvent | None]]:
+    """
+    طلبات الطالب الأحدث أوّلًا، ومعها حدثها إن اعتُمد — بلا N+1.
+
+    **مُصفًّى على `activity_type`** (و-١١) — بلا هذا، تحضير القراءة كان
+    سيظهر مختلطًا في «قراءاتي» العامّة بصمت.
+    """
     return db.session.execute(
         select(ReadingSubmission, PointEvent)
         .outerjoin(PointEvent, PointEvent.id == ReadingSubmission.point_event_id)
-        .where(ReadingSubmission.user_id == user_id)
+        .where(
+            ReadingSubmission.user_id == user_id, ReadingSubmission.activity_type == activity_type
+        )
         .order_by(ReadingSubmission.created_at.desc(), ReadingSubmission.id.desc())
     ).all()
 
 
-def pending_queue(org_id: int) -> list[tuple[ReadingSubmission, str]]:
+def pending_queue(
+    org_id: int, activity_type: str = ACTIVITY
+) -> list[tuple[ReadingSubmission, str]]:
     """
     طابور المشرف: **الأقدم أوّلًا** (م-٢)، وعلى مستوى الجمعية لا السرب
     (`ARCHITECTURE.md` §٧.٣). يُرجع الطلب واسم صاحبه بلا استعلام لكل صفّ.
-    """
-    from ..models import User
 
+    **مُصفًّى على `activity_type`** (و-١١) — بلا هذا، تحضير القراءة كان
+    سيظهر مختلطًا في طابور القراءة العامّ بصمت.
+    """
     return db.session.execute(
         select(ReadingSubmission, User.full_name)
         .join(User, User.id == ReadingSubmission.user_id)
-        .where(ReadingSubmission.org_id == org_id, ReadingSubmission.status == "pending")
+        .where(
+            ReadingSubmission.org_id == org_id,
+            ReadingSubmission.status == "pending",
+            ReadingSubmission.activity_type == activity_type,
+        )
         .order_by(ReadingSubmission.created_at, ReadingSubmission.id)
     ).all()
 
@@ -145,7 +276,10 @@ def approve(org: Org, submission_ids: list[int], reviewer_id: int) -> list[Revie
             Achievement(
                 user_id=s.user_id,
                 occurred_at=occurred_at,
-                activity_type=ACTIVITY,
+                # activity_type **من الصفّ نفسه** لا ثابتًا (و-١١): طلب تحضير
+                # يُعتمَد بوزن `tahdir` لا وزن `reading` رغم إعادة استعمال
+                # هذا المسار حرفيًّا للبرنامجين معًا.
+                activity_type=s.activity_type,
                 quantity=s.pages,
             )
         )
@@ -193,3 +327,120 @@ def reject(org: Org, submission_id: int, reviewer_id: int, reason: str) -> Revie
     submission.reviewed_at = datetime.now(UTC)
     db.session.commit()
     return Review(submission.id, "rejected", None)
+
+
+# ═══ FR-093 — التقرير الأسبوعي لتحضير القراءة ═══
+
+_ARABIC_WEEKDAY = ["الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"]
+
+
+def _tahdir_week_start(org: Org, now: datetime) -> date:
+    """
+    بداية الأسبوع (الأحد) بتوقيت المنظمة — **نفس تعريف نافذة**
+    `entry.py`/`standings.py`/`engagement.py` حرفيًّا، مكرَّرة عمدًا لا
+    مستوردة (`RULES.md` §٩، نمط `_local_start_of_day_utc` القائم في أربع
+    خدمات أخرى).
+    """
+    local_now = now.astimezone(ZoneInfo(org.timezone))
+    days_since_start = (local_now.weekday() - org.week_starts_on) % 7
+    return local_now.date() - timedelta(days=days_since_start)
+
+
+def _tahdir_rows_this_week(
+    org: Org, week_start: date, user_id: int | None = None
+) -> list[tuple[ReadingSubmission, str]]:
+    window_end = week_start + timedelta(days=3)  # الأربعاء
+    conditions = [
+        ReadingSubmission.org_id == org.id,
+        ReadingSubmission.activity_type == TAHDIR,
+        ReadingSubmission.status == "approved",
+        ReadingSubmission.read_on >= week_start,
+        ReadingSubmission.read_on <= window_end,
+    ]
+    if user_id is not None:
+        conditions.append(ReadingSubmission.user_id == user_id)
+    return db.session.execute(
+        select(ReadingSubmission, User.full_name)
+        .join(User, User.id == ReadingSubmission.user_id)
+        .where(*conditions)
+    ).all()
+
+
+def _summarize_week(week_start: date, pages_by_day: dict[date, int]) -> dict:
+    """
+    **يومٌ مكتمل = إرسالٌ معتمَد بصفحات ≥٧** (لا معلَّق، مطابقًا لمبدأ FR-021).
+    `percent` مبنيّ على **مجموع الصفحات** لا عدد الأيام — الحقلان يُعرضان
+    معًا لا أحدهما بديلًا عن الآخر (`docs/slices/و-١١.md` §٢).
+    """
+    days = []
+    for i in range(4):
+        d = week_start + timedelta(days=i)
+        pages = pages_by_day.get(d, 0)
+        days.append(
+            {
+                "date": d,
+                "weekday": _ARABIC_WEEKDAY[d.weekday()],
+                "completed": pages >= TAHDIR_MIN_PAGES,
+                "pages": pages,
+            }
+        )
+    pages_total = sum(day["pages"] for day in days)
+    percent = round(pages_total / TAHDIR_WEEK_TARGET_PAGES * 100, 1)
+    return {
+        "week_start": week_start,
+        "days": days,
+        "pages_total": pages_total,
+        "target_pages": TAHDIR_WEEK_TARGET_PAGES,
+        "percent": percent,
+        # «متعثّر» = دون ١٠٠٪ من الهدف الأسبوعي، **بلا هامش تسامح** (قرار مؤكَّد).
+        "struggling": percent < 100,
+    }
+
+
+def weekly_report(org: Org, user_id: int, now: datetime | None = None) -> dict:
+    """تحضير طالبٍ واحد لأسبوعه الحاليّ (FR-093 · `GET /me/tahdir`)."""
+    week_start = _tahdir_week_start(org, now or datetime.now(UTC))
+    rows = _tahdir_rows_this_week(org, week_start, user_id)
+    pages_by_day: dict[date, int] = {}
+    for submission, _name in rows:
+        pages_by_day[submission.read_on] = (
+            pages_by_day.get(submission.read_on, 0) + submission.pages
+        )
+    return _summarize_week(week_start, pages_by_day)
+
+
+def org_weekly_report(org: Org, now: datetime | None = None) -> dict:
+    """
+    تحضير **كل طلاب الجمعية** لأسبوعهم الحاليّ (FR-093 · `GET /admin/tahdir/report`).
+
+    **يشمل من لم يُرسل شيئًا بعد** (٠٪ · متعثّر) — تقريرٌ يستبعد الغائبين
+    يخفي بالضبط من يحتاج المشرف رؤيته.
+    """
+    week_start = _tahdir_week_start(org, now or datetime.now(UTC))
+    # نفس فلترة `services/entry._roster`/`services/quran.roster`، مكرَّرة
+    # عمدًا لا مستوردة (نمط `_local_start_of_day_utc` القائم).
+    roster = db.session.execute(
+        select(User.id, User.full_name)
+        .join(Membership, Membership.user_id == User.id)
+        .where(User.org_id == org.id, User.is_active.is_(True), Membership.left_at.is_(None))
+    ).all()
+    rows = _tahdir_rows_this_week(org, week_start)
+    pages_by_user_day: dict[int, dict[date, int]] = {}
+    for submission, _name in rows:
+        by_day = pages_by_user_day.setdefault(submission.user_id, {})
+        by_day[submission.read_on] = by_day.get(submission.read_on, 0) + submission.pages
+
+    results = []
+    for user_id, full_name in roster:
+        summary = _summarize_week(week_start, pages_by_user_day.get(user_id, {}))
+        results.append(
+            {
+                "user_id": user_id,
+                "full_name": full_name,
+                "days_completed": sum(1 for d in summary["days"] if d["completed"]),
+                "pages_total": summary["pages_total"],
+                "percent": summary["percent"],
+                "struggling": summary["struggling"],
+            }
+        )
+    return {"week_start": week_start, "students": sorted(results, key=lambda r: r["full_name"])}

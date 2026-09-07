@@ -23,7 +23,9 @@ from ..schemas import (
     StationSchema,
     SubmitNoteSchema,
     SubmitReadingSchema,
+    SubmitTahdirSchema,
     SubmittedSchema,
+    TahdirReportSchema,
     TeamsBoardSchema,
     TodayQuestionSchema,
     WeekPilotSchema,
@@ -227,6 +229,52 @@ class MyReadings(MethodView):
         try:
             submission = reading_service.submit(
                 org, g.user.id, data["read_on"], data["pages"], data["book_title"]
+            )
+        except reading_service.ReadingError as exc:
+            abort(exc.status, message=str(exc))
+        return {"id": submission.id, "status": submission.status}
+
+
+@blp.route("/me/tahdir")
+class MyTahdir(MethodView):
+    """تحضير القراءة — و-١١ · FR-090..093. نفس شكل `/me/readings` بقيود إضافية."""
+
+    @login_required
+    @blp.response(200, TahdirReportSchema)
+    def get(self):
+        org = db.session.get(Org, g.user.org_id)
+        rows = reading_service.list_for_user(g.user.id, activity_type=reading_service.TAHDIR)
+        return {
+            "submissions": [
+                {
+                    "id": s.id,
+                    "read_on": s.read_on,
+                    "pages": s.pages,
+                    "book_title": s.book_title,
+                    "status": s.status,
+                    "review_reason": s.review_reason,
+                    "reviewed_at": s.reviewed_at,
+                    "hours": event.delta if event is not None else None,
+                }
+                for s, event in rows
+            ],
+            "week": reading_service.weekly_report(org, g.user.id),
+        }
+
+    @login_required
+    @blp.arguments(SubmitTahdirSchema)
+    @blp.response(201, SubmittedSchema)
+    def post(self, data):
+        """طلبٌ معلَّق **لا يمنح ساعات** (FR-091)."""
+        org = db.session.get(Org, g.user.org_id)
+        try:
+            submission = reading_service.submit(
+                org,
+                g.user.id,
+                data["read_on"],
+                data["pages"],
+                data["book_title"],
+                activity_type=reading_service.TAHDIR,
             )
         except reading_service.ReadingError as exc:
             abort(exc.status, message=str(exc))
