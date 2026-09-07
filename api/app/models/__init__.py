@@ -4,6 +4,7 @@ from .audit import AuditEntry
 from .engagement import Answer, DailyQuestion, Note, PilotOfWeek
 from .event import PointEvent
 from .fuel import FuelActivity, FuelAssessment, FuelCriterion, FuelScore
+from .ingest import EntryDefault, RawRow
 from .org import Org
 from .reading import ReadingSubmission
 from .rules import MasteryMultiplier, RankThreshold, Weight, WeightVersion
@@ -15,6 +16,7 @@ __all__ = [
     "Answer",
     "AuditEntry",
     "DailyQuestion",
+    "EntryDefault",
     "FuelActivity",
     "FuelAssessment",
     "FuelCriterion",
@@ -26,6 +28,7 @@ __all__ = [
     "Org",
     "PilotOfWeek",
     "PointEvent",
+    "RawRow",
     "ReadingSubmission",
     "RankThreshold",
     "Session",

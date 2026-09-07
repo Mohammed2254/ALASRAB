@@ -27,6 +27,8 @@ from app.models import (
 from app.services.auth import hash_pin
 
 TABLES = [
+    "raw_rows",
+    "entry_defaults",
     "fuel_scores",
     "fuel_assessments",
     "fuel_criteria",

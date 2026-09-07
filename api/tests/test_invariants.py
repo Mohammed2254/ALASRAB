@@ -674,3 +674,50 @@ def test_valid_reading_rows_are_accepted(seeded):
         review_reason="خارج القائمة",
     )
     assert db.session.scalar(db.select(db.func.count(ReadingSubmission.id))) == 2
+
+
+# ═══ و-٥ — استيراد راصد: entry_defaults صفٌّ واحد لكل (منظّمة، نشاط) ═══
+
+
+def test_duplicate_entry_default_activity_is_rejected_by_database(seeded):
+    """@covers ق-١٩٥"""
+    from app.models import EntryDefault
+
+    db.session.add(
+        EntryDefault(
+            org_id=seeded["org_id"], activity_type="quran_hifz_target", label="مستهدف الحفظ"
+        )
+    )
+    db.session.commit()
+
+    with pytest.raises(IntegrityError):
+        db.session.add(
+            EntryDefault(
+                org_id=seeded["org_id"], activity_type="quran_hifz_target", label="تكرار"
+            )
+        )
+        db.session.commit()
+    db.session.rollback()
+
+
+def test_same_activity_in_different_orgs_does_not_collide(seeded):
+    """@covers ق-١٩٥ — الحدّ الآخر: القيد نطاقه المنظّمة لا عامّ."""
+    from app.models import EntryDefault, Org
+
+    other_org = Org(name="جمعية أخرى")
+    db.session.add(other_org)
+    db.session.flush()
+
+    db.session.add(
+        EntryDefault(
+            org_id=seeded["org_id"], activity_type="quran_hifz_target", label="مستهدف الحفظ"
+        )
+    )
+    db.session.add(
+        EntryDefault(org_id=other_org.id, activity_type="quran_hifz_target", label="مستهدف الحفظ")
+    )
+    db.session.commit()
+
+    assert (
+        db.session.scalar(db.select(db.func.count(EntryDefault.id))) == 2
+    )
