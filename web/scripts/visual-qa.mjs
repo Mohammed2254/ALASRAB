@@ -1,5 +1,5 @@
 /*
-  @covers ق-١٣, ق-١٤, ق-١٥, ق-١٦, ق-٢٦, ق-٣١, ق-٣٩, ق-٤٥, ق-٦٤, ق-٧٧, ق-٩٢, ق-١٠٦, ق-١٢٢, ق-١٣٨, ق-١٥٦
+  @covers ق-١٣, ق-١٤, ق-١٥, ق-١٦, ق-٢٦, ق-٣١, ق-٣٩, ق-٤٥, ق-٦٤, ق-٧٧, ق-٩٢, ق-١٠٦, ق-١٢٢, ق-١٣٨, ق-١٥٦, ق-١٧٣
 
   فحص بصري **مقيس** في متصفّح حقيقي — لا لقطات تُنظَر بالعين وحدها.
 
@@ -260,6 +260,15 @@ for (const [studentNo, slug, label] of STUDENTS) {
     await audit(page, 'قراءاتي')
   }
   if (slug === 'normal') {
+    // و-١١ (ق-١٧٣) — تحضير القراءة، شاشة طالب.
+    await page.click('text=تحضير القراءة')
+    await page.waitForSelector('text=تحضير اليوم', { timeout: 8000 })
+    await page.waitForTimeout(500)
+    await page.screenshot({ path: `${OUT}/tahdir.png`, fullPage: true })
+    await audit(page, 'تحضير القراءة')
+    await page.click('text=رجوع')
+    await page.waitForSelector('text=بطاقة الطيار', { timeout: 8000 })
+
     await page.click('text=التقرير الدوري')
     await page.waitForSelector('text=الأسبوع', { timeout: 8000 })
     await page.waitForTimeout(500)
@@ -319,6 +328,9 @@ for (const [studentNo, slug, label] of STUDENTS) {
       ['الحضور', 'attendance'],
       // و-٦ (ق-١٥٦) — التصحيح والتعديل القرآني.
       ['التصحيح والتعديل القرآني', 'quran-edit'],
+      // و-١١ (ق-١٧٣) — طابور تحضير القراءة وتقريره الإداريّان.
+      ['طابور تحضير القراءة', 'tahdir-queue'],
+      ['تقرير تحضير القراءة', 'tahdir-report'],
     ]) {
       await page.getByRole('button', { name: label, exact: true }).click()
       await page.waitForSelector(`h1:has-text("${label}")`, { timeout: 8000 })
@@ -362,6 +374,24 @@ for (const [studentNo, slug, label] of STUDENTS) {
         await page.getByRole('button', { name: 'إلغاء', exact: true }).click()
       }
 
+      /*
+        و-١١ (ق-١٧٣) — صندوق سبب الرفض في طابور تحضير القراءة حالةٌ فرعيّة
+        شرطيّة أخرى من نفس نمط الدرس ١٩ (نسخة طابور القراءات العامّ أعلاه)،
+        لكنها مكوِّن منفصل (`QueueItem` داخل `TahdirQueue.jsx`) فلا يُغني
+        قياس تلك النسخة عن قياس هذه. تُقاس هنا صراحةً ثم تُطوى بلا تأكيد.
+      */
+      if (slugPart === 'tahdir-queue') {
+        const tdRejectButtons = page.getByRole('button', { name: 'رفض', exact: true })
+        if (await tdRejectButtons.count()) {
+          await tdRejectButtons.first().click()
+          await page.waitForSelector('text=سبب الرفض — يراه الطالب', { timeout: 8000 })
+          await page.waitForTimeout(300)
+          await page.screenshot({ path: `${OUT}/admin-tahdir-queue-rejecting.png`, fullPage: true })
+          await audit(page, `${label} — صندوق الرفض`)
+          await tdRejectButtons.first().click()
+        }
+      }
+
       await page.click('text=رجوع')
       await page.waitForSelector('text=بطاقة الطيار', { timeout: 8000 })
     }
@@ -391,4 +421,7 @@ if (failures.length) {
   for (const f of failures) console.error(`   ${f}`)
   process.exit(1)
 }
-console.log('\n✅ ق-١٣ · ق-١٤ · ق-١٥ · ق-١٦ · ق-٢٦ · ق-٣١ · ق-٩٢ · ق-١٠٦ · ق-١٢٢ · ق-١٣٨ — مقيسة ومجتازة.')
+console.log(
+  '\n✅ ق-١٣ · ق-١٤ · ق-١٥ · ق-١٦ · ق-٢٦ · ق-٣١ · ق-٣٩ · ق-٤٥ · ق-٦٤ · ق-٧٧ · ق-٩٢ · ق-١٠٦ · ق-١٢٢ · ' +
+    'ق-١٣٨ · ق-١٥٦ · ق-١٧٣ — مقيسة ومجتازة.',
+)

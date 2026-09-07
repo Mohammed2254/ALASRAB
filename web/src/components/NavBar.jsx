@@ -25,6 +25,7 @@ const NAV_ITEMS = [
   { key: 'question', label: 'سؤال اليوم', tone: 'secondary', adminOnly: false },
   { key: 'weekPilot', label: 'طيار الأسبوع', tone: 'secondary', adminOnly: false },
   { key: 'submitNote', label: 'أرسل ملاحظة', tone: 'secondary', adminOnly: false },
+  { key: 'tahdir', label: 'تحضير القراءة', tone: 'secondary', adminOnly: false },
   { key: 'queue', label: 'طابور القراءات', tone: 'secondary', adminOnly: true },
   { key: 'report', label: 'التقرير الدوري', tone: 'secondary', adminOnly: true },
   { key: 'weights', label: 'الأوزان', tone: 'secondary', adminOnly: true },
@@ -37,6 +38,8 @@ const NAV_ITEMS = [
   { key: 'adminWeekPilot', label: 'اختيار طيار الأسبوع', tone: 'secondary', adminOnly: true },
   { key: 'attendance', label: 'الحضور', tone: 'secondary', adminOnly: true },
   { key: 'quranEdit', label: 'التصحيح والتعديل القرآني', tone: 'secondary', adminOnly: true },
+  { key: 'tahdirQueue', label: 'طابور تحضير القراءة', tone: 'secondary', adminOnly: true },
+  { key: 'tahdirReport', label: 'تقرير تحضير القراءة', tone: 'secondary', adminOnly: true },
 ]
 
 const TONE_CLASS = {

@@ -10,7 +10,7 @@ import NavBar from '../components/NavBar'
 */
 
 describe('NavBar — و-٩أ', () => {
-  it('طيّار (isAdmin=false) يرى ثمانية أزرار فقط', () => {
+  it('طيّار (isAdmin=false) يرى تسعة أزرار فقط', () => {
     render(<NavBar isAdmin={false} onNavigate={() => {}} />)
     expect(screen.getByRole('button', { name: 'قراءاتي' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'محطة التزوّد' })).toBeInTheDocument()
@@ -20,19 +20,21 @@ describe('NavBar — و-٩أ', () => {
     expect(screen.getByRole('button', { name: 'سؤال اليوم' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'طيار الأسبوع' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'أرسل ملاحظة' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'تحضير القراءة' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'الأوزان' })).not.toBeInTheDocument()
-    expect(screen.getAllByRole('button')).toHaveLength(8)
+    expect(screen.getAllByRole('button')).toHaveLength(9)
   })
 
-  it('مشرف (isAdmin=true) يرى الأزرار العشرين كلّها', () => {
+  it('مشرف (isAdmin=true) يرى الأزرار الثلاثة والعشرين كلّها', () => {
     render(<NavBar isAdmin={true} onNavigate={() => {}} />)
-    expect(screen.getAllByRole('button')).toHaveLength(20)
+    expect(screen.getAllByRole('button')).toHaveLength(23)
     for (const label of [
       'قراءاتي', 'محطة التزوّد', 'صدارة الأفراد', 'صدارة الأسراب', 'مشهد التشكيل',
-      'سؤال اليوم', 'طيار الأسبوع', 'أرسل ملاحظة', 'طابور القراءات', 'التقرير الدوري',
+      'سؤال اليوم', 'طيار الأسبوع', 'أرسل ملاحظة', 'تحضير القراءة',
+      'طابور القراءات', 'التقرير الدوري',
       'الأوزان', 'العتبات', 'الأسراب', 'سجلّ التغييرات',
       'أنشطة الوقود', 'تقييم نشاط', 'الملاحظات', 'اختيار طيار الأسبوع', 'الحضور',
-      'التصحيح والتعديل القرآني',
+      'التصحيح والتعديل القرآني', 'طابور تحضير القراءة', 'تقرير تحضير القراءة',
     ]) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
     }

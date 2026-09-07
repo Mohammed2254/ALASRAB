@@ -1,5 +1,5 @@
 /*
-  @covers ق-١١, ق-٢٥, ق-٣٠, ق-٣٨, ق-٤٥, ق-٦٣, ق-٧٦, ق-٩١, ق-١٠٥, ق-١٢١, ق-١٣٧, ق-١٥٦
+  @covers ق-١١, ق-٢٥, ق-٣٠, ق-٣٨, ق-٤٥, ق-٦٣, ق-٧٦, ق-٩١, ق-١٠٥, ق-١٢١, ق-١٣٧, ق-١٥٦, ق-١٧٣
 
   فحص معماري: **الواجهة تعرض ولا تحسب** (`AGENTS.md` ٥).
 
@@ -68,6 +68,11 @@ const CONTRACT_CONSUMERS = [
   // و-٦: التصحيح والتعديل القرآني — `delta` يصل محسوبًا من `rules/engine`
   // عبر `POST /admin/quran/entry`، ويُعرض كما وصل بلا حساب أو مقارنة عليه.
   'src/pages/admin/QuranEdit.jsx',
+  // و-١١: تحضير القراءة — `percent`/`struggling`/`completed`/`days_completed`
+  // كلّها تصل محسوبة من `services/reading.py`، تُعرض كما وصلت بلا اشتقاق.
+  'src/pages/Tahdir.jsx',
+  'src/pages/admin/TahdirQueue.jsx',
+  'src/pages/admin/TahdirReport.jsx',
 ]
 const VISUAL_PRIMITIVES = ['src/components/Insignia.jsx', 'src/components/Placard.jsx']
 

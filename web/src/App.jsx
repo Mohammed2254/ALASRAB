@@ -9,6 +9,8 @@ import AdminNotes from './pages/admin/Notes'
 import QuranEdit from './pages/admin/QuranEdit'
 import ReadingQueue from './pages/admin/ReadingQueue'
 import Report from './pages/admin/Report'
+import TahdirQueue from './pages/admin/TahdirQueue'
+import TahdirReport from './pages/admin/TahdirReport'
 import Teams from './pages/admin/Teams'
 import Thresholds from './pages/admin/Thresholds'
 import AdminWeekPilot from './pages/admin/WeekPilot'
@@ -21,6 +23,7 @@ import PilotDeck from './pages/PilotDeck'
 import PilotsBoard from './pages/PilotsBoard'
 import Station from './pages/Station'
 import SubmitNote from './pages/SubmitNote'
+import Tahdir from './pages/Tahdir'
 import TeamsBoard from './pages/TeamsBoard'
 import WeekPilot from './pages/WeekPilot'
 import { AppStateProvider, useApp } from './state/AppState'
@@ -55,6 +58,9 @@ const SCREENS = {
   adminWeekPilot: AdminWeekPilot,
   attendance: Attendance,
   quranEdit: QuranEdit,
+  tahdir: Tahdir,
+  tahdirQueue: TahdirQueue,
+  tahdirReport: TahdirReport,
 }
 
 function Gate() {

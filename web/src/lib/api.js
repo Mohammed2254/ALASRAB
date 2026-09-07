@@ -126,4 +126,13 @@ export const api = {
   quranEntry: (body) => request('/admin/quran/entry', { method: 'POST', body }),
   reverseEvent: (eventId, reason) =>
     request(`/admin/events/${eventId}/reverse`, { method: 'POST', body: { reason } }),
+
+  // و-١١ — تحضير القراءة
+  myTahdir: () => request('/me/tahdir'),
+  submitTahdir: (body) => request('/me/tahdir', { method: 'POST', body }),
+  tahdirQueue: () => request('/admin/tahdir'),
+  // اعتماد/رفض تحضير: نفس مساري القراءة العامّة القائمين حرفيًّا — عامّان
+  // على معرّف الطلب بصرف النظر عن نوعه.
+  adminTahdirEntry: (body) => request('/admin/tahdir/entry', { method: 'POST', body }),
+  tahdirReport: () => request('/admin/tahdir/report'),
 }
