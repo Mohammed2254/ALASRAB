@@ -6,7 +6,7 @@
 لا أن القاعدة محميّة — والفرق هو كل الفرق (ADR-002).
 """
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 import pytest
@@ -369,6 +369,67 @@ def test_rejection_without_reason_is_rejected_by_database(seeded):
             status="rejected",
         )
     db.session.rollback()
+
+
+# ═══ ث-١٨ — تحضير القراءة الأحد–الأربعاء حصرًا (و-١١) ═══
+
+_SATURDAY = date(2026, 8, 1)  # weekday()=5 — خارج النطاق المسموح
+_SUNDAY = date(2026, 8, 2)  # weekday()=6 — أوّل يوم مسموح
+
+
+def test_tahdir_outside_sun_to_wed_is_rejected_by_database(seeded):
+    """@covers ق-١٥٧ · ث-١٨"""
+    with pytest.raises((IntegrityError, DBAPIError)):
+        _raw_reading(
+            org_id=seeded["org_id"],
+            user_id=seeded["users"]["1001"],
+            read_on=_SATURDAY,
+            pages=10,
+            activity_type="tahdir",
+            status="pending",
+        )
+    db.session.rollback()
+
+
+def test_tahdir_within_sun_to_wed_is_accepted_by_database(seeded):
+    """@covers ق-١٥٨ · ث-١٨ — الحدّ الآخر: القيد ليس مفرطًا."""
+    from app.models import ReadingSubmission
+
+    _raw_reading(
+        org_id=seeded["org_id"],
+        user_id=seeded["users"]["1001"],
+        read_on=_SUNDAY,
+        pages=10,
+        activity_type="tahdir",
+        status="pending",
+    )
+    assert db.session.scalar(db.select(db.func.count(ReadingSubmission.id))) == 1
+
+
+def test_reading_and_tahdir_same_day_same_book_do_not_collide(seeded):
+    """
+    @covers ق-١٥٨ — القيد الموسَّع `UNIQUE(user,day,book,activity_type)` — امتدادٌ
+    للحدّ الآخر: برنامجان مختلفان بنفس اليوم والعنوان **ليسا تصادمًا**.
+    """
+    from app.models import ReadingSubmission
+
+    _raw_reading(
+        org_id=seeded["org_id"],
+        user_id=seeded["users"]["1001"],
+        read_on=_SUNDAY,
+        pages=10,
+        activity_type="reading",
+        status="pending",
+    )
+    _raw_reading(
+        org_id=seeded["org_id"],
+        user_id=seeded["users"]["1001"],
+        read_on=_SUNDAY,
+        pages=10,
+        activity_type="tahdir",
+        status="pending",
+    )
+    assert db.session.scalar(db.select(db.func.count(ReadingSubmission.id))) == 2
 
 
 # ═══ ث-١٣أ · ث-١٣ب — و-٧: سُلّم متّسق · الرتبة لا تنخفض ═══

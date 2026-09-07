@@ -36,6 +36,13 @@ class ReadingSubmission(db.Model):
             name="reading_status_valid",
         ),
         CheckConstraint("pages > 0", name="reading_pages_positive"),
+        # ث-١٨ — تحضير القراءة الأحد–الأربعاء حصرًا (و-١١). دفاعٌ مزدوج مع
+        # الفحص المطابق في services/reading.py: `EXTRACT(DOW)` عند PostgreSQL
+        # أحد=٠..سبت=٦، فالنطاق المقبول ٠..٣.
+        CheckConstraint(
+            "activity_type <> 'tahdir' OR EXTRACT(DOW FROM read_on) IN (0,1,2,3)",
+            name="tahdir_sun_to_wed_only",
+        ),
         # ═══════════════════════════════════════════════════════════════
         # ث-٥ — طلبٌ معتمد له حدث، وحدثٌ لا يكون إلا لمعتمد.
         #
@@ -56,7 +63,11 @@ class ReadingSubmission(db.Model):
         ),
         # FR-020 — إرسال مزدوج بنقرتين. القيد في القاعدة لا في الواجهة:
         # التحقّق على الحدّ هو التحقّق الوحيد الموثوق.
-        UniqueConstraint("user_id", "read_on", "book_title", name="uq_reading_per_day"),
+        # وُسِّع في و-١١ بـ`activity_type`: قراءة وتحضير بنفس اليوم والعنوان
+        # برنامجان مختلفان لا تصادمًا.
+        UniqueConstraint(
+            "user_id", "read_on", "book_title", "activity_type", name="uq_reading_per_day"
+        ),
         # طابور المشرف: الأقدم أوّلًا، والمعلَّق وحده (م-٢).
         Index(
             "ix_reading_pending",
@@ -77,6 +88,12 @@ class ReadingSubmission(db.Model):
     read_on: Mapped[date] = mapped_column(Date, nullable=False)
     pages: Mapped[int] = mapped_column(Integer, nullable=False)
     book_title: Mapped[str] = mapped_column(String, nullable=False)
+
+    # نصّ مفتوح كـ`weights.activity_type` (`ADR-005`، و-١١): 'reading' القائم
+    # و'tahdir' الجديد. برنامج قراءة مستقبليّ صفٌّ لا هجرة.
+    activity_type: Mapped[str] = mapped_column(
+        String, nullable=False, default="reading", server_default="reading"
+    )
 
     status: Mapped[str] = mapped_column(String, nullable=False, default="pending")
     reviewer_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
