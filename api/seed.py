@@ -24,6 +24,7 @@ from decimal import Decimal
 from app import create_app
 from app.extensions import db
 from app.models import (
+    EntryDefault,
     MasteryMultiplier,
     Membership,
     Org,
@@ -72,6 +73,21 @@ WEIGHTS = [
     ("attendance", "3.0"),
 ]
 MULTIPLIERS = [("mastered", "1.5"), ("accepted", "1.0"), ("repeat", "0.5")]
+
+# و-٥ — مرادفات ترويسة استيراد راصد (نسخة اليوم بلا مرادفات بديلة بعد؛ صفٌّ
+# جديد في `aliases` يكفي عند تغيّر تسمية عمود مستقبلًا، بلا كود جديد).
+# أوزان الفئات الثلاث (`quran_hifz/thabat/muraja3a`) **مؤجَّلة عمدًا** —
+# نفس معاملة `tahdir` في و-١١، تُضاف لاحقًا عبر شاشة `/admin/weights` القائمة.
+ENTRY_DEFAULTS = [
+    ("quran_hifz_target", "مستهدف الحفظ"),
+    ("quran_hifz_achieved", "منجز الحفظ"),
+    ("quran_thabat_target", "المستهدف تثبيت"),
+    ("quran_thabat_achieved", "المنجز تثبيت"),
+    ("quran_muraja3a_target", "المستهدف مراجعة"),
+    ("quran_muraja3a_achieved", "المنجز مراجعة"),
+    ("attendance", "الحضور"),
+    ("tasmi3_days", "أيام التسميع"),
+]
 
 # أربعة طلاب يغطّون الحالات التي تكسر بطاقة الطيار عادةً.
 # الكمّيات تُختار لتقع على العتبات المقصودة **بعد** الحساب لا قبله:
@@ -190,6 +206,8 @@ def run():
             db.session.add(
                 MasteryMultiplier(version_id=version.id, grade=grade, multiplier=Decimal(mult))
             )
+        for activity_type, label in ENTRY_DEFAULTS:
+            db.session.add(EntryDefault(org_id=org.id, activity_type=activity_type, label=label))
         db.session.commit()
 
         for full_name, student_no, role, entries in PEOPLE:

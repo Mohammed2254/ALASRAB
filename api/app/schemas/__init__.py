@@ -30,6 +30,12 @@ from .fuel import (
     StationSchema,
 )
 from .me import DeckSchema, EventsSchema
+from .paste import (
+    PasteCommitResultSchema,
+    PastePreviewRowSchema,
+    PastePreviewSchema,
+    PasteRowResultSchema,
+)
 from .quran import (
     AddedQuranEntrySchema,
     AddQuranEntrySchema,
@@ -103,6 +109,10 @@ __all__ = [
     "MarkNoteReadSchema",
     "MyReadingsSchema",
     "OrgTahdirReportSchema",
+    "PasteCommitResultSchema",
+    "PastePreviewRowSchema",
+    "PastePreviewSchema",
+    "PasteRowResultSchema",
     "PilotsBoardSchema",
     "QueueSchema",
     "QuranEventsListSchema",

@@ -446,28 +446,67 @@
 > قراءة عامّة مُصدَّرة أصلًا وتُستدعى من مسارات أخرى (كـ`services/audit`)،
 > فالتكرار هنا لا مبرّر تقنيًّا له.
 
-**`POST /admin/paste/preview`** — **لا يكتب شيئًا**:
-```json
-→ { "text": "الاسم\tحفظ\tمراجعة\tحضور\n..." }
+> **⚠️ تصحيح (و-٥، ٢٠٢٦-٠٩-٠٨):** كانت هذه الوثيقة توثّق شكلًا افتراضيًّا
+> (`batch_token`، `matched/ambiguous/rejected/duplicates`، لصق نصّي) قبل
+> وصول عيّنة راصد الحقيقية. **العقد الفعليّ أدناه**، مُشتقّ من التنفيذ لا
+> مِن التخمين. الاسم `/admin/paste/*` تاريخيّ (`docs/slices/و-٥.md` §٢
+> قرار #١٠) — الوظيفة استيراد **ملفّ** لا لصق نصّ.
+
+**`POST /admin/paste/preview`** — `multipart/form-data` (لا JSON)،
+**لا يكتب شيئًا** (ق-١٩٢):
+```
+→ file=<تصدير راصد CSV> · occurred_on=2026-08-02
 ← 200 {
-  "batch_token": "…",
-  "matched":   [ { "row": 1, "user_id": 7, "activities": {...} } ],
-  "ambiguous": [ { "row": 2, "raw_name": "عبدالله السالم",
-                   "candidates": [ {"user_id": 12, "score": 0.91} ] } ],
-  "rejected":  [ { "row": 5, "reason": "لا مطابقة للاسم «...»" } ],
-  "duplicates": 3
+  "batch_id": "305d0f70…",
+  "duplicate_warning": false,
+  "duplicate_imported_at": null,
+  "rows": [
+    { "name": "سلمان الغفيص", "match_status": "matched", "user_id": 7,
+      "candidate_ids": [],
+      "percentages": {"hifz": "61.5", "thabat": "406.5", "muraja3a": "53.6"},
+      "attendance": "2", "tasmi3_days": "2" },
+    { "name": "عبدالله السالم", "match_status": "ambiguous", "user_id": null,
+      "candidate_ids": [12, 19], "percentages": {...}, "attendance": "0",
+      "tasmi3_days": "0" }
+  ]
+}
+```
+| الحقل | لماذا |
+|---|---|
+| `match_status` | `matched` (تطابق تامّ واحد) · `ambiguous` (أكثر من مرشّح — ق-١٨٠) · `unmatched` (لا مرشّح) — الأخيران **لا يُطبَّقان تلقائيًّا** (ق-١٧٩/١٨٠) |
+| `percentages` | محسوبة داخليًّا **دائمًا** (منجز/مستهدف×١٠٠، مقرَّبة للعرض فقط) — عمود «نسبة X» في الملفّ **مُتجاهَل** (ق-١٨٢) |
+| `duplicate_warning` | تحذير بمجموع اختباري (checksum) — **لا يمنع** الاعتماد (ق-١٩٠، قرار #٩) |
+| **الترويسة إلزامية بالعدد والترتيب** | عمودان متبادلان بصمت = أرقام معقولة الشكل خاطئة تمامًا (ق-١٧٥) |
+
+**`POST /admin/paste/commit`** — نفس حمولة المعاينة (الملفّ يُعاد إرساله،
+نمط `thresholds/preview`↔`thresholds` القائم — لا حالة خادم بين النداءين)
+زائدًا قرارات المشرف الاختيارية:
+```
+→ file=<نفس الملفّ> · occurred_on=2026-08-02
+  · name_resolutions={"عبدالله السالم": 12}          (JSON، اختياري)
+  · value_overrides={"سلمان الغفيص": {"hifz_achieved": "8"}}  (JSON، اختياري)
+← 201 {
+  "batch_id": "305d0f70…",
+  "events_created": 3,
+  "rows": [
+    { "name": "سلمان الغفيص", "status": "resolved", "user_id": 7,
+      "categories": {
+        "hifz": {"status": "created", "hours": "80.00"},
+        "thabat": {"status": "already_imported"},
+        "muraja3a": {"status": "skipped_zero", "hours": "0.00"},
+        "attendance": {"status": "created", "hours": "6.00"}
+      } },
+    { "name": "لا أحد بهذا الاسم", "status": "unmatched", "user_id": null }
+  ]
 }
 ```
 | القرار | لماذا |
 |---|---|
-| **مرحلتان (معاينة ← تنفيذ)** | الكتابة المباشرة تعني اكتشاف الخطأ بعد وقوعه |
-| `ambiguous` **لا تُطبَّق تلقائيًّا** | مطابقة قريبة تنسب ساعات لطالب خطأ ولا يكتشفها أحد |
-| `duplicates` معروض | يشرح للمشرف **لماذا** لم تُضَف صفوف — بلا شرح يظنّ أن النظام فشل |
-| **الترويسة إلزامية** | عمودان متبادلان بصمت = أرقام معقولة الشكل خاطئة تمامًا |
-| الحضور **عمود اختياري** | ف-١٠ — إن غاب فلا شيء يُكسر |
-
-**`POST /admin/paste/commit`** — معاملة واحدة · idempotent بـ`external_ref` ·
-**إعادة اللصق لا تضاعف** (اختبار إلزامي، م-١).
+| **`raw_rows` يُكتب دائمًا** لكل صفّ طالب حقيقيّ، بصرف النظر عن حالة المطابقة | FR-033 — الخام مرجعٌ لإعادة الحساب المستقبلية (FR-086) لا يعتمد نجاح المطابقة |
+| **لا التزام ذرّي على مستوى الدفعة كلّها** | إعادة استيراد مصحَّحة لبعض الطلاب فقط يجب أن تبقى ممكنة (`docs/slices/و-٥.md` §٢.١ب) — `already_imported` يُستبعَد صراحةً بدل رفض الدفعة |
+| `categories.<فئة>.status == 'skipped_zero'` | تحصيل صفريّ حقيقيّ **لا يُنشئ حدثًا** — نفس مبدأ `/admin/attendance` مع الغائب (ق-١٩٦) |
+| `value_overrides` تُسجَّل في `audit_log` (القيمة الأصلية والمعدَّلة معًا) | FR-037 نفسه — تعديلٌ بلا أثر تدقيق يبدو تلاعبًا |
+| تصحيح قيمة **مستوردة سابقًا** خطأ | ليس عبر إعادة الاستيراد — عبر `/admin/quran/entry`/`reverse` القائمين (ADR-004) |
 
 **`POST /admin/events/{id}/reverse`**
 ```json

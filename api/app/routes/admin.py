@@ -5,7 +5,9 @@
 `team_id` هنا ولا في أي استعلام إداري.
 """
 
-from datetime import timedelta
+import json
+from datetime import date, timedelta
+from decimal import Decimal
 
 from flask import g, request
 from flask.views import MethodView
@@ -37,6 +39,8 @@ from ..schemas import (
     MarkedNoteSchema,
     MarkNoteReadSchema,
     OrgTahdirReportSchema,
+    PasteCommitResultSchema,
+    PastePreviewSchema,
     QueueSchema,
     QuranEventsListSchema,
     RecordAttendanceSchema,
@@ -64,6 +68,7 @@ from ..services import auth as auth_service
 from ..services import engagement as engagement_service
 from ..services import entry as entry_service
 from ..services import fuel as fuel_service
+from ..services import paste as paste_service
 from ..services import quran as quran_service
 from ..services import reading as reading_service
 from ..services import reports as reports_service
@@ -129,6 +134,84 @@ class RejectReading(MethodView):
         except reading_service.ReadingError as exc:
             abort(exc.status, message=str(exc))
         return {"results": [result.__dict__]}
+
+
+# ═══ و-٥ — استيراد راصد (FR-030..034/040) ═══
+#
+# **الاسم تاريخيّ لا وظيفيّ** (`docs/slices/و-٥.md` §٢ قرار #١٠): الأصل كان
+# لصق نصّ قبل وصول عيّنة راصد الحقيقية، والفعليّ اليوم استيراد ملفّ CSV —
+# ولا داعي لكسر مسار موثَّق سلفًا لتغيّر تفصيل التنفيذ.
+#
+# **multipart/form-data لا JSON** — ملفّ حقيقيّ لا يلائم `@blp.arguments`
+# القائم على مخطّط JSON، فالحقول تُقرَأ مباشرةً من `request.files`/
+# `request.form` هنا، ومخطّط الردّ وحده مُعلَن.
+
+
+def _parse_occurred_on() -> date:
+    raw = request.form.get("occurred_on")
+    try:
+        return date.fromisoformat(raw)
+    except (TypeError, ValueError):
+        abort(422, message="تاريخ الوقوع مطلوب بصيغة YYYY-MM-DD.")
+
+
+def _read_uploaded_file() -> bytes:
+    uploaded = request.files.get("file")
+    if uploaded is None:
+        abort(422, message="الملفّ مطلوب.")
+    return uploaded.read()
+
+
+@blp.route("/admin/paste/preview")
+class PastePreview(MethodView):
+    @admin_required
+    @blp.response(200, PastePreviewSchema)
+    def post(self):
+        """**بلا كتابة** (ق-١٩٢) — لا `raw_rows`، لا حدث."""
+        file_bytes = _read_uploaded_file()
+        occurred_on = _parse_occurred_on()
+        try:
+            return paste_service.preview(_org(), file_bytes, occurred_on)
+        except paste_service.PasteError as exc:
+            abort(exc.status, message=str(exc))
+
+
+@blp.route("/admin/paste/commit")
+class PasteCommit(MethodView):
+    @admin_required
+    @blp.response(201, PasteCommitResultSchema)
+    def post(self):
+        """
+        raw_rows تُكتب دائمًا لكل صفّ طالب حقيقيّ، ثم إلحاق الجديد فقط —
+        ما سبق استيراده (نفس تاريخ/طالب/نشاط) يُستبعَد صراحةً بلا رفض الدفعة.
+        """
+        file_bytes = _read_uploaded_file()
+        occurred_on = _parse_occurred_on()
+        try:
+            name_resolutions = {
+                k: int(v)
+                for k, v in json.loads(request.form.get("name_resolutions") or "{}").items()
+            }
+            value_overrides = {
+                name: {field: Decimal(str(v)) for field, v in overrides.items()}
+                for name, overrides in json.loads(
+                    request.form.get("value_overrides") or "{}"
+                ).items()
+            }
+        except (ValueError, TypeError, AttributeError):
+            abort(422, message="صيغة قرارات المشرف (name_resolutions/value_overrides) غير صالحة.")
+
+        try:
+            return paste_service.commit(
+                _org(),
+                g.user.id,
+                file_bytes,
+                occurred_on,
+                name_resolutions,
+                value_overrides,
+            )
+        except paste_service.PasteError as exc:
+            abort(exc.status, message=str(exc))
 
 
 # ═══ و-١١ — تحضير القراءة (FR-090..093) ═══
@@ -508,8 +591,7 @@ class QuranStudents(MethodView):
         """قائمة اختيار الهدف — **على مستوى الجمعية** (§٧.٣)، بنية تحتية لـFR-036."""
         return {
             "students": [
-                {"id": u.id, "full_name": u.full_name}
-                for u in quran_service.roster(g.user.org_id)
+                {"id": u.id, "full_name": u.full_name} for u in quran_service.roster(g.user.org_id)
             ]
         }
 
