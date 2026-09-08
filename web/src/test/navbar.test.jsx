@@ -25,16 +25,16 @@ describe('NavBar — و-٩أ', () => {
     expect(screen.getAllByRole('button')).toHaveLength(9)
   })
 
-  it('مشرف (isAdmin=true) يرى الأزرار الثلاثة والعشرين كلّها', () => {
+  it('مشرف (isAdmin=true) يرى الأزرار الأربعة والعشرين كلّها', () => {
     render(<NavBar isAdmin={true} onNavigate={() => {}} />)
-    expect(screen.getAllByRole('button')).toHaveLength(23)
+    expect(screen.getAllByRole('button')).toHaveLength(24)
     for (const label of [
       'قراءاتي', 'محطة التزوّد', 'صدارة الأفراد', 'صدارة الأسراب', 'مشهد التشكيل',
       'سؤال اليوم', 'طيار الأسبوع', 'أرسل ملاحظة', 'تحضير القراءة',
       'طابور القراءات', 'التقرير الدوري',
       'الأوزان', 'العتبات', 'الأسراب', 'سجلّ التغييرات',
       'أنشطة الوقود', 'تقييم نشاط', 'الملاحظات', 'اختيار طيار الأسبوع', 'الحضور',
-      'التصحيح والتعديل القرآني', 'طابور تحضير القراءة', 'تقرير تحضير القراءة',
+      'التصحيح والتعديل القرآني', 'استيراد راصد', 'طابور تحضير القراءة', 'تقرير تحضير القراءة',
     ]) {
       expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
     }

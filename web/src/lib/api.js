@@ -47,6 +47,25 @@ async function request(path, { method = 'GET', body } = {}) {
   return data
 }
 
+/**
+ * كـ`request` — لكن `multipart/form-data` لملفّ حقيقيّ (و-٥). لا
+ * `Content-Type` يُضبَط يدويًّا: المتصفّح يبنيه بحدٍّ فاصل صحيح تلقائيًّا
+ * حين يُمرَّر `FormData` مباشرةً — ضبطه هنا يكسر الحدّ الفاصل صمتًا.
+ */
+async function requestForm(path, formData) {
+  let res
+  try {
+    res = await fetch(`${BASE}${path}`, { method: 'POST', body: formData })
+  } catch {
+    throw new ApiError(0, 'تعذّر الوصول إلى الخادم. تحقّق من اتصالك ثم أعد المحاولة.')
+  }
+  const data = await res.json().catch(() => null)
+  if (!res.ok) {
+    throw new ApiError(res.status, data?.message ?? 'حدث خطأ غير متوقّع.')
+  }
+  return data
+}
+
 export const api = {
   /*
     **بلا `org_id`.** العقد لا يحمله (`API.md` §٣): مراهقٌ لا يكتب رقم منظمة،
@@ -135,4 +154,22 @@ export const api = {
   // على معرّف الطلب بصرف النظر عن نوعه.
   adminTahdirEntry: (body) => request('/admin/tahdir/entry', { method: 'POST', body }),
   tahdirReport: () => request('/admin/tahdir/report'),
+
+  // و-٥ — استيراد راصد. الاسم تاريخيّ (`/admin/paste/*`) — الوظيفة استيراد
+  // ملفّ لا لصق نصّ (`docs/slices/و-٥.md` §٢ قرار #١٠).
+  pastePreview: (file, occurredOn) => {
+    const form = new FormData()
+    form.set('file', file)
+    form.set('occurred_on', occurredOn)
+    return requestForm('/admin/paste/preview', form)
+  },
+  pasteCommit: (file, occurredOn, nameResolutions) => {
+    const form = new FormData()
+    form.set('file', file)
+    form.set('occurred_on', occurredOn)
+    if (nameResolutions && Object.keys(nameResolutions).length) {
+      form.set('name_resolutions', JSON.stringify(nameResolutions))
+    }
+    return requestForm('/admin/paste/commit', form)
+  },
 }

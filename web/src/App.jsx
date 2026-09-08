@@ -7,6 +7,7 @@ import FuelActivities from './pages/admin/FuelActivities'
 import FuelAssess from './pages/admin/FuelAssess'
 import AdminNotes from './pages/admin/Notes'
 import QuranEdit from './pages/admin/QuranEdit'
+import RasdImport from './pages/admin/RasdImport'
 import ReadingQueue from './pages/admin/ReadingQueue'
 import Report from './pages/admin/Report'
 import TahdirQueue from './pages/admin/TahdirQueue'
@@ -58,6 +59,7 @@ const SCREENS = {
   adminWeekPilot: AdminWeekPilot,
   attendance: Attendance,
   quranEdit: QuranEdit,
+  rasdImport: RasdImport,
   tahdir: Tahdir,
   tahdirQueue: TahdirQueue,
   tahdirReport: TahdirReport,

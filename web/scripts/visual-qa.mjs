@@ -1,5 +1,5 @@
 /*
-  @covers ق-١٣, ق-١٤, ق-١٥, ق-١٦, ق-٢٦, ق-٣١, ق-٣٩, ق-٤٥, ق-٦٤, ق-٧٧, ق-٩٢, ق-١٠٦, ق-١٢٢, ق-١٣٨, ق-١٥٦, ق-١٧٣
+  @covers ق-١٣, ق-١٤, ق-١٥, ق-١٦, ق-٢٦, ق-٣١, ق-٣٩, ق-٤٥, ق-٦٤, ق-٧٧, ق-٩٢, ق-١٠٦, ق-١٢٢, ق-١٣٨, ق-١٥٦, ق-١٧٣, ق-١٩٤
 
   فحص بصري **مقيس** في متصفّح حقيقي — لا لقطات تُنظَر بالعين وحدها.
 
@@ -10,9 +10,24 @@
   الإطار **٣٧٥px بالضبط** كما ينصّ `SLICE-01` §٨: أصغر عرض شائع، وما يمرّ عليه
   يمرّ على ما فوقه.
 */
+import { writeFileSync } from 'node:fs'
+
 import { chromium } from 'playwright'
 
 const OUT = process.argv[2] ?? '/tmp'
+
+// و-٥ (ق-١٩٤) — ملفّ CSV مصغَّر لقياس شاشة استيراد راصد فعليًّا لا افتراضًا.
+// اسمٌ واحد لا يطابق أحدًا في بذرة التطوير عمدًا — يقيس حالة «غير مطابَق»
+// الفرعيّة الشرطية (صندوق اختيار الطالب)، بلا اعتماد فعليّ على القاعدة.
+const RASD_SAMPLE_PATH = `${OUT}/rasd-visual-qa-sample.csv`
+writeFileSync(
+  RASD_SAMPLE_PATH,
+  '﻿' +
+    'الطالب,أيام التسميع,الحضور,مستهدف الحفظ,منجز الحفظ,نسبة الحفظ,' +
+    'المستهدف تثبيت,المنجز تثبيت,نسبة التثبيت,المستهدف مراجعة,المنجز مراجعة,' +
+    'نسبة المراجعة,الإجمالي\n' +
+    'طالب قياس بصري,2,2,2,1,50%,2,1,50%,10,5,50%,50%\n',
+)
 const BASE = process.env.QA_BASE ?? 'http://localhost:5173'
 const VIEWPORT = { width: 375, height: 812 }
 const MIN_TOUCH = 44
@@ -331,6 +346,8 @@ for (const [studentNo, slug, label] of STUDENTS) {
       // و-١١ (ق-١٧٣) — طابور تحضير القراءة وتقريره الإداريّان.
       ['طابور تحضير القراءة', 'tahdir-queue'],
       ['تقرير تحضير القراءة', 'tahdir-report'],
+      // و-٥ (ق-١٩٤) — استيراد راصد.
+      ['استيراد راصد', 'rasd-import'],
     ]) {
       await page.getByRole('button', { name: label, exact: true }).click()
       await page.waitForSelector(`h1:has-text("${label}")`, { timeout: 8000 })
@@ -392,6 +409,22 @@ for (const [studentNo, slug, label] of STUDENTS) {
         }
       }
 
+      /*
+        و-٥ (ق-١٩٤) — نتيجة المعاينة حالةٌ فرعيّة شرطية (لا تُرسَم قبل رفع
+        ملفّ + تاريخ + ضغط «معاينة»، الدرس ١٩). تُقاس هنا برفع ملفّ CSV
+        مصغَّر فعليًّا، **بلا** ضغط «اعتماد الاستيراد» — قياسٌ لا فعل إداريّ
+        يكتب في القاعدة (نفس نمط عدم اعتماد طابور تحضير القراءة أعلاه).
+      */
+      if (slugPart === 'rasd-import') {
+        await page.setInputFiles('#rasd_file', RASD_SAMPLE_PATH)
+        await page.fill('#rasd_date', '2026-08-02')
+        await page.getByRole('button', { name: 'معاينة', exact: true }).click()
+        await page.waitForSelector('text=غير مطابَق', { timeout: 8000 })
+        await page.waitForTimeout(300)
+        await page.screenshot({ path: `${OUT}/admin-rasd-import-preview.png`, fullPage: true })
+        await audit(page, `${label} — نتيجة المعاينة`)
+      }
+
       await page.click('text=رجوع')
       await page.waitForSelector('text=بطاقة الطيار', { timeout: 8000 })
     }
@@ -423,5 +456,5 @@ if (failures.length) {
 }
 console.log(
   '\n✅ ق-١٣ · ق-١٤ · ق-١٥ · ق-١٦ · ق-٢٦ · ق-٣١ · ق-٣٩ · ق-٤٥ · ق-٦٤ · ق-٧٧ · ق-٩٢ · ق-١٠٦ · ق-١٢٢ · ' +
-    'ق-١٣٨ · ق-١٥٦ · ق-١٧٣ — مقيسة ومجتازة.',
+    'ق-١٣٨ · ق-١٥٦ · ق-١٧٣ · ق-١٩٤ — مقيسة ومجتازة.',
 )

@@ -1,5 +1,5 @@
 /*
-  @covers ق-١١, ق-٢٥, ق-٣٠, ق-٣٨, ق-٤٥, ق-٦٣, ق-٧٦, ق-٩١, ق-١٠٥, ق-١٢١, ق-١٣٧, ق-١٥٦, ق-١٧٣
+  @covers ق-١١, ق-٢٥, ق-٣٠, ق-٣٨, ق-٤٥, ق-٦٣, ق-٧٦, ق-٩١, ق-١٠٥, ق-١٢١, ق-١٣٧, ق-١٥٦, ق-١٧٣, ق-١٩٤
 
   فحص معماري: **الواجهة تعرض ولا تحسب** (`AGENTS.md` ٥).
 
@@ -73,6 +73,10 @@ const CONTRACT_CONSUMERS = [
   'src/pages/Tahdir.jsx',
   'src/pages/admin/TahdirQueue.jsx',
   'src/pages/admin/TahdirReport.jsx',
+  // و-٥: استيراد راصد — `percentages`/`match_status`/`categories[].hours`
+  // كلّها تصل محسوبة من `services/paste.py`؛ `match_status` نصٌّ يُقارَن
+  // بالمساواة فقط لا رقم مجال.
+  'src/pages/admin/RasdImport.jsx',
 ]
 const VISUAL_PRIMITIVES = ['src/components/Insignia.jsx', 'src/components/Placard.jsx']
 

@@ -38,6 +38,7 @@ const NAV_ITEMS = [
   { key: 'adminWeekPilot', label: 'اختيار طيار الأسبوع', tone: 'secondary', adminOnly: true },
   { key: 'attendance', label: 'الحضور', tone: 'secondary', adminOnly: true },
   { key: 'quranEdit', label: 'التصحيح والتعديل القرآني', tone: 'secondary', adminOnly: true },
+  { key: 'rasdImport', label: 'استيراد راصد', tone: 'secondary', adminOnly: true },
   { key: 'tahdirQueue', label: 'طابور تحضير القراءة', tone: 'secondary', adminOnly: true },
   { key: 'tahdirReport', label: 'تقرير تحضير القراءة', tone: 'secondary', adminOnly: true },
 ]
