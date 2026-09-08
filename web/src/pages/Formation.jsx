@@ -21,7 +21,7 @@ export default function Formation({ onDone }) {
 
   return (
     <div className="taxi-in mx-auto w-full max-w-[520px] px-4 pt-6 pb-10">
-      <header className="mb-5 flex items-baseline gap-3">
+      <header className="mb-1 flex items-baseline gap-3">
         <h1 className="font-display text-[26px] leading-none">مشهد التشكيل</h1>
         <span className="centerline" />
         <button
@@ -32,6 +32,9 @@ export default function Formation({ onDone }) {
           رجوع
         </button>
       </header>
+      <p className="mb-5 text-[13px] text-muted">
+        طول شريط كل طيّار يمثّل ساعات طيرانه — كلّما طال الشريط، زادت ساعاته.
+      </p>
 
       <div className="mb-4 flex gap-2">
         <button

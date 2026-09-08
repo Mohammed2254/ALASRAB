@@ -28,7 +28,7 @@ export function Row({ label, value, tone = 'default' }) {
   return (
     <div className="flex items-baseline gap-3 py-[7px]">
       <span className="shrink-0 text-[13px] text-muted">{label}</span>
-      <span className="centerline" style={{ opacity: 0.45 }} />
+      <span className="centerline" style={{ opacity: 0.22 }} />
       <span className={`shrink-0 text-[14px] ${tones[tone]}`}>{value}</span>
     </div>
   )
