@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 
 from app.extensions import db
 from app.models import Membership, Org, Team, User
-from app.services import ledger, standings
+from app.services import ledger, standings, week
 from app.services.auth import hash_pin
 
 ORIGIN = {"Origin": "http://localhost:5173"}
@@ -81,9 +81,16 @@ def test_pilots_board_counts_this_week_only(client, seeded):
 
 
 def test_week_start_matches_orgs_week_starts_on():
-    """@covers ق-٨٣ — نمط RULES.md §٩: week_starts_on=6 (الأحد) فعليًّا."""
+    """
+    @covers ق-٨٣, ق-٢٠٢
+
+    نمط `RULES.md` §٩.١أ: `week_starts_on=6` (الأحد) فعليًّا، وبداية اليوم
+    **بتوقيت المنظمة** لا منتصف ليل UTC. انتقلت الدالّة من
+    `standings._week_start` الخاصّة إلى `services/week.py` العامّة في و-١٢ —
+    فصار الاختبار يُصيب مالكها لا مستعيرها.
+    """
     org = Org(name="x", timezone="Asia/Riyadh", week_starts_on=6)
-    start = standings._week_start(org, NOW)
+    start = week.week_start_utc(org, NOW)
     local = start.astimezone(ZoneInfo("Asia/Riyadh"))
     assert local.weekday() == 6
     assert (local.hour, local.minute, local.second) == (0, 0, 0)

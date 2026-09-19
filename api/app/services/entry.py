@@ -26,7 +26,7 @@ from sqlalchemy.exc import IntegrityError
 from ..extensions import db
 from ..models import Membership, Org, PointEvent, User
 from ..rules.engine import Achievement, ruleset_at
-from . import ledger
+from . import ledger, week
 
 UNDO_WINDOW = timedelta(minutes=5)
 ACTIVITY = "attendance"
@@ -36,13 +36,6 @@ class AttendanceError(Exception):
     def __init__(self, message: str, status: int):
         super().__init__(message)
         self.status = status
-
-
-def _week_start(org: Org, now: datetime) -> date:
-    """نفس تعريف نافذة `standings.py`/`engagement.py` (نمط RULES.md §٩)."""
-    local_now = now.astimezone(ZoneInfo(org.timezone))
-    days_since_start = (local_now.weekday() - org.week_starts_on) % 7
-    return local_now.date() - timedelta(days=days_since_start)
 
 
 def _week_start_utc(org: Org, week_start: date) -> datetime:
@@ -82,7 +75,7 @@ def _week_events(org: Org, week_start: date) -> list[PointEvent]:
 def week_status(org: Org, now: datetime | None = None) -> dict:
     """حالة الأسبوع الحالي — للشاشة عند الفتح (FR-041)."""
     now = now or datetime.now(UTC)
-    week_start = _week_start(org, now)
+    week_start = week.week_start_local(org, now)
     events = _week_events(org, week_start)
     undo_until = None
     if events:
@@ -113,7 +106,7 @@ def record(
     حتميّ لكل طالب حاضر.
     """
     now = now or datetime.now(UTC)
-    week_start = _week_start(org, now)
+    week_start = week.week_start_local(org, now)
     occurred_at = _week_start_utc(org, week_start)
 
     roster = _roster(org.id)
@@ -162,7 +155,7 @@ def record(
 def undo(org: Org, actor_id: int, now: datetime | None = None) -> int:
     """تراجعٌ عن دفعة الأسبوع الحالي كاملةً، خلال ٥ دقائق من التسجيل (FR-042)."""
     now = now or datetime.now(UTC)
-    week_start = _week_start(org, now)
+    week_start = week.week_start_local(org, now)
     events = _week_events(org, week_start)
     if not events:
         raise AttendanceError("لا حضور مسجَّل لهذا الأسبوع لتتراجع عنه.", status=404)

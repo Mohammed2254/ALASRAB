@@ -17,7 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from ..extensions import db
 from ..models import Membership, Org, PointEvent, ReadingSubmission, User
 from ..rules.engine import Achievement, ruleset_at
-from . import audit, ledger
+from . import audit, ledger, week
 
 ACTIVITY = "reading"
 KIND = "reading"
@@ -334,18 +334,6 @@ def reject(org: Org, submission_id: int, reviewer_id: int, reason: str) -> Revie
 _ARABIC_WEEKDAY = ["الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"]
 
 
-def _tahdir_week_start(org: Org, now: datetime) -> date:
-    """
-    بداية الأسبوع (الأحد) بتوقيت المنظمة — **نفس تعريف نافذة**
-    `entry.py`/`standings.py`/`engagement.py` حرفيًّا، مكرَّرة عمدًا لا
-    مستوردة (`RULES.md` §٩، نمط `_local_start_of_day_utc` القائم في أربع
-    خدمات أخرى).
-    """
-    local_now = now.astimezone(ZoneInfo(org.timezone))
-    days_since_start = (local_now.weekday() - org.week_starts_on) % 7
-    return local_now.date() - timedelta(days=days_since_start)
-
-
 def _tahdir_rows_this_week(
     org: Org, week_start: date, user_id: int | None = None
 ) -> list[tuple[ReadingSubmission, str]]:
@@ -399,7 +387,7 @@ def _summarize_week(week_start: date, pages_by_day: dict[date, int]) -> dict:
 
 def weekly_report(org: Org, user_id: int, now: datetime | None = None) -> dict:
     """تحضير طالبٍ واحد لأسبوعه الحاليّ (FR-093 · `GET /me/tahdir`)."""
-    week_start = _tahdir_week_start(org, now or datetime.now(UTC))
+    week_start = week.week_start_local(org, now or datetime.now(UTC))
     rows = _tahdir_rows_this_week(org, week_start, user_id)
     pages_by_day: dict[date, int] = {}
     for submission, _name in rows:
@@ -416,7 +404,7 @@ def org_weekly_report(org: Org, now: datetime | None = None) -> dict:
     **يشمل من لم يُرسل شيئًا بعد** (٠٪ · متعثّر) — تقريرٌ يستبعد الغائبين
     يخفي بالضبط من يحتاج المشرف رؤيته.
     """
-    week_start = _tahdir_week_start(org, now or datetime.now(UTC))
+    week_start = week.week_start_local(org, now or datetime.now(UTC))
     # نفس فلترة `services/entry._roster`/`services/quran.roster`، مكرَّرة
     # عمدًا لا مستوردة (نمط `_local_start_of_day_utc` القائم).
     roster = db.session.execute(

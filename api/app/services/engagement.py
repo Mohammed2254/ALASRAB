@@ -8,14 +8,16 @@
 
 **بلا مسار إنشاء إداريّ للسؤال** — فجوة نطاق مفتوحة صراحةً (`SCOPE.md` ط-٦).
 
-**نافذة أسبوع `pilot_of_week` مكرَّرة عمدًا لا مستوردة من `standings.py`** —
-نمط `RULES.md` §٩ («ثلاثة أسطر متشابهة أفضل من تجريد سابق لأوانه»): الدالّة
-هناك خاصّة (`_standings._week_start`)، واستيرادها يخلق ترابطًا بين وحدتين
-لخدمة صيغة واحدة صغيرة.
+**نافذة أسبوع `pilot_of_week` من `services/week.py`** (`RULES.md` §٩.١أ).
+كانت مكرَّرة هنا عمدًا، واعتراضُها القديم كان صحيحًا: الدالّة في `standings.py`
+**خاصّة** (`_week_start`)، واستيراد خاصٍّ من خدمة شقيقة ترابطٌ لا إعادة استعمال.
+و-١٢ أزالت الاعتراض لا القاعدة: صار للنافذة **وحدةٌ مخصَّصة بواجهة عامّة**، فلا
+خدمة تستعير من أخرى — وصيغةٌ تقرأ `week_starts_on` من صفٍّ قابل للتغيير ليست
+«ثلاثة أسطر متشابهة» بل سياسةً يجب أن تتّفق عبر الشاشات.
 """
 
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -24,7 +26,7 @@ from sqlalchemy.exc import IntegrityError
 
 from ..extensions import db
 from ..models import Answer, DailyQuestion, Note, Org, PilotOfWeek, User
-from . import ledger
+from . import ledger, week
 
 ZERO = Decimal("0.00")
 
@@ -167,16 +169,9 @@ def mark_note_read(org_id: int, note_id: int, now: datetime | None = None) -> No
     return note
 
 
-def _week_start(org: Org, now: datetime) -> date:
-    """بداية الأسبوع الحالي بتوقيت المنظمة — نفس تعريف `standings.py` (نمط RULES.md §٩)."""
-    local_now = now.astimezone(ZoneInfo(org.timezone))
-    days_since_start = (local_now.weekday() - org.week_starts_on) % 7
-    return local_now.date() - timedelta(days=days_since_start)
-
-
 def week_pilot(org: Org, now: datetime | None = None) -> PilotOfWeek | None:
     """طيار الأسبوع الحالي — FR-062. `None` إن لم يُختَر بعد (حالة مصمَّمة)."""
-    week_start = _week_start(org, now or datetime.now(UTC))
+    week_start = week.week_start_local(org, now or datetime.now(UTC))
     return db.session.scalar(
         select(PilotOfWeek).where(
             PilotOfWeek.org_id == org.id, PilotOfWeek.week_start == week_start
@@ -202,7 +197,7 @@ def choose_week_pilot(
     now = now or datetime.now(UTC)
     row = PilotOfWeek(
         org_id=org.id,
-        week_start=_week_start(org, now),
+        week_start=week.week_start_local(org, now),
         user_id=user_id,
         reason=reason,
         actor_id=actor_id,

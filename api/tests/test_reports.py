@@ -108,7 +108,16 @@ def test_report_lists_grounded_by_name_for_admin(client, seeded):
 
 
 def test_report_window_is_bounded(client, seeded):
-    """@covers ق-٣٧ — حدٌّ أعلى للنافذة: تقريرٌ بلا حدّ يمسح السجلّ كلّه على كل طلب."""
+    """
+    @covers ق-٣٧, ق-٢٠٤
+
+    حدٌّ أعلى للنافذة: تقريرٌ بلا حدّ يمسح السجلّ كلّه على كل طلب.
+
+    **وهو أيضًا حارس استقلال النافذتين** (`RULES.md` §٩.١): هذه نافذة «آخر N
+    يومًا» متدحرجة بمعامل، لا «أسبوع المنظّمة». و-١٢ وحّدت الثانية في
+    `services/week.py` ولم تمسّ هذه — و«توحيدٌ» يجعل التقرير أسبوعيًّا يُسقط هذا
+    الاختبار، وهو المقصود: العقد مُختبَر لا مفترَض.
+    """
     _make_admin(seeded["users"]["1001"])
     _login(client)
     assert client.get(f"{REPORT}?days=9999").json["window"]["days"] == 90

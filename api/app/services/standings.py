@@ -4,8 +4,8 @@
 **قراءة خالصة، بلا `ledger` وبلا جدول جديد** — كل رقم مشتقّ من `point_events`
 كبقية الوحدة (`reports.py`، `deck.py`)، ونمط استعلامها مأخوذ منهما حرفيًّا.
 
-**نافذة الأسبوع الحالي** (`orgs.week_starts_on`، نمط `RULES.md` §٩ المكرَّر
-عمدًا لا المُجرَّد) تخصّ `/boards/pilots` و`/boards/teams` وحدهما — نصّ ط-٧
+**نافذة الأسبوع الحالي** من `services/week.py` (`RULES.md` §٩.١أ — كانت
+مكرَّرة هنا عمدًا قبل و-١٢) تخصّ `/boards/pilots` و`/boards/teams` وحدهما — نصّ ط-٧
 الحرفي («نافذة الأسبوع من الأحد»). `/boards/formation` **تراكميّ** بقصد:
 ط-٨ لا يذكر «الأسبوع»، والمشهد سرديّ لا دوريّ (`API.md` §٥).
 
@@ -14,27 +14,16 @@
 """
 
 from dataclasses import dataclass
-from datetime import UTC, datetime, time, timedelta
+from datetime import UTC, datetime
 from decimal import Decimal
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import Select, func, select
 
 from ..extensions import db
 from ..models import Membership, Org, PointEvent, Team, User
-from . import readiness
+from . import readiness, week
 
 CENT = Decimal("0.01")
-
-
-def _week_start(org: Org, now: datetime) -> datetime:
-    """بداية الأسبوع الحالي بتوقيت المنظمة، محوَّلة إلى UTC (نمط RULES.md §٩)."""
-    local_now = now.astimezone(ZoneInfo(org.timezone))
-    days_since_start = (local_now.weekday() - org.week_starts_on) % 7
-    local_start = datetime.combine(
-        local_now.date() - timedelta(days=days_since_start), time.min, tzinfo=ZoneInfo(org.timezone)
-    )
-    return local_start.astimezone(UTC)
 
 
 def _hours_subquery(org_id: int, since: datetime | None) -> Select:
@@ -52,7 +41,7 @@ def _hours_subquery(org_id: int, since: datetime | None) -> Select:
 
 def pilots_board(org: Org, now: datetime | None = None) -> list[dict]:
     """FR-050 — صدارة الأفراد بساعات الأسبوع الحالي، تنازليًّا."""
-    since = _week_start(org, now or datetime.now(UTC))
+    since = week.week_start_utc(org, now or datetime.now(UTC))
     window = _hours_subquery(org.id, since)
     rows = db.session.execute(
         select(User.id, User.full_name, func.coalesce(window.c.hours, 0).label("hours"))
@@ -71,7 +60,7 @@ def pilots_board(org: Org, now: datetime | None = None) -> list[dict]:
 def teams_board(org: Org, now: datetime | None = None) -> list[dict]:
     """FR-051/FR-052 — صدارة الأسراب بالمعدّل، فكّ التعادل بـ`code` تصاعديًّا."""
     now = now or datetime.now(UTC)
-    since = _week_start(org, now)
+    since = week.week_start_utc(org, now)
     window = _hours_subquery(org.id, since)
     rows = db.session.execute(
         select(

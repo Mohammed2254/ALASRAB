@@ -24,7 +24,9 @@ from decimal import Decimal
 from app import create_app
 from app.extensions import db
 from app.models import (
+    DailyQuestion,
     EntryDefault,
+    FuelCriterion,
     MasteryMultiplier,
     Membership,
     Org,
@@ -36,11 +38,17 @@ from app.models import (
     WeightVersion,
 )
 from app.rules.engine import Achievement, ruleset_at
-from app.services import ledger, reading
+from app.services import engagement, fuel, ledger, reading, week
 from app.services.auth import hash_pin
 
 TABLES = [
     "reading_submissions",
+    "audit_log",
+    "answers",
+    "daily_questions",
+    "notes",
+    "pilot_of_week",
+    "raw_rows",
     "fuel_scores",
     "fuel_assessments",
     "fuel_criteria",
@@ -66,13 +74,54 @@ RANKS = [
     ("commander", "قائد", 4, 1500),
 ]
 
+# و-١٢: الأوزان الأربعة الأولى كانت وحدها مبذورة، والأربعة الباقية «مؤجَّلة
+# عمدًا» — فكان أثرُ التأجيل أن **اعتماد أي تحضير يسقط بـ٤٢٢** («لا وزن سارٍ»)
+# وأن استيراد راصد يتخطّى فئات القرآن الثلاث بصمت، على كل قاعدة تطوير نظيفة.
+# التأجيل كان لانتظار معايرة حقيقية، والمعايرة لا تمنع وجود قيمة أوّلية تُعاد
+# (ف-٨) — فغيابُها عطّل شاشات مبنيّة، ووجودُها لا يقرّر شيئًا نهائيًّا.
 WEIGHTS = [
     ("memorize", "2.5"),
     ("review", "0.6"),
     ("reading", "0.15"),
     ("attendance", "3.0"),
+    ("tahdir", "2.0"),
+    ("quran_hifz", "0.2"),
+    ("quran_thabat", "0.15"),
+    ("quran_muraja3a", "0.1"),
 ]
 MULTIPLIERS = [("mastered", "1.5"), ("accepted", "1.0"), ("repeat", "0.5")]
+
+# نشاط وقود واحد ببنوده — أوزانه تجمع ١٠٠٪ بالضبط (ث-١٠أ، وتُفحص في الخدمة
+# وفي القاعدة). بدونه تُفتح «محطة التزوّد» وشاشتا الوقود على فراغ، فلا يقيس
+# القياس البصري شيئًا (الدرس ٣).
+FUEL_ACTIVITY = {
+    "key": "ashaa",
+    "name": "العشاء",
+    "litres_full": Decimal("120.00"),
+    "criteria": [
+        {"key": "taste", "name": "الطعم", "weight_pct": Decimal("35")},
+        {"key": "creativity", "name": "الإبداع", "weight_pct": Decimal("20")},
+        {"key": "presentation", "name": "الشكل", "weight_pct": Decimal("18")},
+        {"key": "announcement", "name": "الإعلان", "weight_pct": Decimal("17")},
+        {"key": "cleanup", "name": "النظافة وتغسيل الأواني", "weight_pct": Decimal("10")},
+    ],
+}
+# درجاتٌ لا تبلغ الكامل — فتُرى نسبةٌ حقيقية على العدّاد لا ١٠٠٪ مسطّحة.
+FUEL_SCORES = ["27", "13", "12", "11", "8"]
+
+# سؤال اليوم: **بلا مسار إنشاء إداريّ** (`SCOPE.md` ط-٦ فجوة معلَنة)، فالإدراج
+# المباشر هنا هو المسار المصمَّم لا تجاوزًا له — بخلاف الساعات التي تمرّ بالمحرّك.
+QUESTION = {
+    "prompt": "كم عدد أجزاء القرآن الكريم؟",
+    "choices": [
+        {"id": 1, "text": "عشرون جزءًا"},
+        {"id": 2, "text": "ثلاثون جزءًا"},
+        {"id": 3, "text": "مئة وأربعة عشر جزءًا"},
+    ],
+    "correct_id": 2,
+    "note": "القرآن ثلاثون جزءًا، وتقسيمه إليها اصطلاحٌ للتيسير على الحافظ لا توقيف.",
+    "reward_hours": Decimal("1.00"),
+}
 
 # و-٥ — مرادفات ترويسة استيراد راصد (نسخة اليوم بلا مرادفات بديلة بعد؛ صفٌّ
 # جديد في `aliases` يكفي عند تغيّر تسمية عمود مستقبلًا، بلا كود جديد).
@@ -152,6 +201,75 @@ def _seed_readings(org, user) -> None:
     reading.reject(org, rejected.id, reviewer_id=1, reason="الكتاب خارج القائمة المعتمدة")
 
 
+def _seed_tahdir(org, user) -> None:
+    """
+    تحضيرات داخل نافذة الأحد–الأربعاء الحالية، واحدٌ منها معتمَد.
+
+    **تمرّ بـ`reading.submit` لا بإدراج مباشر** — فيُفحص يوم الأسبوع والحدّ
+    الأدنى (ث-١٨ وفحص الخدمة) على البذرة نفسها. وبذرةٌ تتجاوزهما تُنتج صفوفًا
+    لا يستطيع المنتج إنتاجها.
+    """
+    if user is None:
+        return
+    week_start = week.week_start_local(org, datetime.now(UTC))
+    first = reading.submit(org, user.id, week_start, 9, "قصص الأنبياء", activity_type="tahdir")
+    reading.approve(org, [first.id], reviewer_id=1)
+    # الثاني يبقى معلَّقًا — فيُفتح طابور المشرف على بندٍ حقيقيّ لا على فراغ.
+    reading.submit(
+        org, user.id, week_start + timedelta(days=1), 8, "رياض الصالحين", activity_type="tahdir"
+    )
+
+
+def _seed_fuel(org, team, actor_id: int) -> None:
+    """نشاط وقود مُقيَّم — فتُفتح محطة التزوّد على رصيد مشتقّ من بنود موزونة."""
+    activity = fuel.create_activity(
+        org,
+        key=FUEL_ACTIVITY["key"],
+        name=FUEL_ACTIVITY["name"],
+        litres_full=FUEL_ACTIVITY["litres_full"],
+        criteria=FUEL_ACTIVITY["criteria"],
+    )
+    criteria = db.session.scalars(
+        db.select(FuelCriterion)
+        .where(FuelCriterion.activity_id == activity.id)
+        .order_by(FuelCriterion.position)
+    ).all()
+    fuel.assess(
+        org,
+        team_id=team.id,
+        activity_id=activity.id,
+        occurred_on=reading.local_today(org),
+        scores={c.id: Decimal(s) for c, s in zip(criteria, FUEL_SCORES, strict=True)},
+        note="تقييم أوّلي مبذور — يُعاد بعد بيانات حقيقية.",
+        actor_id=actor_id,
+    )
+
+
+def _seed_engagement(org, actor_id: int, pilot) -> None:
+    """سؤال اليوم وملاحظة مجهولة وطيار أسبوع — شاشات و-٩ بلا فراغ."""
+    db.session.add(
+        DailyQuestion(
+            org_id=org.id,
+            day=reading.local_today(org),
+            prompt=QUESTION["prompt"],
+            choices=QUESTION["choices"],
+            correct_id=QUESTION["correct_id"],
+            note=QUESTION["note"],
+            reward_hours=QUESTION["reward_hours"],
+        )
+    )
+    db.session.commit()
+
+    engagement.submit_note(org, "ما ظهر لي زرّ تحضير القراءة يوم الخميس — هل هذا مقصود؟")
+    if pilot is not None:
+        engagement.choose_week_pilot(
+            org,
+            actor_id=actor_id,
+            user_id=pilot.id,
+            reason="أعلى التزامًا بالتحضير هذا الأسبوع، وساعد اثنين من سربه على اللحاق.",
+        )
+
+
 def _seed_correction(user) -> None:
     """
     تصحيحٌ واحد — فيُفتح سجلّ الساعات على السلوك الذي يوجبه ط-٤ لا على أحداث
@@ -221,8 +339,19 @@ def run():
             _award(org.id, user.id, student_no, entries)
 
         # بعد إنشاء الطلاب: البذرة تحتاج مستخدمًا قائمًا.
-        _seed_readings(org, db.session.scalar(db.select(User).where(User.student_no == "1002")))
+        student = db.session.scalar(db.select(User).where(User.student_no == "1002"))
+        _seed_readings(org, student)
+        _seed_tahdir(org, student)
         _seed_correction(db.session.scalar(db.select(User).where(User.student_no == "1004")))
+
+        # المشرف (`1001`) فاعلُ كل ما يوجب نسبةً — لا معرّف مكتوب رقمًا.
+        admin = db.session.scalar(db.select(User).where(User.student_no == "1001"))
+        _seed_fuel(org, team, actor_id=admin.id)
+        _seed_engagement(
+            org,
+            actor_id=admin.id,
+            pilot=db.session.scalar(db.select(User).where(User.student_no == "1003")),
+        )
 
         print(f"✅ بذرة: منظمة {org.id} · سرب {team.id} · {len(PEOPLE)} طلاب · رمز الجميع 1234")
         for full_name, student_no, _, _ in PEOPLE:

@@ -7,15 +7,16 @@
 عند الحاجة، وغيابه عمدًا هو أساس إثبات ق-١٣٦.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, time, timedelta
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 import pytest
 from sqlalchemy import func, select
 
 from app.extensions import db
 from app.models import Membership, Org, PointEvent, Weight
-from app.services import entry, ledger
+from app.services import entry, ledger, week
 
 ORIGIN = {"Origin": "http://localhost:5173"}
 ATTENDANCE = "/api/admin/attendance"
@@ -124,7 +125,7 @@ def test_record_is_all_or_nothing_on_partial_conflict(client, seeded):
     _add_attendance_weight(seeded)
     org = db.session.get(Org, seeded["org_id"])
     now = datetime.now(UTC)
-    week_start = entry._week_start(org, now)
+    week_start = week.week_start_local(org, now)
     ledger.append(
         [
             ledger.EventSpec(
@@ -169,14 +170,31 @@ def test_undo_within_window_reverses_all_events(client, seeded):
 
 
 def test_undo_after_window_is_409(client, seeded):
-    """@covers ق-١٣٢"""
+    """
+    @covers ق-١٣٢, ق-٢١٠
+
+    **زمنٌ مثبَّت ظهرَ الغد بتوقيت المنظمة، لا `datetime.now(UTC)` عاريًا.**
+
+    كان هذا الاختبار هشًّا زمنيًّا (`HANDOFF.md` §١٢): يسقط بـ`404` بدل `409`
+    في نافذة دقائق حول عبور منتصف ليل `week_starts_on` — لأن `record` يحسب
+    أسبوعه من `now` و`undo` من `now + 6min`، فإن عبر العبورُ بينهما صار
+    الأسبوعان مختلفَين ولم يجد `undo` أحداثًا فأعطى «لا حضور مسجَّل».
+
+    والظهرُ يحلّها من الجهتين معًا: بعيدٌ عن منتصف الليل بـ١٢ ساعة فإضافة ستّ
+    دقائق لا تعبر حدّ الأسبوع، **والغدُ** يجعل الفارق عن `created_at` الحقيقيّ
+    (زمن الإدراج، وهو ما يقيسه `undo` فعلًا لا `occurred_at`) أكبر من المهلة
+    بيقين. وتثبيتُه في الماضي كان سيجعل الفارق **سالبًا** فلا يقع ٤٠٩ أصلًا.
+    """
     _add_attendance_weight(seeded)
     org = db.session.get(Org, seeded["org_id"])
-    now = datetime.now(UTC)
-    entry.record(org, seeded["users"]["1001"], [], now=now)
+    tz = ZoneInfo(org.timezone)
+    noon_tomorrow = datetime.combine(
+        datetime.now(tz).date() + timedelta(days=1), time(12, 0), tzinfo=tz
+    ).astimezone(UTC)
+    entry.record(org, seeded["users"]["1001"], [], now=noon_tomorrow)
 
     with pytest.raises(entry.AttendanceError) as exc_info:
-        entry.undo(org, seeded["users"]["1001"], now=now + timedelta(minutes=6))
+        entry.undo(org, seeded["users"]["1001"], now=noon_tomorrow + timedelta(minutes=6))
     assert exc_info.value.status == 409
 
 
