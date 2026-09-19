@@ -1,15 +1,26 @@
 """
-تركيبات الاختبار: بذرة نظيفة لكل اختبار.
+تركيبات الاختبار: مخطّط من الهجرات، وبيانات نظيفة لكل اختبار.
 
-TRUNCATE ... RESTART IDENTITY يجعل المعرّفات حتمية، فيمكن كتابة توقّعات صريحة
-بدل تمرير معرّفات مجهولة. وهو **لا يُطلق مشغّل ث-٢** — مُختبَرًا في
+**المخطّط يُبنى من الهجرات وحدها** (`ARCHITECTURE.md:257`) مرّةً واحدة لكل جلسة
+اختبار — لا بـ`create_all`، ولا بنسخٍ يدويّ لمشغّلات الهجرات. قبل و-١٢ كان
+العكس: `create_all` + ~١٢٠ سطر SQL منسوخًا لخمسة مشغّلات، فكان **قيدٌ يعيش في
+هجرة ولا يُنسَخ لا يراه أي اختبار**. والقياس الذي أثبت الحاجة (و-١٢ §١.١):
+الأعمدة ١٥٧ ↔ ١٥٧ متطابقة وقيود `CHECK` ١٧ ↔ ١٧ متطابقة، **والمشغّلات ٥ ↔ ٠**.
+
+وعزل الاختبارات يبقى على البيانات لا المخطّط: `TRUNCATE ... RESTART IDENTITY`
+يجعل المعرّفات حتمية، فتُكتب توقّعات صريحة بدل تمرير معرّفات مجهولة. وهو **لا
+يُطلق مشغّل ث-٢** — مُختبَرًا في
 `test_invariants.py::test_truncate_bypasses_append_only_trigger`.
+
+@covers ق-١٩٧, ق-٢٠٠
 """
 
 from datetime import UTC, datetime
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
+from flask_migrate import upgrade as alembic_upgrade
 
 from app import create_app
 from app.config import TestConfig
@@ -26,7 +37,11 @@ from app.models import (
 )
 from app.services.auth import hash_pin
 
+MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / "migrations"
+
 TABLES = [
+    "reading_submissions",
+    "audit_log",
     "raw_rows",
     "entry_defaults",
     "fuel_scores",
@@ -59,132 +74,47 @@ RANKS = [
 ]
 
 
+@pytest.fixture(scope="session")
+def _schema():
+    """
+    المخطّط من `alembic upgrade head` من الصفر — **مرّة واحدة لكل جلسة**.
+
+    ما كان غاليًا في النسخة القديمة هو `create_all` + خمس كتل مشغّلات لكل اختبار
+    من ٣٥٦، لا `create_app`. فالمخطّط وحده يُرفَع إلى نطاق الجلسة، **ويبقى
+    التطبيق دالّيًّا** (أدناه) — والفصل ليس تحسينًا للأداء بل شرطُ صحّة:
+    `test_authorization.py` يسجّل مسارات اختبارية على التطبيق داخل الاختبار،
+    وFlask يرفض التسجيل بعد أوّل طلب، فتطبيقٌ واحد للجلسة يكسر ستّة اختبارات
+    (مُقاسًا: وقع فعلًا قبل هذا الفصل).
+
+    وإسقاطُ `public` ثم بناؤه من الصفر يجعل **كل تشغيلة جلسة إثباتًا لـق-٢٠٠**:
+    سلسلة هجرات لا تعمل إلا تراكميًّا على قاعدة قائمة تسقط هنا صاخبةً، لا يوم النشر.
+    """
+    application = create_app(TestConfig)
+
+    # حارسٌ قبل الإسقاط: اسم القاعدة يجب أن يُعلن أنها اختبارية. الكلفة سطران،
+    # والبديل أن خطأً في `TEST_DATABASE_URL` يمحو قاعدة تطوير أو إنتاج بلا سؤال.
+    uri = application.config["SQLALCHEMY_DATABASE_URI"]
+    db_name = uri.rsplit("/", 1)[-1].split("?")[0]
+    if "test" not in db_name:
+        raise RuntimeError(
+            f"رفض الإسقاط: قاعدة الاختبار «{db_name}» لا يحمل اسمها كلمة test. "
+            "اضبط TEST_DATABASE_URL على قاعدة اختبارية صريحة."
+        )
+
+    with application.app_context():
+        db.session.execute(db.text("DROP SCHEMA public CASCADE"))
+        db.session.execute(db.text("CREATE SCHEMA public"))
+        db.session.commit()
+        db.session.remove()
+        alembic_upgrade(directory=str(MIGRATIONS_DIR))
+        db.session.remove()
+
+
 @pytest.fixture
-def app():
+def app(_schema):
+    """تطبيقٌ جديد لكل اختبار على مخطّطٍ مبنيّ مرّة — نفس دلالة ما قبل و-١٢."""
     application = create_app(TestConfig)
     with application.app_context():
-        db.create_all()
-        db.session.execute(
-            db.text("""
-            CREATE OR REPLACE FUNCTION point_events_append_only() RETURNS trigger AS $$
-            BEGIN RAISE EXCEPTION 'point_events سجلّ إلحاق فقط'; END $$ LANGUAGE plpgsql;
-        """)
-        )
-        db.session.execute(
-            db.text("DROP TRIGGER IF EXISTS point_events_no_mutation ON point_events")
-        )
-        db.session.execute(
-            db.text("""
-            CREATE TRIGGER point_events_no_mutation BEFORE UPDATE OR DELETE ON point_events
-            FOR EACH ROW EXECUTE FUNCTION point_events_append_only();
-        """)
-        )
-
-        # و-٧ · ث-١٣أ — سُلّم متّسق: tier أعلى ⇔ at_hours أعلى، على كل صفوف المنظمة.
-        db.session.execute(
-            db.text("""
-            CREATE OR REPLACE FUNCTION rank_thresholds_ladder_consistent() RETURNS trigger AS $$
-            DECLARE bad_tier SMALLINT;
-            BEGIN
-              SELECT tier INTO bad_tier FROM (
-                SELECT tier, at_hours, LAG(at_hours) OVER (ORDER BY tier) AS prev_hours
-                FROM rank_thresholds WHERE org_id = COALESCE(NEW.org_id, OLD.org_id)
-              ) ladder WHERE prev_hours IS NOT NULL AND at_hours <= prev_hours LIMIT 1;
-              IF bad_tier IS NOT NULL THEN
-                RAISE EXCEPTION 'سُلّم الرتب غير متّسق: تدرّج tier يجب أن يوافقه تدرّج at_hours';
-              END IF;
-              RETURN NULL;
-            END $$ LANGUAGE plpgsql;
-        """)
-        )
-        db.session.execute(
-            db.text("DROP TRIGGER IF EXISTS rank_thresholds_ladder_consistent ON rank_thresholds")
-        )
-        db.session.execute(
-            db.text("""
-            CREATE TRIGGER rank_thresholds_ladder_consistent
-              AFTER INSERT OR UPDATE OR DELETE ON rank_thresholds
-              FOR EACH ROW EXECUTE FUNCTION rank_thresholds_ladder_consistent();
-        """)
-        )
-
-        # و-٧ · ث-١٣ب — الرتبة المعروضة لا تنخفض: دفاعٌ ثانٍ خلف الخدمة.
-        db.session.execute(
-            db.text("""
-            CREATE OR REPLACE FUNCTION users_tier_never_decreases() RETURNS trigger AS $$
-            BEGIN
-              IF NEW.highest_achieved_tier < OLD.highest_achieved_tier THEN
-                RAISE EXCEPTION 'الرتبة المكتسَبة لا تنخفض: % أقلّ من %',
-                  NEW.highest_achieved_tier, OLD.highest_achieved_tier;
-              END IF;
-              RETURN NEW;
-            END $$ LANGUAGE plpgsql;
-        """)
-        )
-        db.session.execute(db.text("DROP TRIGGER IF EXISTS users_tier_never_decreases ON users"))
-        db.session.execute(
-            db.text("""
-            CREATE TRIGGER users_tier_never_decreases BEFORE UPDATE ON users
-            FOR EACH ROW EXECUTE FUNCTION users_tier_never_decreases();
-        """)
-        )
-
-        # و-٨ · ث-١٠أ — أوزان بنود نشاط واحد تجمع ١٠٠٪. CONSTRAINT TRIGGER
-        # مؤجَّل لنهاية المعاملة لا فوريّ: إنشاء نشاط يُدرج بنوده صفًّا صفًّا،
-        # وفحصًا فوريًّا يرفض حتى الحالة الصحيحة قبل اكتمال كل الصفوف — أُثبت
-        # هذا عمليًّا على القاعدة الحقيقية قبل كتابة هذا السطر.
-        db.session.execute(
-            db.text("""
-            CREATE OR REPLACE FUNCTION fuel_criteria_sum_100() RETURNS trigger AS $$
-            DECLARE total NUMERIC;
-            BEGIN
-              SELECT COALESCE(SUM(weight_pct), 0) INTO total FROM fuel_criteria
-              WHERE activity_id = COALESCE(NEW.activity_id, OLD.activity_id);
-              IF total <> 100 THEN
-                RAISE EXCEPTION 'أوزان بنود النشاط لا تجمع 100%% — المجموع %', total;
-              END IF;
-              RETURN NULL;
-            END $$ LANGUAGE plpgsql;
-        """)
-        )
-        db.session.execute(
-            db.text("DROP TRIGGER IF EXISTS fuel_criteria_sum_100 ON fuel_criteria")
-        )
-        db.session.execute(
-            db.text("""
-            CREATE CONSTRAINT TRIGGER fuel_criteria_sum_100
-              AFTER INSERT OR UPDATE OR DELETE ON fuel_criteria
-              DEFERRABLE INITIALLY DEFERRED
-              FOR EACH ROW EXECUTE FUNCTION fuel_criteria_sum_100();
-        """)
-        )
-
-        # و-٨ · ث-١٠ب — أوزان البنود المقيَّمة فعلًا في تقييم واحد تجمع ١٠٠٪.
-        db.session.execute(
-            db.text("""
-            CREATE OR REPLACE FUNCTION fuel_scores_sum_100() RETURNS trigger AS $$
-            DECLARE total NUMERIC;
-            BEGIN
-              SELECT COALESCE(SUM(fc.weight_pct), 0) INTO total
-              FROM fuel_scores fs JOIN fuel_criteria fc ON fc.id = fs.criterion_id
-              WHERE fs.assessment_id = COALESCE(NEW.assessment_id, OLD.assessment_id);
-              IF total <> 100 THEN
-                RAISE EXCEPTION 'أوزان البنود المقيَّمة لا تجمع 100%% — المجموع %', total;
-              END IF;
-              RETURN NULL;
-            END $$ LANGUAGE plpgsql;
-        """)
-        )
-        db.session.execute(db.text("DROP TRIGGER IF EXISTS fuel_scores_sum_100 ON fuel_scores"))
-        db.session.execute(
-            db.text("""
-            CREATE CONSTRAINT TRIGGER fuel_scores_sum_100
-              AFTER INSERT OR UPDATE OR DELETE ON fuel_scores
-              DEFERRABLE INITIALLY DEFERRED
-              FOR EACH ROW EXECUTE FUNCTION fuel_scores_sum_100();
-        """)
-        )
-        db.session.commit()
         yield application
         db.session.remove()
 
