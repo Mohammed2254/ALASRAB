@@ -8,6 +8,8 @@
  */
 import gsap from 'gsap'
 
+import type { Decimal } from '../api/brand'
+
 export const reducedMotion = (): boolean =>
   typeof window !== 'undefined' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -42,21 +44,27 @@ export function enter(targets: gsap.TweenTarget, from: gsap.TweenVars, to: gsap.
 /**
  * عدّاد أرقام يتصاعد. تحت تقليل الحركة: النصّ النهائي فورًا بلا تصاعد.
  * `decimals` لأن ساعات الطيران عشريّة (`611.25`) بينما نسب الوقود صحيحة.
+ *
+ * **`target` يقبل `Decimal` مباشرةً** — `Number()` ممنوعةٌ في `src/ui/**`
+ * بفحص AST (نفس منع الشاشات، ADR-009)، فتحويل العشريّ الموسوم إلى رقمٍ
+ * حقيقيّ للتحريك **يجب** أن يقع هنا، المكان الوحيد المسموح له بالحساب —
+ * لا في `Podium`/`StatCard` التي تستدعي هذه الدالّة.
  */
 export function countUp(
   el: HTMLElement | null,
-  target: number,
+  target: Decimal | number,
   opts: { duration?: number; decimals?: 0 | 2; suffix?: string } = {}
 ): void {
   if (!el) return
   const { duration = 1, decimals = 0, suffix = '' } = opts
+  const numericTarget = Number(target)
   const write = (v: number) => {
     el.textContent = v.toFixed(decimals) + suffix
   }
   if (reducedMotion()) {
-    write(target)
+    write(numericTarget)
     return
   }
   const obj = { v: 0 }
-  gsap.to(obj, { v: target, duration, ease: 'power2.out', onUpdate: () => write(obj.v) })
+  gsap.to(obj, { v: numericTarget, duration, ease: 'power2.out', onUpdate: () => write(obj.v) })
 }

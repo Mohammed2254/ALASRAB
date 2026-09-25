@@ -31,7 +31,13 @@ const PIN = '1234'
 const STUDENT = '1001'
 
 // الشاشات المبنيّة حتى الآن — تنمو مع كل شريحة، ولا تُحذف منها شاشة بلا سبب.
-const SCREENS = [{ path: '/', slug: 'deck', label: 'البطاقة' }]
+const SCREENS = [
+  { path: '/', slug: 'deck', label: 'البطاقة' },
+  { path: '/readings', slug: 'readings', label: 'قراءاتي' },
+  { path: '/station', slug: 'station', label: 'محطة التزوّد' },
+  { path: '/formation', slug: 'formation', label: 'مشهد التشكيل' },
+  { path: '/board', slug: 'board', label: 'الصدارة' },
+]
 
 async function measureAt(browser, viewport) {
   const ctx = await browser.newContext({
@@ -121,10 +127,11 @@ async function measureAt(browser, viewport) {
 }
 
 /*
-  ق-٢٢٠ · ق-٢٢١ — ضمانةُ زرّ أندرويد **مقيسةً لا منويّة**.
-
-  وتُقاس مرّةً واحدة عند مقاس الأساس: سلوك السجلّ لا يتغيّر بعرض الشاشة،
-  وتكرارُه ثلاثًا يطيل التشغيل بلا معلومة جديدة.
+  ق-٢٢٠ · ق-٢٢١ — ضمانةُ زرّ أندرويد **مقيسةً لا منويّة**، بنقرٍ حقيقيّ على
+  شريط التبويب الآن — لا محاكاة `pushState` مباشرة (كانت محدودةً في و-١٣
+  لغياب شريط تبويب حقيقيّ وقتها؛ التفصيل الكامل والسبب في `و-١٥.md` §١.٣
+  و`nav.test.ts` الذي أثبت الآلية حتميًّا على مستوى الوحدة). وتُقاس مرّةً
+  واحدة عند مقاس الأساس: سلوك السجلّ لا يتغيّر بعرض الشاشة.
 */
 async function measureHistory(browser) {
   const ctx = await browser.newContext({ viewport: { width: 375, height: 812 }, locale: 'ar' })
@@ -137,20 +144,36 @@ async function measureHistory(browser) {
   await page.waitForFunction(() => !document.querySelector('#student_no'), { timeout: 8000 })
 
   const rootUrl = new URL(page.url()).pathname
-
-  // ق-٢٢١ — إعادة النقر على الشاشة نفسها لا تُنشئ مدخلًا.
-  const before = await page.evaluate(() => history.length)
-  await page.evaluate(() => window.history.pushState({ key: 'deck' }, '', '/'))
-  // (النقر الفعليّ على تبويب نشط يُختبَر عند بناء شريط التبويب في و-١٥؛
-  //  هنا يُقاس الجذر: الرجوع منه يغادر التطبيق لا يحبس فيه.)
-  const after = await page.evaluate(() => history.length)
-  if (after - before > 1) {
-    failures.push(`ق-٢٢١: مدخلات زائدة في السجلّ (${before} ⇐ ${after})`)
-  }
-
-  // ق-٢٢٠ — الجذر بـ`replaceState`: لا مدخل سابق داخل التطبيق.
   if (rootUrl !== '/') {
     failures.push(`ق-٢٢٠: الجذر بعد الدخول ${rootUrl} لا '/' — الروابط العميقة لن تنجو`)
+  }
+
+  // ق-٢٢١ — إعادة نقر التبويب النشط («الرئيسية»، وهو النشط بعد الدخول) لا
+  // تُنشئ مدخلًا.
+  const beforeRetap = await page.evaluate(() => history.length)
+  await page.click('[data-key="deck"]')
+  const afterRetap = await page.evaluate(() => history.length)
+  if (afterRetap - beforeRetap > 0) {
+    failures.push(`ق-٢٢١: نقرٌ ثانٍ على التبويب النشط أضاف مدخلًا (${beforeRetap} ⇐ ${afterRetap})`)
+  }
+
+  // ق-٢٢٠ — ثلاث شاشات عميقة (الوقود ← التشكيل ← الصدارة) ثمّ ثلاث رجعات،
+  // كلّ رجعة يجب أن تعيد المسار الصحيح بالضبط.
+  const path = async () => new URL(page.url()).pathname
+  await page.click('[data-key="station"]')
+  await page.click('[data-key="formation"]')
+  await page.click('[data-key="board"]')
+  if ((await path()) !== '/board') {
+    failures.push(`ق-٢٢٠: بعد ثلاث نقرات المسار ${await path()} لا '/board'`)
+  }
+
+  const expectedBack = ['/formation', '/station', '/']
+  for (const expected of expectedBack) {
+    await Promise.all([page.waitForURL(`**${expected === '/' ? '/' : expected}`, { timeout: 4000 }), page.goBack()])
+    const got = await path()
+    if (got !== expected) {
+      failures.push(`ق-٢٢٠: رجوعٌ أعطى ${got} والمتوقَّع ${expected} — زرّ أندرويد سيهبط في مكانٍ خطأ`)
+    }
   }
 
   await ctx.close()

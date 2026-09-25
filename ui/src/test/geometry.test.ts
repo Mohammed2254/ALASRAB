@@ -13,6 +13,7 @@ import {
   formationSkyHeight,
   fuelDialGeometry,
   progressScaleX,
+  splitTop3,
 } from '../motion/geometry'
 
 describe('progressScaleX', () => {
@@ -94,5 +95,19 @@ describe('chgDirection', () => {
   })
   it('سالب ← down بمقدار موجب (لا سالبًا مضاعفًا)', () => {
     expect(chgDirection(-3)).toEqual({ direction: 'down', magnitude: 3 })
+  })
+})
+
+describe('splitTop3', () => {
+  it('صفر أو واحد أو اثنان ← null (لا منصّة مصطنعة)', () => {
+    expect(splitTop3([])).toBeNull()
+    expect(splitTop3([1])).toBeNull()
+    expect(splitTop3([1, 2])).toBeNull()
+  })
+  it('ثلاثة بالضبط ← ثلاثيّ كامل وباقٍ فارغ', () => {
+    expect(splitTop3([1, 2, 3])).toEqual({ top3: [1, 2, 3], rest: [] })
+  })
+  it('أكثر من ثلاثة ← أوّل ثلاثة في top3 والبقية في rest بترتيبها', () => {
+    expect(splitTop3([1, 2, 3, 4, 5])).toEqual({ top3: [1, 2, 3], rest: [4, 5] })
   })
 })

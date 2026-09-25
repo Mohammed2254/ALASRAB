@@ -5,7 +5,8 @@
  * انحراف بين الطرفين يظهر في اسم الملفّ نفسه.
  */
 import { authApi } from './endpoints/auth'
+import { boardsApi } from './endpoints/boards'
 import { meApi } from './endpoints/me'
 
-export const api = { auth: authApi, me: meApi }
+export const api = { auth: authApi, me: meApi, boards: boardsApi }
 export { ApiError } from './client'

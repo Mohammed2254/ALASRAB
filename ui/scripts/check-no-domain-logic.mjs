@@ -79,6 +79,8 @@ const VISUAL_PRIMITIVES = [
   'src/ui/Podium.tsx',
   'src/ui/ChartBars.tsx',
   'src/ui/CelebrateBadge.tsx',
+  'src/ui/BottomTabs.tsx',
+  'src/ui/Async.tsx',
 ]
 const MOTION_ONLY = 'src/motion/'
 

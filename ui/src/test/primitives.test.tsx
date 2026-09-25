@@ -4,6 +4,7 @@
 import { cleanup, render } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { asDecimal } from '../api/brand'
 import FormationSky from '../ui/FormationSky'
 import Podium, { type BoardEntry } from '../ui/Podium'
 import ProgressBar from '../ui/ProgressBar'
@@ -67,12 +68,12 @@ describe('prefers-reduced-motion — ق-٢٣٠ (حالة نهائية ثابتة
     vi.spyOn(window, 'matchMedia').mockImplementation(
       (query) => ({ matches: query.includes('reduce'), media: query }) as MediaQueryList
     )
-    const top3: [BoardEntry, BoardEntry, BoardEntry] = [
-      { name: 'ماجد', value: 1563, chg: 0 },
-      { name: 'بندر', value: 614.25, chg: 1 },
-      { name: 'سالم', value: 18.5, chg: -1 },
+    const entries: BoardEntry[] = [
+      { name: 'ماجد', value: asDecimal('1563.00'), chg: 0 },
+      { name: 'بندر', value: asDecimal('614.25'), chg: 1 },
+      { name: 'سالم', value: asDecimal('18.50'), chg: -1 },
     ]
-    const { container } = render(<Podium top3={top3} rest={[]} />)
+    const { container } = render(<Podium entries={entries} />)
     const items = container.querySelectorAll<HTMLElement>('[data-podium-item]')
     const stands = container.querySelectorAll<HTMLElement>('[data-stand]')
     expect(items.length).toBe(3)
@@ -92,8 +93,8 @@ describe('prefers-reduced-motion — ق-٢٣٠ (حالة نهائية ثابتة
     const { container } = render(
       <FormationSky
         flying={[
-          { name: 'خالد', pct: 100 },
-          { name: 'عبدالله', pct: 32 },
+          { name: 'خالد', pct: 100, value: asDecimal('560.00') },
+          { name: 'عبدالله', pct: 32, value: asDecimal('180.50') },
         ]}
         landed={[]}
       />

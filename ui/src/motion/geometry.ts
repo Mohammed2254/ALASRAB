@@ -7,10 +7,14 @@
  * جاهزة إلى بدائية، ولا تحسب شكلًا بنفسها أبدًا.
  *
  * هندسةُ رسمٍ ليست قاعدة عمل: لا تقرّر رتبةً ولا عتبةً ولا وزنًا، والنِّسَب
- * التي تستقبلها (`pct`) تصل محسوبة من الخادم بالفعل.
+ * التي تستقبلها (`pct`) تصل محسوبة من الخادم بالفعل — بعضها `Pct` رقميّة
+ * (`progress_pct`, `size_pct`) وبعضها `Decimal` نصّية (`total_pct` في
+ * `GET /station`). كلا النوعين يُقبل هنا؛ تحويل العشريّ رقمًا يقع في هذا
+ * الملفّ حصرًا (`Number()` ممنوعة في `ui/`/`screens/` بفحص AST، ADR-009).
  */
+import type { Decimal } from '../api/brand'
 
-const clampPct = (pct: number): number => Math.max(0, Math.min(100, pct))
+const clampPct = (pct: Decimal | number): number => Math.max(0, Math.min(100, Number(pct)))
 
 /** مسار خطّي: نسبة ← معامل تحجيم أفقي (٠..١) لـ`transform: scaleX()`. */
 export function progressScaleX(pct: number): number {
@@ -26,7 +30,7 @@ const FUEL_ARC_LENGTH = 164
 const FUEL_NEEDLE_START_DEG = -90
 const FUEL_NEEDLE_SWEEP_DEG = 180
 
-export function fuelDialGeometry(pct: number): { arcOffset: number; needleDeg: number } {
+export function fuelDialGeometry(pct: Decimal | number): { arcOffset: number; needleDeg: number } {
   const p = clampPct(pct)
   return {
     arcOffset: FUEL_ARC_LENGTH * (1 - p / 100),
@@ -65,4 +69,16 @@ export function formationSkyHeight(flyingCount: number): number {
   if (flyingCount > 3) return 210
   if (flyingCount > 1) return 172
   return 110
+}
+
+/**
+ * `Podium` يتطلّب ثلاثيًّا صارمًا — أقلّ من ثلاثة صفوف يعني قائمة عادية بدل
+ * منصّة مصطنعة. المقارنة (`<`) والعدد الحرفيّ `3` ممنوعان في `screens/**`
+ * بفحص AST (`3` يتصادف أيضًا مع `DOMAIN_NUMBERS`، نفس فئة تصادف `Podium`
+ * نفسها في و-١٤) — فالفرز يقع هنا حصرًا.
+ */
+export function splitTop3<T>(entries: T[]): { top3: [T, T, T]; rest: T[] } | null {
+  if (entries.length < 3) return null
+  const [first, second, third, ...rest] = entries
+  return { top3: [first as T, second as T, third as T], rest }
 }

@@ -38,7 +38,7 @@ export default function SegmentedControl({ options, value, onChange }: Props) {
           }}
           type="button"
           onClick={() => onChange(opt.key)}
-          className={`relative z-10 min-h-[40px] flex-1 rounded-(--radius-sm) border text-[13px] font-semibold ${
+          className={`relative z-10 min-h-[44px] flex-1 rounded-(--radius-sm) border text-[13px] font-semibold ${
             opt.key === value
               ? 'border-(--color-accent) text-(--color-accent)'
               : 'border-(--color-border-strong) text-(--color-text-dim)'

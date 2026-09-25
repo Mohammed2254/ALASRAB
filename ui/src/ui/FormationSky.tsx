@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react'
 
+import type { Decimal } from '../api/brand'
+import { fmtDecimal } from '../api/format'
 import { formationPlaneSize, formationSkyHeight } from '../motion/geometry'
 import { enter } from '../motion/mo'
 import PlaneIcon from './PlaneIcon'
@@ -12,8 +14,13 @@ import PlaneIcon from './PlaneIcon'
  * تحمل الحالة، فلا تحتاج البدائية حقلًا بمفردة حالة الطيران نفسها — كانت
  * تلك المفردة تتصادف حرفيًّا مع `DOMAIN_FIELDS` في بوابة AST (نفس فئة
  * تصادف `FeedRow` في `و-١٤.md §٤`)، والحلّ إزالتها من قاموس البدائية.
+ *
+ * **`pct` و`value` حقلان منفصلان لغرضين مختلفين** (تصحيحٌ عن الصياغة
+ * الأصلية، و-١٥): `pct` يقود الحجم البصريّ وحده (`size_pct` رقمٌ جاهز)،
+ * و`value` هو الرقم المعروض تحت اسم الطيّار (`size` العشريّ الحقيقيّ —
+ * ساعاته). عرض `pct` مكان `value` كان سيُظهر «١٠٠» بدل «٥٦٠٫٠٠ ساعة».
  */
-type Plane = { name: string; pct: number }
+type Plane = { name: string; pct: number; value: Decimal }
 
 const SLOTS = [
   { top: 12, left: 50 },
@@ -58,7 +65,7 @@ export default function FormationSky({ flying, landed }: { flying: Plane[]; land
               <div className="mt-1 leading-normal whitespace-nowrap">
                 <b className="block text-[12px] font-bold">{p.name}</b>
                 <bdi dir="ltr" className="text-[10px] text-(--color-text-dim)">
-                  {p.pct}
+                  {fmtDecimal(p.value)}
                 </bdi>
               </div>
             </div>
@@ -75,7 +82,7 @@ export default function FormationSky({ flying, landed }: { flying: Plane[]; land
                 <div className="mt-1 leading-normal">
                   <b className="block text-[12px] font-bold text-(--color-red-text)">{p.name} · أرضي</b>
                   <bdi dir="ltr" className="text-[10px] text-(--color-text-dim)">
-                    {p.pct}
+                    {fmtDecimal(p.value)}
                   </bdi>
                 </div>
               </div>

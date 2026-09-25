@@ -1,5 +1,8 @@
 import { useEffect, useRef } from 'react'
 
+import type { Decimal } from '../api/brand'
+import { fmtDecimal } from '../api/format'
+import { splitTop3 } from '../motion/geometry'
 import { countUp, enter } from '../motion/mo'
 import ChgBadge from './ChgBadge'
 import HexIcon from './HexIcon'
@@ -14,8 +17,19 @@ import TierBadge from './TierBadge'
  * `DOMAIN_NUMBERS` في بوابة AST (وزنٌ حقيقيّ في محرّك القواعد)، فمقارنة
  * حرفية `place === 3` كانت ستُسقط الفحص على مصادفة رقمية لا قاعدة عمل
  * فعلية.
+ *
+ * **`chg` اختياريّة** (و-١٥): لا سند لها في `SCOPE.md`/`API.md`/
+ * `TRACEABILITY.md` — لا `/boards/pilots` ولا `/boards/teams` يُرجعانها.
+ * بقيت في `ChgBadge` نفسها (بدائية عامّة) لأنها قد تُستعمل خارج اللوحات.
  */
-export type BoardEntry = { name: string; value: number; tier?: number; tag?: string; me?: boolean; chg: number }
+export type BoardEntry = {
+  name: string
+  value: Decimal
+  tier?: number
+  tag?: string
+  me?: boolean
+  chg?: number
+}
 type Place = 'gold' | 'silver' | 'bronze'
 
 const CHEVRON = 'M24 34 L32 25 L40 34'
@@ -65,7 +79,7 @@ function PodiumItem({ place, item }: { place: Place; item: BoardEntry }) {
       <bdi ref={valueRef} dir="ltr" className={`num mb-1.5 block font-extrabold ${isGold ? 'text-[23px] text-(--color-accent)' : 'text-[17px]'}`}>
         0.00
       </bdi>
-      <ChgBadge chg={item.chg} />
+      {item.chg !== undefined ? <ChgBadge chg={item.chg} /> : null}
       <div
         data-stand
         className="mt-1.5 w-full origin-bottom scale-y-0 rounded-t-[8px] rounded-b-[2px] bg-(--color-accent-tint)"
@@ -96,15 +110,15 @@ function RestRow({ rank, item }: { rank: number; item: BoardEntry }) {
         ) : null}
         {item.me ? <span className="mr-1 text-[9px] font-extrabold text-(--color-accent)">أنت</span> : null}
       </span>
-      <ChgBadge chg={item.chg} />
+      {item.chg !== undefined ? <ChgBadge chg={item.chg} /> : null}
       <bdi dir="ltr" className="num shrink-0 text-[13px] font-bold">
-        {item.value.toFixed(2)}
+        {fmtDecimal(item.value)}
       </bdi>
     </div>
   )
 }
 
-export default function Podium({ top3, rest }: { top3: [BoardEntry, BoardEntry, BoardEntry]; rest: BoardEntry[] }) {
+function PodiumStage({ top3, rest }: { top3: [BoardEntry, BoardEntry, BoardEntry]; rest: BoardEntry[] }) {
   const podiumRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -136,4 +150,25 @@ export default function Podium({ top3, rest }: { top3: [BoardEntry, BoardEntry, 
       ) : null}
     </div>
   )
+}
+
+/**
+ * **تقرّر هنا لا في الشاشة** أن تعرض منصّةً أم قائمة عادية — قرارٌ عرضيّ
+ * (شكل التقديم) لا حساب مجال، فمكانه الصحيح في البدائية (`ui/`) التي
+ * تملك استيراد `motion/geometry` أصلًا، لا في `screens/` الممنوعة منه
+ * (`و-١٥.md`): منظّمة صغيرة أو أسبوعٌ جديد قد يعطي أقلّ من ثلاثة صفوف،
+ * وحشوها ببيانات وهمية كان سيَعرض ترتيبًا كاذبًا.
+ */
+export default function Podium({ entries }: { entries: BoardEntry[] }) {
+  const split = splitTop3(entries)
+  if (!split) {
+    return (
+      <div className="flex flex-col">
+        {entries.map((item, i) => (
+          <RestRow key={item.name} rank={i + 1} item={item} />
+        ))}
+      </div>
+    )
+  }
+  return <PodiumStage top3={split.top3} rest={split.rest} />
 }

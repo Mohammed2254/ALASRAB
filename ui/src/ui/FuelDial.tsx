@@ -1,8 +1,13 @@
+import type { Decimal } from '../api/brand'
 import { fuelDialGeometry } from '../motion/geometry'
 import { useEnter } from '../motion/useEnter'
 
-/** عدّاد الوقود — قوس نصف دائريّ وعقرب، الهندسة في `motion/geometry.ts`. */
-export default function FuelDial({ pct }: { pct: number }) {
+/**
+ * عدّاد الوقود — قوس نصف دائريّ وعقرب، الهندسة في `motion/geometry.ts`.
+ * `pct` يقبل `Decimal` مباشرةً (مثل `total_pct` في `GET /station`) — التحويل
+ * إلى رقم يقع في `geometry.ts`، لا هنا (`Number()` ممنوعة في `ui/`).
+ */
+export default function FuelDial({ pct }: { pct: Decimal | number }) {
   const entered = useEnter()
   const g = fuelDialGeometry(entered ? pct : 0)
   return (

@@ -1,9 +1,10 @@
 /**
  * العشريّ نوعٌ موسوم لا `string` عاديّ — ADR-009.
  *
- * الخلفية تُرجِع **٣٣ حقلًا** عشريًّا نصًّا (`fields.Decimal(as_string=True)`)،
- * وبجوارها في **الكائن نفسه** أرقامٌ حقيقية. في ردّ `GET /me/deck` وحده:
- * `hours` و`remaining` و`at_hours` نصوص، و`progress_pct` رقم.
+ * الخلفية تُرجِع **١٢ حقلًا فريدًا عشريًّا نصًّا** (`fields.Decimal(as_string=True)`،
+ * ٢٦ ورودًا عبر المخطّطات — `ADR-009`)، وبجوارها في **الكائن نفسه** أرقامٌ
+ * حقيقية. في ردّ `GET /me/deck` وحده: `hours` و`remaining` و`at_hours` نصوص،
+ * و`progress_pct` رقم.
  *
  * وخلطُهما لا يرفع خطأً في JavaScript: `hours - remaining` يعطي `NaN`،
  * و`Number(hours)` يعمل بصمت ويفقد الدقّة عند الحدود. **ولا يمسكه اختبارٌ
