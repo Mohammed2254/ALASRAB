@@ -27,8 +27,9 @@
   **وما لا يُفحَص هنا بقصد موثَّق:** `src/motion/**` — فيه كل الحساب الهندسيّ
   (قوس العدّاد · زاوية العقرب · إحداثيات التشكيل). وهندسةُ رسمٍ ليست قاعدة
   عمل: لا تقرّر رتبةً ولا عتبةً ولا وزنًا، ولا يمكن أن تتباعد عن الخادم لأنها
-  لا تمثّله. ويحرس هذا الاستثناءَ فحصٌ ثانٍ: `geometry` لا تُستورَد خارج
-  `motion/` (أدناه).
+  لا تمثّله. ويحرس هذا الاستثناءَ فحصان: `geometry` لا تُستورَد خارج `motion/`،
+  و`gsap` كذلك لا تُستورَد خارج `motion/` (كلاهما أدناه، و-١٤ أضافت الثاني —
+  `ADR-007` نصّ عليه وقت اعتماد الاعتمادية لا وقت أوّل استعمال فعليّ لها).
 */
 
 import { readFileSync } from 'node:fs'
@@ -142,15 +143,38 @@ for (const rel of VISUAL_PRIMITIVES) {
   }
 }
 
-// حارس الاستثناء: `geometry` مسموحٌ لها بالحساب، فلا تُستورَد خارج `motion/`
-// وإلّا صارت بابًا خلفيًّا يُخرج الحساب من البوابة.
-const leaks = [...CONSUMER_GLOBS, 'src/api/**/*.ts', 'src/nav/**/*.ts']
-  .flatMap((pattern) => globSync(pattern, { cwd: UI }))
-  .filter((rel) => !rel.startsWith(MOTION_ONLY))
-  .filter((rel) => /from\s+['"][^'"]*motion\/geometry['"]/.test(readFileSync(resolve(UI, rel), 'utf8')))
+// حارس الاستثناء: `geometry` و`gsap` مسموحتان هنا وحده، فلا تُستورَدان خارج
+// `motion/` — وإلّا صار الباب الخلفيّ يُخرج الحساب من البوابة (`geometry`)
+// أو يُسرّب اعتماديةً قرارُها محصورٌ عمدًا (`gsap`، ADR-007). والمسح على
+// شجرة المصدر كلّها خارج `motion/` لا على أدلّة "المستهلكين" وحدها — القيد
+// معماريّ لا خاصّ بطبقة الشاشات. و`src/test/` مُستثنى: اختبار وحدة يستورد
+// الدالّة **ليفحصها** لا ليحسب بها في شاشة — استيرادٌ شرعيّ لا تسريب.
+const TEST_ONLY = 'src/test/'
+const ALL_SOURCE = globSync('src/**/*.{ts,tsx}', { cwd: UI }).filter(
+  (rel) => !rel.startsWith(MOTION_ONLY) && !rel.startsWith(TEST_ONLY)
+)
 
-if (leaks.length) {
-  console.error(`  ❌ استيراد \`motion/geometry\` خارج \`motion/\`: ${leaks.join(' · ')}`)
+if (ALL_SOURCE.length < EXPECTED_MIN) {
+  console.error(
+    `  ❌ مسح شجرة المصدر أعطى ${ALL_SOURCE.length} ملفًّا والحدّ الأدنى ${EXPECTED_MIN} — ` +
+      'عطلٌ في الفحص لا نجاحٌ له.'
+  )
+  process.exit(2)
+}
+
+const geometryLeaks = ALL_SOURCE.filter((rel) =>
+  /from\s+['"][^'"]*motion\/geometry['"]/.test(readFileSync(resolve(UI, rel), 'utf8'))
+)
+if (geometryLeaks.length) {
+  console.error(`  ❌ استيراد \`motion/geometry\` خارج \`motion/\`: ${geometryLeaks.join(' · ')}`)
+  failed++
+}
+
+const gsapLeaks = ALL_SOURCE.filter((rel) =>
+  /from\s+['"]gsap['"]/.test(readFileSync(resolve(UI, rel), 'utf8'))
+)
+if (gsapLeaks.length) {
+  console.error(`  ❌ استيراد \`gsap\` خارج \`motion/\` (ADR-007): ${gsapLeaks.join(' · ')}`)
   failed++
 }
 
