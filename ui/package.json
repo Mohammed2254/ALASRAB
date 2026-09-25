@@ -1,0 +1,41 @@
+{
+  "name": "asrab-v2-ui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:types": "vitest --typecheck.only run",
+    "lint": "oxlint src",
+    "check:arch": "node scripts/check-no-domain-logic.mjs",
+    "check:floor": "node scripts/check-opaque-floor.mjs",
+    "check:contract": "node scripts/check-contract.mjs",
+    "check:visual": "node scripts/visual-qa.mjs",
+    "check:perf": "node scripts/perf-budget.mjs"
+  },
+  "dependencies": {
+    "gsap": "^3.13.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@typescript-eslint/typescript-estree": "^8.46.0",
+    "@vitejs/plugin-react": "^6.0.4",
+    "jsdom": "^25.0.1",
+    "oxlint": "^0.15.0",
+    "playwright": "^1.62.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.0",
+    "vite": "^8.2.0",
+    "vitest": "^4.1.11"
+  }
+}
