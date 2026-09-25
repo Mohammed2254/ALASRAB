@@ -69,6 +69,20 @@
   }
 
   /*
+    نبضة التوهّج — `CelebrateBadge` وحدها. حركةٌ CSS محضة (لا GSAP)، فتخضع
+    مجّانًا لقاعدة تقليل الحركة الشاملة أدناه — بلا فحصٍ إضافيّ في `mo.ts`.
+  */
+  @keyframes celebrate-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 var(--color-accent-glow);
+    }
+    50% {
+      box-shadow: 0 0 24px 10px var(--color-accent-glow);
+    }
+  }
+
+  /*
     تخفيض الحركة — الطبقة الأولى من دفاعين.
 
     هذه تُوقف حركة CSS، و`ui/src/motion/mo.ts` يُوقف حركة GSAP في مكانٍ واحد.

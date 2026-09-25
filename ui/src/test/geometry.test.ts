@@ -7,7 +7,13 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { formationPlaneSize, fuelDialGeometry, progressScaleX } from '../motion/geometry'
+import {
+  chgDirection,
+  formationPlaneSize,
+  formationSkyHeight,
+  fuelDialGeometry,
+  progressScaleX,
+} from '../motion/geometry'
 
 describe('progressScaleX', () => {
   it('٠٪ ← ٠', () => {
@@ -61,5 +67,32 @@ describe('formationPlaneSize', () => {
   })
   it('تحصيل يفوق ١٠٠٪ (مثل قائد فوق العتبة القصوى) لا يكبر عن الحدّ الأقصى', () => {
     expect(formationPlaneSize(180)).toBe(52)
+  })
+})
+
+describe('formationSkyHeight', () => {
+  it('طائرة واحدة أو صفر ← ١١٠', () => {
+    expect(formationSkyHeight(0)).toBe(110)
+    expect(formationSkyHeight(1)).toBe(110)
+  })
+  it('طائرتان أو ثلاث ← ١٧٢', () => {
+    expect(formationSkyHeight(2)).toBe(172)
+    expect(formationSkyHeight(3)).toBe(172)
+  })
+  it('أربع فأكثر ← ٢١٠', () => {
+    expect(formationSkyHeight(4)).toBe(210)
+    expect(formationSkyHeight(9)).toBe(210)
+  })
+})
+
+describe('chgDirection', () => {
+  it('٠ ← same بمقدار صفر', () => {
+    expect(chgDirection(0)).toEqual({ direction: 'same', magnitude: 0 })
+  })
+  it('موجب ← up بنفس المقدار', () => {
+    expect(chgDirection(3)).toEqual({ direction: 'up', magnitude: 3 })
+  })
+  it('سالب ← down بمقدار موجب (لا سالبًا مضاعفًا)', () => {
+    expect(chgDirection(-3)).toEqual({ direction: 'down', magnitude: 3 })
   })
 })

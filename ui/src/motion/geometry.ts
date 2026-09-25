@@ -42,3 +42,25 @@ const FORMATION_MAX_GROWTH = 26
 export function formationPlaneSize(pct: number): number {
   return FORMATION_MIN_SIZE + (clampPct(pct) / 100) * FORMATION_MAX_GROWTH
 }
+
+/**
+ * اتّجاه تغيّر ترتيب — ▲/▼/– (`ChgBadge`). المقارنات (`<`/`>`) والقيمة
+ * المطلَقة (`Math.abs`) ممنوعتان في طبقة العرض، فالقرار والمقدار يُحسَبان
+ * هنا معًا.
+ */
+export function chgDirection(chg: number): { direction: 'up' | 'down' | 'same'; magnitude: number } {
+  if (chg === 0) return { direction: 'same', magnitude: 0 }
+  const direction = chg > 0 ? 'up' : 'down'
+  const magnitude = direction === 'up' ? chg : -chg
+  return { direction, magnitude }
+}
+
+/**
+ * ارتفاع حاوية سماء التشكيل — يكبر مع عدد الطائرات المحلِّقة كي لا تتزاحم
+ * فتحجب شارة بعضها بعضًا. عتباتٌ منقولة حرفيًّا من النموذج المعتمد.
+ */
+export function formationSkyHeight(flyingCount: number): number {
+  if (flyingCount > 3) return 210
+  if (flyingCount > 1) return 172
+  return 110
+}

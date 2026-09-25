@@ -27,9 +27,20 @@
   **وما لا يُفحَص هنا بقصد موثَّق:** `src/motion/**` — فيه كل الحساب الهندسيّ
   (قوس العدّاد · زاوية العقرب · إحداثيات التشكيل). وهندسةُ رسمٍ ليست قاعدة
   عمل: لا تقرّر رتبةً ولا عتبةً ولا وزنًا، ولا يمكن أن تتباعد عن الخادم لأنها
-  لا تمثّله. ويحرس هذا الاستثناءَ فحصان: `geometry` لا تُستورَد خارج `motion/`،
-  و`gsap` كذلك لا تُستورَد خارج `motion/` (كلاهما أدناه، و-١٤ أضافت الثاني —
-  `ADR-007` نصّ عليه وقت اعتماد الاعتمادية لا وقت أوّل استعمال فعليّ لها).
+  لا تمثّله. ويحرس هذا الاستثناءَ فحصان.
+
+  **الأوّل — `gsap` لا تُستورَد خارج `motion/` إطلاقًا** (بلا استثناء لـ`ui/`):
+  الاعتمادية بحجمها وتشابكها الزمنيّ تبقى محصورة تمامًا (`ADR-007`)، والبدائية
+  التي تحتاج حركةً تستدعي `motion/mo.ts` لا تكتب GSAP بنفسها.
+
+  **والثاني — `motion/geometry` لا تُستورَد خارج `motion/` **و**`ui/`** (لا
+  خارجهما معًا). **تصحيحٌ لقاعدة و-١٣ الأصلية** (كانت تمنع الاستيراد خارج
+  `motion/` بلا استثناء) — التنفيذ الفعليّ في و-١٤ كشف أنها كانت تمنع
+  الاستهلاك المقصود نفسه: البدائيات البصرية (`FuelDial`, `FormationSky`,
+  `ProgressBar`, `ChgBadge`) **مهمّتها تحويل نسبةٍ إلى شكل**، وهذا **هو**
+  استهلاك `geometry` الشرعيّ لا تسريبًا منه. أمّا `screens/**` فتبقى ممنوعة:
+  الشاشة تمرّر نسبةً وصلتها من الخادم إلى بدائية جاهزة، ولا تحسب شكلًا بنفسها
+  أبدًا — فبقاء المنع هناك هو جوهر «الواجهة تعرض ولا تحسب» (`AGENTS.md` ٥).
 */
 
 import { readFileSync } from 'node:fs'
@@ -44,7 +55,31 @@ import { parse } from '@typescript-eslint/typescript-estree'
 const UI = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 const CONSUMER_GLOBS = ['src/screens/**/*.tsx', 'src/ui/**/*.tsx']
-const VISUAL_PRIMITIVES = ['src/ui/HexIcon.tsx', 'src/ui/TierBadge.tsx']
+const VISUAL_PRIMITIVES = [
+  'src/ui/HexIcon.tsx',
+  'src/ui/TierBadge.tsx',
+  'src/ui/Placard.tsx',
+  'src/ui/Prow.tsx',
+  'src/ui/Pill.tsx',
+  'src/ui/Field.tsx',
+  'src/ui/ProgressBar.tsx',
+  'src/ui/StatCard.tsx',
+  'src/ui/FeedRow.tsx',
+  'src/ui/BarRow.tsx',
+  'src/ui/Tile.tsx',
+  'src/ui/SegmentedControl.tsx',
+  'src/ui/Toast.tsx',
+  'src/ui/Button.tsx',
+  'src/ui/EmptyState.tsx',
+  'src/ui/ChgBadge.tsx',
+  'src/ui/Subback.tsx',
+  'src/ui/FuelDial.tsx',
+  'src/ui/PlaneIcon.tsx',
+  'src/ui/FormationSky.tsx',
+  'src/ui/Podium.tsx',
+  'src/ui/ChartBars.tsx',
+  'src/ui/CelebrateBadge.tsx',
+]
 const MOTION_ONLY = 'src/motion/'
 
 // حارس الفراغ: أقلّ عددٍ معقول من الملفّات المفحوصة. استخراجٌ دونه **عطلٌ في
@@ -143,13 +178,13 @@ for (const rel of VISUAL_PRIMITIVES) {
   }
 }
 
-// حارس الاستثناء: `geometry` و`gsap` مسموحتان هنا وحده، فلا تُستورَدان خارج
-// `motion/` — وإلّا صار الباب الخلفيّ يُخرج الحساب من البوابة (`geometry`)
-// أو يُسرّب اعتماديةً قرارُها محصورٌ عمدًا (`gsap`، ADR-007). والمسح على
-// شجرة المصدر كلّها خارج `motion/` لا على أدلّة "المستهلكين" وحدها — القيد
-// معماريّ لا خاصّ بطبقة الشاشات. و`src/test/` مُستثنى: اختبار وحدة يستورد
-// الدالّة **ليفحصها** لا ليحسب بها في شاشة — استيرادٌ شرعيّ لا تسريب.
+// حارسا الاستثناء: `gsap` مسموحةٌ في `motion/` وحده — وإلّا سُرّبت اعتماديةٌ
+// قرارُها محصورٌ عمدًا (ADR-007). و`geometry` مسموحةٌ في `motion/` **و**`ui/`
+// معًا — تحويل نسبةٍ إلى شكل هو مهمّة البدائية البصرية نفسها، لا تسريبًا
+// منها (أعلاه). و`src/test/` مُستثنًى من كليهما: استيرادٌ اختباريّ للفحص
+// المباشر لا حسابٌ في شاشة.
 const TEST_ONLY = 'src/test/'
+const UI_ONLY = 'src/ui/'
 const ALL_SOURCE = globSync('src/**/*.{ts,tsx}', { cwd: UI }).filter(
   (rel) => !rel.startsWith(MOTION_ONLY) && !rel.startsWith(TEST_ONLY)
 )
@@ -162,11 +197,11 @@ if (ALL_SOURCE.length < EXPECTED_MIN) {
   process.exit(2)
 }
 
-const geometryLeaks = ALL_SOURCE.filter((rel) =>
+const geometryLeaks = ALL_SOURCE.filter((rel) => !rel.startsWith(UI_ONLY)).filter((rel) =>
   /from\s+['"][^'"]*motion\/geometry['"]/.test(readFileSync(resolve(UI, rel), 'utf8'))
 )
 if (geometryLeaks.length) {
-  console.error(`  ❌ استيراد \`motion/geometry\` خارج \`motion/\`: ${geometryLeaks.join(' · ')}`)
+  console.error(`  ❌ استيراد \`motion/geometry\` خارج \`motion/\`/\`ui/\`: ${geometryLeaks.join(' · ')}`)
   failed++
 }
 
