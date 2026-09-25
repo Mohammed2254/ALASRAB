@@ -55,29 +55,38 @@ async function measureAt(browser, viewport) {
     سألت عن `800 26px Almarai` بينما العنوان يُرسَم بوزن الجسم، فأبلغت عن
     «سقوطٍ إلى خطّ النظام» وهو سليم. الفحص الذي يخمّن ما يُرسَم يكذب في
     الاتّجاهين — ولذلك يُقرأ هنا `getComputedStyle` ثم يُسأل عنه بعينه.
+
+    **وثانية صياغة أُثبتت عمياء أيضًا (نقطة تفتيش ٤، انظر §٨.٢):**
+    `document.fonts.check(spec)` **لا** يتطلّب الوزن المطلوب بالضبط — خوارزمية
+    مطابقة CSS القياسية تستبدل صامتةً أقرب وزنٍ **محمَّل في العائلة نفسها**
+    (٧٠٠ حين يُطلَب ٨٠٠ مثلًا)، فتُرجع `true` رغم غياب الوزن المطلوب حرفيًّا —
+    ومُثبَت بحذف وزن Almarai/800 العربي فعليًّا: النتيجة `check()==true` دائمًا.
+    فالفحص هنا **يقرأ `document.fonts` مباشرةً** ويطابق العائلة والوزن حرفًا
+    بحرف على وجه لا اسمًا — لا مطابقةً تقريبية تُخفي غياب الوجه بالضبط.
   */
   const fontReport = await page.evaluate(async () => {
-    // **الانتظار قبل السؤال:** `document.fonts.check()` يقول «غير محمَّل» عن
-    // خطٍّ سليمٍ لم يصل بعد. وبلا هذا السطر يصير الفحص سباقًا مع الشبكة،
-    // فيحمرّ أحيانًا ويخضرّ أحيانًا على الكود نفسه — وهو أسوأ من فحصٍ لا يوجد.
+    // **الانتظار قبل السؤال:** خطٌّ سليمٌ لم يصل بعد يبدو غائبًا. وبلا هذا
+    // السطر يصير الفحص سباقًا مع الشبكة، فيحمرّ أحيانًا ويخضرّ أحيانًا على
+    // الكود نفسه — وهو أسوأ من فحصٍ لا يوجد.
     await document.fonts.ready
+    const unq = (s) => s.replace(/^["']|["']$/g, '')
+    const loaded = [...document.fonts].filter((f) => f.status === 'loaded')
     const out = []
     for (const el of document.querySelectorAll('h1, h2, p, label, button')) {
+      const text = (el.textContent ?? '').trim()
+      if (!text) continue // عنصرٌ بلا نصّ مرسوم لا خطّ له يُقاس
       const cs = getComputedStyle(el)
-      const family = cs.fontFamily.split(',')[0].trim().replace(/^["']|["']$/g, '')
-      const spec = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} "${family}"`
-      // **النصّ الاختباريّ عربيّ لا افتراضيّ.** `check(spec)` بلا نصّ يستعمل
-      // `"BESbswy"` اللاتينية، فيسأل عن الشريحة **اللاتينية** — وهي غير محمَّلة
-      // بحقٍّ في صفحة عربية خالصة (وهذا هو مقصود `unicode-range`). فكان الفحص
-      // يُبلّغ عن «سقوطٍ إلى خطّ النظام» بينما الخطّ العربيّ محمَّل فعلًا:
-      // الأداةُ تكذب لا الصفحة (الدرس ١١).
-      if (!document.fonts.check(spec, 'الأسراب')) out.push({ family, spec, tag: el.tagName })
+      const family = unq(cs.fontFamily.split(',')[0].trim())
+      const weight = cs.fontWeight
+      const exact = loaded.some((f) => unq(f.family) === family && f.weight === weight)
+      if (!exact) out.push({ family, weight, size: cs.fontSize, tag: el.tagName, text: text.slice(0, 20) })
     }
     return out
   })
   for (const miss of fontReport) {
     failures.push(
-      `ق-٢٢٢: <${miss.tag}> يُرسَم بـ${miss.spec} وهو غير محمَّل — سقوطٌ إلى خطّ النظام`
+      `ق-٢٢٢: <${miss.tag}> «${miss.text}» (${miss.size}) بوزن ${miss.weight} — ` +
+        `لا وجه محمَّل لعائلة «${miss.family}» بهذا الوزن بالضبط`
     )
   }
 
