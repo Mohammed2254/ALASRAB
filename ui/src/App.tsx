@@ -11,18 +11,21 @@ import { init, listen } from './nav/history'
 import { useScreen } from './nav/useNavigation'
 import type { ScreenKey } from './nav/routes'
 import Boards from './screens/Boards'
+import DailyQuestion from './screens/DailyQuestion'
 import Deck from './screens/Deck'
 import Formation from './screens/Formation'
 import Login from './screens/Login'
 import PilotShell from './screens/PilotShell'
 import Readings from './screens/Readings'
 import Station from './screens/Station'
+import SubmitNote from './screens/SubmitNote'
+import Tahdir from './screens/Tahdir'
+import WeekPilot from './screens/WeekPilot'
 import { AppStateProvider, useApp } from './state/AppState'
 
 /**
- * الشاشات الخمس المبنيّة حتى الآن (و-١٥) — سجلٌّ لا سلسلة `if` (نفس نمط
+ * الشاشات الخمس على شريط التبويب (و-١٥) — سجلٌّ لا سلسلة `if` (نفس نمط
  * `SCREENS` في البناء المرجعي `web/`، `HANDOFF.md` §٤): إضافة شاشة سطرٌ واحد.
- * الباقي من الـ٢١ مسارًا يبقى عنصرًا نائبًا حتى و-١٦..و-١٨.
  */
 const PILOT_TABS: Partial<Record<ScreenKey, () => React.JSX.Element>> = {
   deck: Deck,
@@ -30,6 +33,19 @@ const PILOT_TABS: Partial<Record<ScreenKey, () => React.JSX.Element>> = {
   station: Station,
   formation: Formation,
   board: Boards,
+}
+
+/**
+ * شاشات الطيّار الفرعية (و-١٦) — تُرسَم داخل `Shell` البسيط بـ`Subback`
+ * خاصّتها لا شريط تبويب (`و-١٦.md` §٢ قرار ٢)، مطابِقًا لغياب التبويب في
+ * تصميمها بالنموذج المعتمد. الباقي من الـ٢١ مسارًا (شاشات المشرف) يبقى
+ * عنصرًا نائبًا حتى و-١٧..و-١٨.
+ */
+const PILOT_SUB_SCREENS: Partial<Record<ScreenKey, () => React.JSX.Element>> = {
+  tahdir: Tahdir,
+  question: DailyQuestion,
+  weekPilot: WeekPilot,
+  note: SubmitNote,
 }
 
 function Gate() {
@@ -68,12 +84,21 @@ function Gate() {
 
   if (status !== 'in') return <Login />
 
-  const ScreenComponent = PILOT_TABS[screen]
-  if (ScreenComponent) {
+  const TabScreen = PILOT_TABS[screen]
+  if (TabScreen) {
     return (
       <PilotShell active={screen}>
-        <ScreenComponent />
+        <TabScreen />
       </PilotShell>
+    )
+  }
+
+  const SubScreen = PILOT_SUB_SCREENS[screen]
+  if (SubScreen) {
+    return (
+      <Shell>
+        <SubScreen />
+      </Shell>
     )
   }
 

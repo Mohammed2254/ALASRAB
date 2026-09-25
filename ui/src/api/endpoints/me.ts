@@ -4,7 +4,16 @@
  * تفرّق مخطّطاتها بين `schemas/me.py` و`schemas/fuel.py`.
  */
 import { request } from '../client'
-import type { Deck, LedgerEvent, MyReading, Station, SubmitReading, SubmitReadingForm } from '../types/me'
+import type {
+  Deck,
+  LedgerEvent,
+  MyReading,
+  SubmitReading,
+  SubmitReadingForm,
+  SubmitTahdirForm,
+  Station,
+  TahdirReport,
+} from '../types/me'
 
 export const meApi = {
   deck: () => request<Deck>('/me/deck'),
@@ -17,4 +26,9 @@ export const meApi = {
     return request<{ id: number; status: string }>('/me/readings', { method: 'POST', body })
   },
   station: () => request<Station>('/station'),
+  tahdir: () => request<TahdirReport>('/me/tahdir'),
+  submitTahdir: (form: SubmitTahdirForm) => {
+    const body: SubmitReading = { ...form, pages: Number(form.pages) }
+    return request<{ id: number; status: string }>('/me/tahdir', { method: 'POST', body })
+  },
 }

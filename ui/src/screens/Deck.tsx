@@ -4,13 +4,17 @@ import { api } from '../api'
 import type { Deck as DeckData } from '../api/types/me'
 import { fmtDecimal } from '../api/format'
 import { countUp } from '../motion/mo'
+import { go } from '../nav/history'
+import type { ScreenKey } from '../nav/routes'
 import { useAsync } from '../state/useAsync'
 import { Async } from '../ui/Async'
 import FeedRow from '../ui/FeedRow'
+import { GLYPHS } from '../ui/glyphs'
 import HexIcon from '../ui/HexIcon'
 import Placard from '../ui/Placard'
 import ProgressBar from '../ui/ProgressBar'
 import Prow from '../ui/Prow'
+import Tile from '../ui/Tile'
 
 /**
  * بطاقة الطيّار — `GET /me/deck` + `GET /me/events`. **كل رقم يصل محسوبًا**
@@ -116,6 +120,27 @@ function DeckCard({ deck }: { deck: DeckData }) {
   )
 }
 
+// بلاطات الوصول السريع — `formation`/`readings` مكرّرتان عمدًا مع شريط
+// التبويب (`و-١٦.md` §٢ قرار ٣): طريقٌ ثانٍ مقصود، مطابقًا للنموذج المعتمد.
+const TILES: { screen: ScreenKey; label: string; glyph: string }[] = [
+  { screen: 'tahdir', label: 'تحضير القراءة', glyph: GLYPHS.checklist },
+  { screen: 'question', label: 'سؤال اليوم', glyph: GLYPHS.question },
+  { screen: 'weekPilot', label: 'طيار الأسبوع', glyph: GLYPHS.star },
+  { screen: 'note', label: 'ملاحظة', glyph: GLYPHS.note },
+  { screen: 'formation', label: 'التشكيل', glyph: GLYPHS.formation },
+  { screen: 'readings', label: 'قراءاتي', glyph: GLYPHS.book },
+]
+
+function QuickAccess() {
+  return (
+    <div className="grid grid-cols-3 gap-2.5">
+      {TILES.map((t) => (
+        <Tile key={t.screen} glyph={t.glyph} label={t.label} onClick={() => go(t.screen)} />
+      ))}
+    </div>
+  )
+}
+
 export default function Deck() {
   const deckState = useAsync(() => api.me.deck(), [])
   const eventsState = useAsync(() => api.me.events(10), [])
@@ -125,6 +150,8 @@ export default function Deck() {
       <Async state={deckState} loadingTitle="بطاقة الطيّار">
         {(deck) => <DeckCard deck={deck} />}
       </Async>
+
+      <QuickAccess />
 
       <Async state={eventsState} loadingTitle="سجلّ ساعاتي">
         {(data) =>

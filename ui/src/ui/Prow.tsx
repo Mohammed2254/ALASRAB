@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 type Props = {
   label: ReactNode
   value: ReactNode
-  tone?: 'accent' | 'red' | 'green'
+  tone?: 'accent' | 'red' | 'green' | undefined
   sub?: ReactNode
 }
 

@@ -37,6 +37,10 @@ const SCREENS = [
   { path: '/station', slug: 'station', label: 'محطة التزوّد' },
   { path: '/formation', slug: 'formation', label: 'مشهد التشكيل' },
   { path: '/board', slug: 'board', label: 'الصدارة' },
+  { path: '/tahdir', slug: 'tahdir', label: 'تحضير القراءة' },
+  { path: '/question', slug: 'question', label: 'سؤال اليوم' },
+  { path: '/week-pilot', slug: 'week-pilot', label: 'طيار الأسبوع' },
+  { path: '/note', slug: 'note', label: 'ملاحظة' },
 ]
 
 async function measureAt(browser, viewport) {

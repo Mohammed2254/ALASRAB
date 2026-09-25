@@ -6,7 +6,8 @@
  */
 import { authApi } from './endpoints/auth'
 import { boardsApi } from './endpoints/boards'
+import { engagementApi } from './endpoints/engagement'
 import { meApi } from './endpoints/me'
 
-export const api = { auth: authApi, me: meApi, boards: boardsApi }
+export const api = { auth: authApi, me: meApi, boards: boardsApi, engagement: engagementApi }
 export { ApiError } from './client'

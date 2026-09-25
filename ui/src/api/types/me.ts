@@ -72,3 +72,25 @@ export type Station = {
   tank_capacity_l: Decimal | null
   recent: RecentAssessment[]
 }
+
+/**
+ * `GET`/`POST /me/tahdir` — تحضير القراءة. `submissions` بنفس شكل
+ * `MyReading` (نفس الدالّة الخلفية بمعامل `activity_type` مختلف فقط).
+ *
+ * **`percent`/`pages_total`/`target_pages` رقمية لا عشرية** — لا `fmtDecimal`
+ * عليها؛ يحرس الخلط `check-contract.mjs`.
+ */
+export type TahdirDay = { date: string; weekday: string; completed: boolean; pages: Count }
+
+export type TahdirWeek = {
+  week_start: string
+  days: TahdirDay[]
+  pages_total: Count
+  target_pages: Count
+  percent: Pct
+  struggling: boolean
+}
+
+export type TahdirReport = { submissions: MyReading[]; week: TahdirWeek }
+
+export type SubmitTahdirForm = SubmitReadingForm
