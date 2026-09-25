@@ -14,7 +14,7 @@ const MARKS = [
   'M32 14 L35.5 20 L32 26 L28.5 20 Z M6 36 L24 28 M58 36 L40 28',
 ] as const
 
-type Props = { tier: number; size?: number; label?: string }
+type Props = { tier: number; size?: number; label?: string | undefined }
 
 export default function TierBadge({ tier, size = 28, label }: Props) {
   const glyph = MARKS.at(tier - 1) ?? MARKS.at(-1) ?? MARKS[0]

@@ -4,7 +4,14 @@
  * بدائية بصرية خالصة: هندسة SVG بلا أي حقل مجال. ولذلك تُفحص بقاعدة
  * `VISUAL_PRIMITIVES` (لا تذكر حقلًا) لا بقاعدة الشاشات (لا تحسب).
  */
-type Props = { size?: number; glyph: string; filled?: boolean; label?: string }
+// `| undefined` صريحٌ لأن `exactOptionalPropertyTypes` يفرّق بين «الخاصّية
+// غائبة» و«قيمتها undefined» — وتمريرُ `label={maybeUndefined}` هو الثانية.
+type Props = {
+  size?: number
+  glyph: string
+  filled?: boolean
+  label?: string | undefined
+}
 
 export default function HexIcon({ size = 40, glyph, filled = false, label }: Props) {
   const stroke = filled ? 'var(--color-on-accent)' : 'var(--color-accent)'

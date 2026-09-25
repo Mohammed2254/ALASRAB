@@ -1,0 +1,87 @@
+/*
+  الطبقة الأساسية — قواعد تسري على كل شاشة بلا استثناء.
+
+  كلّها مستندة إلى `AGENTS.md §العربية في الواجهة` و`SCOPE.md §١٠.٣`، وكلٌّ
+  منها يمنع خطأً وقع فعلًا في البناء الأول أو كاد.
+*/
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    accent-color: var(--color-accent);
+    scrollbar-color: var(--color-surface-2) var(--color-bg);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-ui);
+    font-size: 15px;
+    line-height: 1.65;
+    /* أرقامٌ جدولية: بلا هذا يرقص عمود الأرقام بين ١ و٨ فتُقرأ الجداول خطأً. */
+    font-variant-numeric: tabular-nums;
+    /* الطيّار عمودٌ مائع لا صفحة تتمدّد: من ٣٢٠px إلى سقفٍ مريح ثم يتوسّط.
+       تطبيقُ جوّال لا يصير تطبيق سطح مكتب بتمديده (`SCOPE.md §١٣`). */
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+
+  /*
+    العناوين بـ`word-spacing` لا `letter-spacing`.
+
+    **و`letter-spacing` على العربية ممنوع منعًا باتًّا** — يفصل الحروف
+    الموصولة فتصير «كاملًا» = «كا ملًا». و`word-spacing` آمن: يوسّع محرف
+    المسافة ولا يمسّ الوصل.
+
+    ولا يُلغى التتبّع بـ`:lang(ar)`: جذر المستند نفسه `lang="ar"`، فتطابق
+    القاعدة كل عنصر وتُبطل الصنف كليًّا — **وهذا ما حدث فعلًا** في البناء
+    الأول. الضمانة الصحيحة أن التتبّع لا يُكتب إلا على محتوى لاتينيّ صريح.
+  */
+  .font-display {
+    font-family: var(--font-display);
+    word-spacing: 0.12em;
+  }
+
+  /*
+    الأرقام معزولة اتّجاهيًّا.
+
+    العربية RTL والرقم LTR، وبلا عزلٍ صريح ينقلب ترتيب «٦١١.٢٥ ساعة» بصريًّا
+    أو تُلصق علامة السالب بالطرف الخطأ — وهو ما يجعل تصحيحًا سالبًا يُقرأ
+    موجبًا. تُستعمل مع `<bdi dir="ltr">` في البدائيات لا في الشاشات.
+  */
+  .num {
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+    تخفيض الحركة — الطبقة الأولى من دفاعين.
+
+    هذه تُوقف حركة CSS، و`ui/src/motion/mo.ts` يُوقف حركة GSAP في مكانٍ واحد.
+    والثانية لا تُغني عن الأولى: حركةٌ تُكتب بـCSS يومًا لا تمرّ بـ`mo`.
+  */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
