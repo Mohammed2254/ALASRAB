@@ -1,0 +1,66 @@
+# للاستضافة الفعلية (Oracle Cloud / Hetzner — `docs/DEPLOY.md`) — لا للتحقّق
+# المحليّ (ذاك في `docker-compose.yml`، منفذ 8000 مباشرةً بلا TLS عمدًا).
+#
+# طبقة TLS اثنتان بديلتان لا معًا — اختر واحدة بتعليق الأخرى:
+#   Caddy   — يحتاج نطاقًا يشير سجلّ A فيه لعنوان الخادم (شهادة تلقائية).
+#   Tunnel  — لا يحتاج نطاقًا إطلاقًا؛ رابطٌ عشوائيّ فوريّ من Cloudflare،
+#             ولا منفذ داخليّ مفتوح على الخادم (اتصالٌ صادرٌ فقط).
+# التفصيل الكامل والأوامر في `docs/DEPLOY.md`.
+
+name: asrab-v2-prod
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: asrab_v2
+      POSTGRES_USER: asrab
+      POSTGRES_PASSWORD: '${DB_PASSWORD:?ضع كلمة مرور حقيقية في .env.prod}'
+    volumes: [asrab_v2_prod_pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U asrab -d asrab_v2']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    expose: ['8000'] # لا `ports:` — لا يصل إليه أحد إلا عبر caddy/cloudflared
+    environment:
+      PORT: '8000'
+      FLASK_APP: 'app:create_app'
+      DATABASE_URL: 'postgresql+psycopg://asrab:${DB_PASSWORD:?ضع كلمة مرور حقيقية في .env.prod}@db:5432/asrab_v2'
+      SECRET_KEY: '${SECRET_KEY:?ولّده بالأمر المذكور في docs/DEPLOY.md}'
+      SESSION_COOKIE_SECURE: 'true' # إلزاميّ خلف HTTPS حقيقيّ
+      CORS_ALLOWED_ORIGINS: 'https://${DOMAIN:?ضع نطاقك في docs/DEPLOY.md، أو اضبطه لاحقًا مع Cloudflare Tunnel}'
+      EXPOSE_API_DOCS: 'false'
+
+  # ── الخيار ١: نطاقٌ حقيقيّ — فعِّل هذه الخدمة، عطِّل cloudflared أدناه ──
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [app]
+    ports: ['80:80', '443:443']
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+  # ── الخيار ٢: بلا نطاق بعد — عطِّل caddy أعلاه، فعِّل هذه بدلًا منه ──
+  # cloudflared:
+  #   image: cloudflare/cloudflared:latest
+  #   restart: unless-stopped
+  #   depends_on: [app]
+  #   command: tunnel --no-autoupdate --url http://app:8000
+
+volumes:
+  asrab_v2_prod_pgdata:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,5 @@
+{$DOMAIN} {
+	# شهادة Let's Encrypt تلقائية بالكامل — لا إعداد إضافيّ طالما DNS يشير هنا.
+	reverse_proxy app:8000
+	encode gzip
+}

@@ -1,0 +1,91 @@
+# نفس بوابات "البوابات الستّ" في docs/HANDOFF.md — آليًّا عند كل دفعة.
+#
+# **مكتوبٌ جاهزًا بلا `push` فعليّ بعد** (و-١٩.md §١): لا remote للمستودع
+# اليوم، فهذا الملفّ لن "يعمل" حتى يُربَط GitHub — قرارٌ صريح من المستخدم
+# لا سهوًا. حين يُربَط، يعمل من أوّل دفعة بلا تعديل.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: asrab_v2_test
+          POSTGRES_USER: asrab
+          POSTGRES_PASSWORD: asrab_ci_only
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      # `Config.SQLALCHEMY_DATABASE_URI` يُقرَأ وقت تعريف الصنف — يجب أن
+      # يوجد `DATABASE_URL` حتى لو لم يُستعمَل فعليًّا (الاختبارات كلّها
+      # على `TestConfig`/`TEST_DATABASE_URL` وحدها، `conftest.py`).
+      DATABASE_URL: postgresql+psycopg://asrab:asrab_ci_only@localhost:5432/asrab_v2_test
+      TEST_DATABASE_URL: postgresql+psycopg://asrab:asrab_ci_only@localhost:5432/asrab_v2_test
+      SECRET_KEY: ci-only-not-for-production
+      CORS_ALLOWED_ORIGINS: http://localhost:5173
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -r requirements.txt
+        working-directory: api
+      - run: pytest -q
+        working-directory: api
+
+  ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci
+        working-directory: ui
+      - run: npx tsc --noEmit
+        working-directory: ui
+      - run: npx vitest run
+        working-directory: ui
+      - run: node scripts/check-no-domain-logic.mjs
+        working-directory: ui
+      - run: node scripts/check-opaque-floor.mjs
+        working-directory: ui
+      - run: node scripts/check-contract.mjs
+        working-directory: ui
+      - run: npx oxlint src
+        working-directory: ui
+      - run: npx vite build
+        working-directory: ui
+      - run: node scripts/perf-budget.mjs
+        working-directory: ui
+      # القياس البصريّ الحيّ (Playwright) يحتاج api+ui يعملان معًا، لا يناسب
+      # مصفوفة CI عديمة الحالة بسهولة — يبقى يدويًّا قبل إغلاق كل شريحة كما
+      # كان طوال و-١٣..و-١٨، لا آليًّا هنا.
+
+  web-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci
+        working-directory: web
+      - run: npx vitest run
+        working-directory: web
+      - run: npm run check:arch
+        working-directory: web
+
+  slice-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bash scripts/check-slice-gate.sh
