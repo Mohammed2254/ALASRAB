@@ -6,6 +6,7 @@ import { fmtDecimal } from '../api/format'
 import { countUp } from '../motion/mo'
 import { go } from '../nav/history'
 import type { ScreenKey } from '../nav/routes'
+import { useApp } from '../state/AppState'
 import { useAsync } from '../state/useAsync'
 import { Async } from '../ui/Async'
 import FeedRow from '../ui/FeedRow'
@@ -131,17 +132,45 @@ const TILES: { screen: ScreenKey; label: string; glyph: string }[] = [
   { screen: 'readings', label: 'قراءاتي', glyph: GLYPHS.book },
 ]
 
-function QuickAccess() {
+// بلاطات المشرف — لا شريط تبويب إداريّ منفصل (`و-١٧.md` §١.٤): تُتاح من نفس
+// شبكة البطاقة، مشروطة بالدور وحده. **إخفاء البلاطة راحةٌ لا حماية** — الحارس
+// الحقيقيّ `@admin_required` في كل مسار خلفيّ (`AGENTS.md` ٩)، تمامًا كتعليق
+// `NavBar.jsx` في `web/`.
+const ADMIN_TILES: { screen: ScreenKey; label: string; glyph: string }[] = [
+  { screen: 'adminReport', label: 'التقرير', glyph: GLYPHS.board },
+  { screen: 'adminQueue', label: 'طابور القراءات', glyph: GLYPHS.queue },
+  { screen: 'adminTahdirQueue', label: 'طابور تحضير القراءة', glyph: GLYPHS.queue },
+  { screen: 'adminTahdirReport', label: 'تقرير تحضير القراءة', glyph: GLYPHS.checklist },
+  { screen: 'adminTeams', label: 'الأسراب', glyph: GLYPHS.team },
+  { screen: 'adminWeights', label: 'الأوزان', glyph: GLYPHS.scale },
+  { screen: 'adminThresholds', label: 'العتبات', glyph: GLYPHS.ladder },
+  { screen: 'adminNotes', label: 'الملاحظات', glyph: GLYPHS.note },
+  { screen: 'adminWeekPilot', label: 'اختيار طيار الأسبوع', glyph: GLYPHS.star },
+]
+
+function QuickAccess({ isAdmin }: { isAdmin: boolean }) {
   return (
-    <div className="grid grid-cols-3 gap-2.5">
-      {TILES.map((t) => (
-        <Tile key={t.screen} glyph={t.glyph} label={t.label} onClick={() => go(t.screen)} />
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-3 gap-2.5">
+        {TILES.map((t) => (
+          <Tile key={t.screen} glyph={t.glyph} label={t.label} onClick={() => go(t.screen)} />
+        ))}
+      </div>
+      {isAdmin ? (
+        <Placard title="المشرف">
+          <div className="grid grid-cols-3 gap-2.5">
+            {ADMIN_TILES.map((t) => (
+              <Tile key={t.screen} glyph={t.glyph} label={t.label} onClick={() => go(t.screen)} />
+            ))}
+          </div>
+        </Placard>
+      ) : null}
+    </>
   )
 }
 
 export default function Deck() {
+  const { user } = useApp()
   const deckState = useAsync(() => api.me.deck(), [])
   const eventsState = useAsync(() => api.me.events(10), [])
 
@@ -151,7 +180,7 @@ export default function Deck() {
         {(deck) => <DeckCard deck={deck} />}
       </Async>
 
-      <QuickAccess />
+      <QuickAccess isAdmin={user?.role === 'admin'} />
 
       <Async state={eventsState} loadingTitle="سجلّ ساعاتي">
         {(data) =>

@@ -4,10 +4,11 @@
  * التجميع هنا لا في ملفّ واحد ضخم: التقسيم يطابق `api/app/schemas/` فأي
  * انحراف بين الطرفين يظهر في اسم الملفّ نفسه.
  */
+import { adminApi } from './endpoints/admin'
 import { authApi } from './endpoints/auth'
 import { boardsApi } from './endpoints/boards'
 import { engagementApi } from './endpoints/engagement'
 import { meApi } from './endpoints/me'
 
-export const api = { auth: authApi, me: meApi, boards: boardsApi, engagement: engagementApi }
+export const api = { auth: authApi, me: meApi, boards: boardsApi, engagement: engagementApi, admin: adminApi }
 export { ApiError } from './client'

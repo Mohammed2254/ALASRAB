@@ -25,12 +25,21 @@ const UI = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const SCHEMAS = resolve(UI, '..', 'api', 'app', 'schemas')
 const TYPES = resolve(UI, 'src', 'api', 'types')
 
-const DECIMAL_RE = /^\s*([a-z_0-9]+)\s*=\s*fields\.Decimal\(as_string=True/gm
+// `as_string=True` ليس أوّل معامل دائمًا (`fields.Decimal(required=True,
+// as_string=True)` شائعة)، وقد يمتدّ الاستدعاء أسطرًا (`validate=...` طويل).
+// الصياغة الأولى افترضت الموضع الأول والسطر الواحد، فأخفت خمسة حقول عشرية
+// حقيقية (`hours_per_unit`, `multiplier`, `weight_pct`, `quantity`,
+// `score_pct`) — اكتُشف بمطابقة `grep "fields.Decimal("` يدويًّا مقابل عدد
+// البوابة، أوّل مرّة لمس فيها و-١٧ ملفًّا (`rules_admin.py`) لم يفحصه أحد من
+// قبل (`HANDOFF.md` الدرس ٣٣). النطاق ١٦٠ حرفًا يتّسع لأطول استدعاء قائم
+// (`quantity` بثلاثة أسطر) بهامش، دون الانزلاق إلى إعلان الحقل التالي.
+const DECIMAL_RE = /^\s*([a-z_0-9]+)\s*=\s*fields\.Decimal\(\s*[\s\S]{0,160}?as_string\s*=\s*True/gm
 const NUMERIC_RE = /^\s*([a-z_0-9]+)\s*=\s*fields\.(?:Float|Int|Integer)\(/gm
 
 // حارس الفراغ — نفس درس `MIN_CRITERIA`: استخراجٌ دون هذا عطلٌ في الفحص لا
 // نجاحٌ له (مجلّد مُعاد تسميته، أو تغيّر صيغة الإعلان في Marshmallow).
-const EXPECTED_MIN_DECIMALS = 10
+// ١٧ لا ١٠ — رُفع بعد تصحيح الرجعة أعلاه ليكشف أيّ تراجع مستقبليّ فورًا.
+const EXPECTED_MIN_DECIMALS = 17
 
 function namesFrom(dir, re) {
   const found = new Map() // الاسم → الملفّات التي أعلنته

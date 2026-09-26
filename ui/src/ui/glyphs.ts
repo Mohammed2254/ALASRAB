@@ -17,4 +17,11 @@ export const GLYPHS = {
   question: 'M25 24 Q25 16 32 16 Q39 16 39 23 Q39 29 32 31 L32 36 M32 44 L32 45',
   star: 'M32 16 L36 27 L48 27 L38 34 L42 46 L32 39 L22 46 L26 34 L16 27 L28 27 Z',
   note: 'M18 20 H46 V40 H30 L24 46 V40 H18 Z',
+  // ── و-١٧: بلاطات المشرف الجديدة (`report`/`adminTahdirReport` تُعيدان
+  // استعمال `board`/`checklist`؛ `adminWeekPilot` تُعيد استعمال `star`؛
+  // `adminNotes` تُعيد استعمال `note` — نفس المفهوم بصريًّا). أربعة جديدة فقط.
+  queue: 'M20 18 H44 V34 L38 40 H26 L20 34 Z',
+  team: 'M32 16 V28 M20 40 L32 28 L44 40',
+  scale: 'M32 16 V44 M18 24 H46 M18 24 L12 36 H24 Z M46 24 L40 36 H52 Z',
+  ladder: 'M18 44 H26 V36 H34 V28 H42 V20 H48',
 } as const

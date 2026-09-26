@@ -41,6 +41,15 @@ const SCREENS = [
   { path: '/question', slug: 'question', label: 'سؤال اليوم' },
   { path: '/week-pilot', slug: 'week-pilot', label: 'طيار الأسبوع' },
   { path: '/note', slug: 'note', label: 'ملاحظة' },
+  { path: '/admin/report', slug: 'admin-report', label: 'التقرير' },
+  { path: '/admin/queue', slug: 'admin-queue', label: 'طابور القراءات' },
+  { path: '/admin/tahdir', slug: 'admin-tahdir-queue', label: 'طابور تحضير القراءة' },
+  { path: '/admin/tahdir/report', slug: 'admin-tahdir-report', label: 'تقرير تحضير القراءة' },
+  { path: '/admin/teams', slug: 'admin-teams', label: 'الأسراب' },
+  { path: '/admin/weights', slug: 'admin-weights', label: 'الأوزان' },
+  { path: '/admin/thresholds', slug: 'admin-thresholds', label: 'العتبات' },
+  { path: '/admin/notes', slug: 'admin-notes', label: 'الملاحظات' },
+  { path: '/admin/week-pilot', slug: 'admin-week-pilot', label: 'اختيار طيار الأسبوع' },
 ]
 
 async function measureAt(browser, viewport) {

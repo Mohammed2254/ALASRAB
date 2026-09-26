@@ -10,6 +10,15 @@ import { useEffect } from 'react'
 import { init, listen } from './nav/history'
 import { useScreen } from './nav/useNavigation'
 import type { ScreenKey } from './nav/routes'
+import Notes from './screens/admin/Notes'
+import ReadingQueue from './screens/admin/ReadingQueue'
+import Report from './screens/admin/Report'
+import TahdirQueue from './screens/admin/TahdirQueue'
+import TahdirReport from './screens/admin/TahdirReport'
+import Teams from './screens/admin/Teams'
+import Thresholds from './screens/admin/Thresholds'
+import AdminWeekPilot from './screens/admin/WeekPilot'
+import Weights from './screens/admin/Weights'
 import Boards from './screens/Boards'
 import DailyQuestion from './screens/DailyQuestion'
 import Deck from './screens/Deck'
@@ -36,16 +45,28 @@ const PILOT_TABS: Partial<Record<ScreenKey, () => React.JSX.Element>> = {
 }
 
 /**
- * شاشات الطيّار الفرعية (و-١٦) — تُرسَم داخل `Shell` البسيط بـ`Subback`
- * خاصّتها لا شريط تبويب (`و-١٦.md` §٢ قرار ٢)، مطابِقًا لغياب التبويب في
- * تصميمها بالنموذج المعتمد. الباقي من الـ٢١ مسارًا (شاشات المشرف) يبقى
- * عنصرًا نائبًا حتى و-١٧..و-١٨.
+ * الشاشات الفرعية — طيّار (و-١٦) وإداريّ (و-١٧) معًا: كلاهما يُرسَم داخل
+ * `Shell` البسيط بـ`Subback` خاصّته لا شريط تبويب، فسجلٌّ واحد لا سجلّان
+ * (`و-١٧.md` §٢ قرار ٦؛ كان اسمه `PILOT_SUB_SCREENS` قبل أن يستوعب شاشات
+ * المشرف). **حراسة الدخول الإداريّ بالبلاطة لا هنا** — البلاطات في
+ * `Deck.tsx` مشروطة بالدور أصلًا، وحرَس المسار الحقيقيّ في الخادم
+ * (`@admin_required`) لا في هذا السجلّ (`AGENTS.md` ٩، `NavBar.jsx` تعليق
+ * مطابق في `web/`). الباقي من ٢٥ شاشة (٦ مشرف) في و-١٨.
  */
-const PILOT_SUB_SCREENS: Partial<Record<ScreenKey, () => React.JSX.Element>> = {
+const SUB_SCREENS: Partial<Record<ScreenKey, () => React.JSX.Element>> = {
   tahdir: Tahdir,
   question: DailyQuestion,
   weekPilot: WeekPilot,
   note: SubmitNote,
+  adminReport: Report,
+  adminQueue: ReadingQueue,
+  adminTahdirQueue: TahdirQueue,
+  adminTahdirReport: TahdirReport,
+  adminTeams: Teams,
+  adminWeights: Weights,
+  adminThresholds: Thresholds,
+  adminNotes: Notes,
+  adminWeekPilot: AdminWeekPilot,
 }
 
 function Gate() {
@@ -93,7 +114,7 @@ function Gate() {
     )
   }
 
-  const SubScreen = PILOT_SUB_SCREENS[screen]
+  const SubScreen = SUB_SCREENS[screen]
   if (SubScreen) {
     return (
       <Shell>

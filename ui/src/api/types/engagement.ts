@@ -30,3 +30,12 @@ export type TodayQuestion = { question: Question | null }
 export type WeekPilotRow = { full_name: string; reason: string }
 
 export type WeekPilot = { pilot: WeekPilotRow | null }
+
+// ═══ الشقّ الإداريّ — الملاحظات · اختيار طيار الأسبوع ═══
+
+export type AdminNoteRow = { id: Count; body: string; day: string; read_at: string | null }
+export type AdminNotesList = { notes: AdminNoteRow[] }
+export type MarkedNote = { id: Count; read_at: string }
+
+export type ChooseWeekPilotForm = { user_id: Count; reason: string }
+export type ChosenWeekPilot = { user_id: Count; full_name: string; week_start: string }

@@ -21,7 +21,8 @@ export const ROUTES = {
   note: '/note',
 
   // ── المشرف ──
-  adminDashboard: '/admin',
+  // لا `adminDashboard` — لا مسار خلفيّ يقابله (`و-١٧.md` §١.١)، والتنقّل
+  // يصل كل شاشة إدارية مباشرةً ببلاطتها، لا عبر جذرٍ بلا وجهة.
   adminQueue: '/admin/queue',
   adminTahdirQueue: '/admin/tahdir',
   adminTahdirReport: '/admin/tahdir/report',
