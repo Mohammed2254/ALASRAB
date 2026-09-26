@@ -24,4 +24,9 @@ export const GLYPHS = {
   team: 'M32 16 V28 M20 40 L32 28 L44 40',
   scale: 'M32 16 V44 M18 24 H46 M18 24 L12 36 H24 Z M46 24 L40 36 H52 Z',
   ladder: 'M18 44 H26 V36 H34 V28 H42 V20 H48',
+  // ── و-١٨: بلاطات المشرف الأخيرة (`fuelActivities`/`fuelAssess`/
+  // `quranEdit` تُعيد استعمال `fuel`/`checklist`/`book` القائمة).
+  ledger: 'M22 16 H42 V48 H22 Z M27 24 H37 M27 32 H37 M27 40 H34',
+  calendarCheck: 'M20 20 H44 V46 H20 Z M20 28 H44 M26 16 V22 M38 16 V22 M27 36 L30 39 L37 32',
+  importArrow: 'M32 16 V36 M24 28 L32 36 L40 28 M18 44 H46',
 } as const

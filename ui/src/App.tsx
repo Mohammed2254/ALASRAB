@@ -10,7 +10,13 @@ import { useEffect } from 'react'
 import { init, listen } from './nav/history'
 import { useScreen } from './nav/useNavigation'
 import type { ScreenKey } from './nav/routes'
+import Attendance from './screens/admin/Attendance'
+import AuditLog from './screens/admin/AuditLog'
+import FuelActivities from './screens/admin/FuelActivities'
+import FuelAssess from './screens/admin/FuelAssess'
 import Notes from './screens/admin/Notes'
+import QuranEdit from './screens/admin/QuranEdit'
+import RasdImport from './screens/admin/RasdImport'
 import ReadingQueue from './screens/admin/ReadingQueue'
 import Report from './screens/admin/Report'
 import TahdirQueue from './screens/admin/TahdirQueue'
@@ -51,7 +57,7 @@ const PILOT_TABS: Partial<Record<ScreenKey, () => React.JSX.Element>> = {
  * المشرف). **حراسة الدخول الإداريّ بالبلاطة لا هنا** — البلاطات في
  * `Deck.tsx` مشروطة بالدور أصلًا، وحرَس المسار الحقيقيّ في الخادم
  * (`@admin_required`) لا في هذا السجلّ (`AGENTS.md` ٩، `NavBar.jsx` تعليق
- * مطابق في `web/`). الباقي من ٢٥ شاشة (٦ مشرف) في و-١٨.
+ * مطابق في `web/`). آخر ست شاشات (و-١٨) تُكمل الـ٢٥.
  */
 const SUB_SCREENS: Partial<Record<ScreenKey, () => React.JSX.Element>> = {
   tahdir: Tahdir,
@@ -67,6 +73,12 @@ const SUB_SCREENS: Partial<Record<ScreenKey, () => React.JSX.Element>> = {
   adminThresholds: Thresholds,
   adminNotes: Notes,
   adminWeekPilot: AdminWeekPilot,
+  adminAudit: AuditLog,
+  adminFuelActivities: FuelActivities,
+  adminFuelAssess: FuelAssess,
+  adminAttendance: Attendance,
+  adminQuranEdit: QuranEdit,
+  adminRasdImport: RasdImport,
 }
 
 function Gate() {

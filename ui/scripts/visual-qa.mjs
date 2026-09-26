@@ -50,6 +50,12 @@ const SCREENS = [
   { path: '/admin/thresholds', slug: 'admin-thresholds', label: 'العتبات' },
   { path: '/admin/notes', slug: 'admin-notes', label: 'الملاحظات' },
   { path: '/admin/week-pilot', slug: 'admin-week-pilot', label: 'اختيار طيار الأسبوع' },
+  { path: '/admin/audit', slug: 'admin-audit', label: 'الصندوق الأسود' },
+  { path: '/admin/fuel/activities', slug: 'admin-fuel-activities', label: 'أنشطة الوقود' },
+  { path: '/admin/fuel/assess', slug: 'admin-fuel-assess', label: 'تقييم نشاط' },
+  { path: '/admin/attendance', slug: 'admin-attendance', label: 'الحضور' },
+  { path: '/admin/quran', slug: 'admin-quran-edit', label: 'التصحيح والتعديل القرآني' },
+  { path: '/admin/rasd', slug: 'admin-rasd-import', label: 'استيراد راصد' },
 ]
 
 async function measureAt(browser, viewport) {

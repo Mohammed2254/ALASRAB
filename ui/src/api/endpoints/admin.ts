@@ -4,10 +4,14 @@
  * `me.ts`). تحويلات الشبكة (نصّ نموذج ← رقم سلكيّ) تقع هنا حصرًا — `Number()`
  * ممنوعة في الشاشات (قرار ٥).
  */
-import { request } from '../client'
+import { request, requestForm } from '../client'
 import type { AdminEntryResult, AdminTahdirEntryForm, OrgTahdirReport, QueueItem, ReviewResult } from '../types/adminQueue'
+import type { AttendanceStatus, RecordedAttendance, UndoneAttendance } from '../types/attendance'
+import type { AuditLog } from '../types/audit'
 import type { AdminNotesList, ChooseWeekPilotForm, ChosenWeekPilot, MarkedNote } from '../types/engagement'
-import type { QuranRoster } from '../types/quranRoster'
+import type { ActivitiesList, AssessForm, Assessed, CreateActivityForm, CreatedActivity } from '../types/fuel'
+import type { PasteCommitResult, PastePreview } from '../types/paste'
+import type { AddedQuranEntry, AddQuranEntryForm, QuranEventsList, QuranRoster, ReversedEvent } from '../types/quran'
 import type { Report, ResetPinResult } from '../types/report'
 import type {
   CreateWeightVersionForm,
@@ -28,6 +32,13 @@ const weightsPayload = (form: CreateWeightVersionForm) => ({
   note: form.note,
   weights: form.weights,
   multipliers: form.multipliers,
+})
+
+const assessPayload = (form: AssessForm) => ({
+  team_id: Number(form.team_id),
+  activity_id: Number(form.activity_id),
+  occurred_on: form.occurred_on,
+  scores: form.scores,
 })
 
 export const adminApi = {
@@ -80,4 +91,52 @@ export const adminApi = {
 
   chooseWeekPilot: (form: ChooseWeekPilotForm) =>
     request<ChosenWeekPilot>('/admin/week/pilot', { method: 'POST', body: form }),
+
+  auditLog: () => request<AuditLog>('/admin/audit'),
+
+  fuelActivities: () => request<ActivitiesList>('/admin/fuel/activities'),
+  createFuelActivity: (form: CreateActivityForm) =>
+    request<CreatedActivity>('/admin/fuel/activities', { method: 'POST', body: form }),
+  assessFuel: (form: AssessForm) => request<Assessed>('/admin/fuel/assess', { method: 'POST', body: assessPayload(form) }),
+
+  attendance: () => request<AttendanceStatus>('/admin/attendance'),
+  recordAttendance: (absentUserIds: number[]) =>
+    request<RecordedAttendance>('/admin/attendance', { method: 'POST', body: { absent_user_ids: absentUserIds } }),
+  undoAttendance: () => request<UndoneAttendance>('/admin/attendance/undo', { method: 'POST' }),
+
+  quranEvents: (userId: string) => request<QuranEventsList>(`/admin/quran/events?user_id=${Number(userId)}`),
+  reverseEvent: (eventId: number, reason: string) =>
+    request<ReversedEvent>(`/admin/events/${eventId}/reverse`, { method: 'POST', body: { reason } }),
+  quranEntry: (form: AddQuranEntryForm) =>
+    request<AddedQuranEntry>('/admin/quran/entry', {
+      method: 'POST',
+      body: {
+        user_id: Number(form.user_id),
+        occurred_on: form.occurred_on,
+        activity_type: form.activity_type,
+        quantity: form.quantity,
+        mastery: form.mastery,
+        reason: form.reason,
+      },
+    }),
+
+  // `multipart/form-data` لا JSON — الملفّ لا يلائم `request()` (قرار ٥،
+  // `و-١٨.md §١.١`). أوّل استهلاكٍ حيّ لـ`requestForm` منذ بنائها في و-١٣.
+  pastePreview: (file: File, occurredOn: string) => {
+    const form = new FormData()
+    form.set('file', file)
+    form.set('occurred_on', occurredOn)
+    return requestForm<PastePreview>('/admin/paste/preview', form)
+  },
+  pasteCommit: (file: File, occurredOn: string, nameResolutions: Record<string, string>) => {
+    const form = new FormData()
+    form.set('file', file)
+    form.set('occurred_on', occurredOn)
+    const entries = Object.entries(nameResolutions)
+    if (entries.length) {
+      const numeric = Object.fromEntries(entries.map(([name, userId]) => [name, Number(userId)]))
+      form.set('name_resolutions', JSON.stringify(numeric))
+    }
+    return requestForm<PasteCommitResult>('/admin/paste/commit', form)
+  },
 }

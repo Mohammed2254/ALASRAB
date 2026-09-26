@@ -146,6 +146,12 @@ const ADMIN_TILES: { screen: ScreenKey; label: string; glyph: string }[] = [
   { screen: 'adminThresholds', label: 'العتبات', glyph: GLYPHS.ladder },
   { screen: 'adminNotes', label: 'الملاحظات', glyph: GLYPHS.note },
   { screen: 'adminWeekPilot', label: 'اختيار طيار الأسبوع', glyph: GLYPHS.star },
+  { screen: 'adminAudit', label: 'الصندوق الأسود', glyph: GLYPHS.ledger },
+  { screen: 'adminFuelActivities', label: 'أنشطة الوقود', glyph: GLYPHS.fuel },
+  { screen: 'adminFuelAssess', label: 'تقييم نشاط', glyph: GLYPHS.checklist },
+  { screen: 'adminAttendance', label: 'الحضور', glyph: GLYPHS.calendarCheck },
+  { screen: 'adminQuranEdit', label: 'التصحيح والتعديل القرآني', glyph: GLYPHS.book },
+  { screen: 'adminRasdImport', label: 'استيراد راصد', glyph: GLYPHS.importArrow },
 ]
 
 function QuickAccess({ isAdmin }: { isAdmin: boolean }) {

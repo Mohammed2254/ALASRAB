@@ -86,20 +86,62 @@ if (ambiguous.length) {
 }
 
 // ═══ ٢· كل عشريّ في بايثون له `: Decimal` في TS ═══
-const typeSources = existsSync(TYPES)
+
+// أنواع `*Form` (نصف الملفّات تقريبًا) نصوصُ إدخالٍ خام قبل الإرسال — سلاسل
+// نموذج عمدًا لا `Decimal`، وتحويلها الفعليّ يقع في `endpoints/*.ts` (حدّ
+// الشبكة، نفس نمط `SubmitReadingForm` منذ و-١٥). **الفحص كان يتجاهلها
+// بالصدفة لا بالتصميم**: يستخدم `.exec()` (أوّل تطابق فقط لا `matchAll`)
+// على النص المُدمَج، فإن سبق تعريفَ الحقل في ملفّ `*Form` تعريفٌ آخر بالاسم
+// نفسه صحيحًا (بترتيب قراءة الملفّات الأبجديّ) مرّ الفحص — حظّ الترتيب لا
+// ضمانة. أوّل حقل بلا نظير آخر إطلاقًا (`quantity`، `AddQuranEntryForm`
+// فقط) كشف الفجوة في و-١٨. تُستبعَد أجسام هذه الأنواع صراحةً بدل الاعتماد
+// على ترتيب القراءة.
+function stripFormTypeBodies(source) {
+  const re = /export type \w*Form\b[^=]*=\s*{/g
+  let out = ''
+  let cursor = 0
+  let match
+  while ((match = re.exec(source))) {
+    out += source.slice(cursor, match.index)
+    let depth = 1
+    let i = match.index + match[0].length
+    while (depth > 0 && i < source.length) {
+      if (source[i] === '{') depth++
+      else if (source[i] === '}') depth--
+      i++
+    }
+    cursor = i
+    re.lastIndex = i
+  }
+  return out + source.slice(cursor)
+}
+
+const rawTypeSources = existsSync(TYPES)
   ? readdirSync(TYPES)
       .filter((f) => f.endsWith('.ts'))
       .map((f) => readFileSync(join(TYPES, f), 'utf8'))
       .join('\n')
   : ''
+const typeSources = stripFormTypeBodies(rawTypeSources)
 
 // الحقول التي لم تُعرَض بعد في الواجهة ليست خطأً — الواجهة تُبنى تدريجيًّا.
-// فالفحص على ما **ذُكر** في TS: إن ذُكر الاسم، فنوعه يجب أن يكون `Decimal`.
+// فالفحص على ما **ذُكر** في TS: إن ذُكر الاسم، فكل ظهورٍ له نوعه `Decimal`.
+//
+// **`matchAll` لا `exec` — درسٌ ثانٍ من نفس الاكتشاف:** `exec` يعيد أوّل
+// تطابق فقط، فحقلٌ يتكرّر اسمه في عدّة أنواع (`delta` في أربعة، `hours` في
+// أكثر) كان يُحكَم عليه بأوّل تعريفٍ يصادفه القارئ الأبجديّ للملفّات فقط —
+// لو كان صحيحًا مرّت كل التعريفات الأخرى الخاطئة بصمت. **مُثبَتٌ بالزرع:**
+// `AddedQuranEntry.delta: number` لم يُكتشَف أصلًا حين كان `QuranEventRow.delta:
+// Decimal` (نفس الملفّ) يسبقه أبجديًّا داخل الاستخراج.
+function allDeclaredTypesOf(name, source) {
+  const re = new RegExp(`\\b${name}\\??\\s*:\\s*([A-Za-z<>\\[\\]| ]+)`, 'g')
+  return [...source.matchAll(re)].map((m) => m[1].trim())
+}
+
 const mistyped = []
 for (const name of decimals.keys()) {
-  const declared = new RegExp(`\\b${name}\\??\\s*:\\s*([A-Za-z<>\\[\\]| ]+)`).exec(typeSources)
-  if (declared && !/\bDecimal\b/.test(declared[1])) {
-    mistyped.push(`${name} → ${declared[1].trim()}`)
+  for (const type of allDeclaredTypesOf(name, typeSources)) {
+    if (!/\bDecimal\b/.test(type)) mistyped.push(`${name} → ${type}`)
   }
 }
 if (mistyped.length) {
@@ -110,9 +152,8 @@ if (mistyped.length) {
 // ═══ ٣· ولا رقميّ يُكتب `Decimal` خطأً ═══
 const overtyped = []
 for (const name of numerics.keys()) {
-  const declared = new RegExp(`\\b${name}\\??\\s*:\\s*([A-Za-z<>\\[\\]| ]+)`).exec(typeSources)
-  if (declared && /\bDecimal\b/.test(declared[1])) {
-    overtyped.push(`${name} → ${declared[1].trim()}`)
+  for (const type of allDeclaredTypesOf(name, typeSources)) {
+    if (/\bDecimal\b/.test(type)) overtyped.push(`${name} → ${type}`)
   }
 }
 if (overtyped.length) {
@@ -125,7 +166,7 @@ if (failed) {
   process.exit(1)
 }
 
-const covered = [...decimals.keys()].filter((n) => new RegExp(`\\b${n}\\??\\s*:`).test(typeSources))
+const covered = [...decimals.keys()].filter((n) => allDeclaredTypesOf(n, typeSources).length > 0)
 console.log(
   `\n✅ العقد متطابق — ${decimals.size} حقلًا عشريًّا في بايثون ` +
     `(${covered.length} منها مُعرَّف في الواجهة حتى الآن) · ${numerics.size} حقلًا رقميًّا · صفر التباس.`
