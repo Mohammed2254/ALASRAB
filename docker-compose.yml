@@ -1,0 +1,44 @@
+# تحقّقٌ محليّ من المكدَّس **المبنيّ** — منفصل عمدًا عن `api/docker-compose.yml`
+# (قاعدة التطوير اليوميّ وحدها، `flask run` + `vite` منفصلَين بلا مساس).
+# قاعدة بيانات مستقلّة هنا كي لا تختلط تجربة النشر ببيانات التطوير
+# (`و-١٩.md` §٢ قرار ٥).
+#
+# التشغيل:
+#   docker compose up --build
+#   docker compose run --rm app flask db upgrade   # مرّة أولى فقط — يدويًّا دومًا
+#   docker compose run --rm app python seed.py      # بذرة تجريبية اختيارية
+
+name: asrab-v2-deploy
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: asrab_v2_deploy
+      POSTGRES_USER: asrab
+      POSTGRES_PASSWORD: asrab_deploy_only
+    ports: ['127.0.0.1:5435:5432']
+    volumes: [asrab_v2_deploy_pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U asrab -d asrab_v2_deploy']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    ports: ['127.0.0.1:8000:8000']
+    environment:
+      PORT: '8000'
+      FLASK_APP: 'app:create_app'
+      DATABASE_URL: postgresql+psycopg://asrab:asrab_deploy_only@db:5432/asrab_v2_deploy
+      SECRET_KEY: local-deploy-check-only-not-for-real-use
+      SESSION_COOKIE_SECURE: 'false' # لا HTTPS محليًّا هنا
+      CORS_ALLOWED_ORIGINS: http://localhost:8000,http://127.0.0.1:8000
+      EXPOSE_API_DOCS: 'false'
+
+volumes:
+  asrab_v2_deploy_pgdata:

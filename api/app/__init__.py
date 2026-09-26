@@ -11,7 +11,11 @@ SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 
 def create_app(config_object=Config):
     """مصنع التطبيق: يسمح للاختبارات بإنشاء تطبيق بإعدادات أخرى بلا حيل عامة."""
-    app = Flask(__name__)
+    # `static_url_path=""` لا `/static` الافتراضي — الواجهة المبنيّة (`ui/dist/`)
+    # تُنسَخ إلى `app/static/` وقت بناء صورة Docker (و-١٩)، فتُخدَم من الجذر
+    # نفسه الذي يخدم `/api/*`: **أصلٌ واحد في الإنتاج**، تمامًا كما علّق
+    # `ui/vite.config.ts` منذ و-١٣ (الوكيل يحاكي هذا محليًّا، فلا CORS إنتاجًا).
+    app = Flask(__name__, static_url_path="")
     app.config.from_object(config_object)
 
     db.init_app(app)
@@ -59,6 +63,19 @@ def create_app(config_object=Config):
         except Exception:
             return jsonify(status="db_unreachable"), 503
         return jsonify(status="ok")
+
+    @app.errorhandler(404)
+    def spa_fallback(exc):
+        """
+        رابطٌ عميق لمسار طيّاريّ (`/admin/report` مثلًا) يصل الخادم مباشرةً عند
+        تحديث الصفحة أو فتح رابط — التوجيه كلّه في المتصفّح (ADR-008)، فالخادم
+        لا يعرف هذا المسار إطلاقًا. **يُعاد له `index.html`** ليقرأه العميل.
+        `/api/*` وحدها مستثناة — طلبٌ لمسار API غير موجود يبقى ٤٠٤ JSON
+        بالشكل الموثَّق (`API.md` §١)، لا صفحة HTML تكسر العقد.
+        """
+        if request.path.startswith("/api/"):
+            return exc
+        return app.send_static_file("index.html")
 
     # الاستيراد هنا لا في الأعلى: النماذج تحتاج db المهيّأ، واستيرادها مبكرًا
     # يخلق دورة استيراد.
