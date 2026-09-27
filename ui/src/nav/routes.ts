@@ -6,10 +6,15 @@
  *
  * والمسارات حقيقية لا زينة: الروابط تُشارَك وتُحفَظ، وزرّ الرجوع في أندرويد
  * يعمل — وهو ما كان مكسورًا في البناء الأول بسجلّ الشاشات.
+ *
+ * **ومسارات المشرف تُركَّب من `adminNav.ts` لا تُكرَّر هنا** (و-٢٠): ذاك
+ * الملفّ يقود القائمة الجانبية وسجلّ الشاشات معًا، فجدولٌ ثانٍ بالمسارات
+ * نفسها يصير نسخةً ثالثة تتباعد عن الاثنتين. والسطح العامّ لم يتغيّر —
+ * `ScreenKey` و`keyOf` و`pathOf` كما كانت.
  */
+import { ADMIN_PATHS } from './adminNav'
 
-export const ROUTES = {
-  // ── الطيّار ──
+const PILOT_PATHS = {
   deck: '/',
   readings: '/readings',
   tahdir: '/tahdir',
@@ -19,26 +24,10 @@ export const ROUTES = {
   question: '/question',
   weekPilot: '/week-pilot',
   note: '/note',
-
-  // ── المشرف ──
-  // لا `adminDashboard` — لا مسار خلفيّ يقابله (`و-١٧.md` §١.١)، والتنقّل
-  // يصل كل شاشة إدارية مباشرةً ببلاطتها، لا عبر جذرٍ بلا وجهة.
-  adminQueue: '/admin/queue',
-  adminTahdirQueue: '/admin/tahdir',
-  adminTahdirReport: '/admin/tahdir/report',
-  adminReport: '/admin/report',
-  adminAudit: '/admin/audit',
-  adminTeams: '/admin/teams',
-  adminWeights: '/admin/weights',
-  adminThresholds: '/admin/thresholds',
-  adminFuelActivities: '/admin/fuel/activities',
-  adminFuelAssess: '/admin/fuel/assess',
-  adminNotes: '/admin/notes',
-  adminWeekPilot: '/admin/week-pilot',
-  adminAttendance: '/admin/attendance',
-  adminQuranEdit: '/admin/quran',
-  adminRasdImport: '/admin/rasd',
 } as const
+
+// الأنواع الحرفية تنجو من النشر لأن المصدرين `as const` كلاهما.
+export const ROUTES = { ...PILOT_PATHS, ...ADMIN_PATHS } as const
 
 export type ScreenKey = keyof typeof ROUTES
 

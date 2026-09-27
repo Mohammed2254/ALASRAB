@@ -12,6 +12,7 @@
     "lint": "oxlint src",
     "check:arch": "node scripts/check-no-domain-logic.mjs",
     "check:floor": "node scripts/check-opaque-floor.mjs",
+    "check:responsive": "node scripts/check-responsive.mjs",
     "check:contract": "node scripts/check-contract.mjs",
     "check:visual": "node scripts/visual-qa.mjs",
     "check:perf": "node scripts/perf-budget.mjs"
