@@ -160,3 +160,49 @@ def test_failed_creation_writes_no_audit_row(client, seeded):
     _login(client)
     _create(client, "2020-01-01", FULL_SET)  # يُرفض — ق-٤٧
     assert db.session.scalars(select(AuditEntry)).all() == []
+
+
+# ═══ ق-٢٤٠ — الصفر مشروع والسالب مرفوض (و-٢٠) ═══
+
+
+def test_zero_weight_is_accepted_and_disables_the_activity(client, seeded):
+    """
+    @covers ق-٢٤٠
+
+    تعطيل نشاطٍ يكون **بوزنه لا بحذفه** — قرار المستخدم في و-٢٠: «نخلي
+    الحضور ماله قيمة ونضربه بصفر». فالصفر قيمةٌ صالحة لا خطأ إدخال.
+    """
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+
+    r = _create(client, "2026-09-15", {**FULL_SET, "attendance": "0"})
+    assert r.status_code == 201
+
+    body = client.get("/api/admin/weights", headers=ORIGIN).json
+    rows = {w["activity_type"]: w["hours_per_unit"] for w in body["current"]["weights"]}
+    assert rows["attendance"] == "0.0000"
+
+
+def test_negative_weight_is_rejected(client, seeded):
+    """
+    @covers ق-٢٤٠
+
+    كان يُقبل بلا مُصادِق إطلاقًا — فوزنٌ سالب يطرح ساعاتٍ من كل استيراد
+    راصد صامتًا، وهو عكس المقصود من «تعطيل نشاط».
+    """
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+
+    before = client.get("/api/admin/weights", headers=ORIGIN).json["current"]["id"]
+    assert _create(client, "2026-09-15", {**FULL_SET, "attendance": "-1"}).status_code == 422
+    # ولا إصدار جديد يُكتب — الرفض في المخطَّط قبل الخدمة، فالسارية لم تتغيّر.
+    assert client.get("/api/admin/weights", headers=ORIGIN).json["current"]["id"] == before
+
+
+def test_negative_multiplier_is_rejected(client, seeded):
+    """@covers ق-٢٤٠ — نفس الثغرة في المضاعفات."""
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+
+    r = _create(client, "2026-09-15", FULL_SET, multipliers={"mastered": "-1.5"})
+    assert r.status_code == 422

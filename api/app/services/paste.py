@@ -21,7 +21,7 @@ from sqlalchemy.exc import IntegrityError
 from ..extensions import db
 from ..ingest import rasd
 from ..models import EntryDefault, Membership, Org, PointEvent, RawRow
-from ..rules.engine import Achievement, ruleset_at
+from ..rules.engine import Achievement, RuleSet, ruleset_at
 from . import audit, ledger
 from .matching import match_names
 
@@ -133,7 +133,7 @@ def _already_imported(org_id: int, external_ref: str) -> bool:
     )
 
 
-def _parse_or_raise(org_id: int, file_bytes: bytes) -> list[dict]:
+def _parse_or_raise(org_id: int, file_bytes: bytes) -> rasd.ParseResult:
     aliases, defaults = _load_column_config(org_id)
     try:
         return rasd.parse(file_bytes, aliases, defaults)
@@ -141,27 +141,307 @@ def _parse_or_raise(org_id: int, file_bytes: bytes) -> list[dict]:
         raise PasteError(str(exc)) from exc
 
 
+# ═══ الخطّة — مصدرٌ واحد للمعاينة والتنفيذ ═══
+#
+# `preview` و`commit` كانا يحسبان الشيء نفسه بمسارَي كودٍ مختلفَين، فكان
+# انحرافُهما مسألةَ وقت: معاينةٌ تقول شيئًا وتنفيذٌ يفعل غيره. الآن يبنيان
+# **نفس الخطّة** بنفس الدالّة — فالمعاينة حرفيًّا «ما سيفعله التنفيذ»، وهذا
+# شرطُ «دقّة أخذ البيانات من راصد» (الأولوية العليا، و-٢٠).
+
+
 @dataclass(frozen=True)
-class PreviewRow:
+class CategoryPlan:
+    """ما سيحدث لفئة واحدة من صفٍّ واحد."""
+
+    key: str  # 'hifz' | 'thabat' | 'muraja3a' | 'attendance'
+    activity_type: str
+    kind: str  # 'quran' | 'attendance'
+    #: 'created' | 'already_imported' | 'skipped_zero' | 'no_ruleset' | 'no_weight'
+    status: str
+    quantity: Decimal  # نقطة مئوية للفئات الثلاث، وعددُ أيامٍ للحضور
+    hours: Decimal | None  # `None` حين لا يمكن الاحتساب أصلًا
+    external_ref: str
+
+
+@dataclass(frozen=True)
+class RowPlan:
+    """ما سيحدث لصفّ طالبٍ واحد — بكل فئاته."""
+
     name: str
-    match_status: str  # 'matched' | 'ambiguous' | 'unmatched'
+    match_status: str  # نتيجة `match_names` الخام
+    status: str  # 'resolved' | 'unmatched' | 'ambiguous' | 'no_active_team'
     user_id: int | None
+    team_id: int | None
     candidate_ids: list[int]
-    percentages: dict[str, str]
-    attendance: str
-    tasmi3_days: str
+    percentages: dict[str, Decimal]
+    attendance: Decimal
+    tasmi3_days: Decimal
+    categories: tuple[CategoryPlan, ...]
+    overrides: tuple[dict, ...]
+
+
+def _category_plan(
+    org_id: int,
+    *,
+    key: str,
+    activity_type: str,
+    kind: str,
+    quantity: Decimal,
+    team_id: int,
+    user_id: int,
+    occurred_on: date,
+    occurred_at: datetime,
+    ruleset: RuleSet | None,
+) -> CategoryPlan:
+    """
+    ترتيب الفحوص مقصود: **التكرار قبل الاحتساب**. صفٌّ سبق استيرادُه لا
+    يُحتسب أصلًا، فلا معنى لسؤال الأوزان عنه.
+    """
+    ext_ref = _external_ref(team_id, occurred_on, user_id, activity_type)
+    common = {
+        "key": key,
+        "activity_type": activity_type,
+        "kind": kind,
+        "quantity": quantity,
+        "external_ref": ext_ref,
+    }
+
+    if _already_imported(org_id, ext_ref):
+        return CategoryPlan(status="already_imported", hours=None, **common)
+    if ruleset is None:
+        return CategoryPlan(status="no_ruleset", hours=None, **common)
+    try:
+        hours = ruleset.hours_for(
+            Achievement(
+                user_id=user_id,
+                occurred_at=occurred_at,
+                activity_type=activity_type,
+                quantity=quantity,
+            )
+        )
+    except ValueError:
+        # نشاطٌ بلا وزن في الإصدار السارّي — حالةٌ معروضة لا استثناءٌ بـ٥٠٠.
+        # الترتيب في `rules_admin` يمنع إسقاط نشاطٍ قائم، فيبقى هذا لأوّل
+        # إصدارٍ في منظّمة جديدة أُنشئ ناقصًا.
+        return CategoryPlan(status="no_weight", hours=None, **common)
+
+    if hours == 0:
+        # لا حدث لصفرٍ حقيقيّ — نفس مبدأ `services/entry.record`: غيابٌ لا
+        # يُنشئ حدثًا أصلًا، لا حدثًا بصفر ساعة (`docs/slices/و-٥.md`).
+        return CategoryPlan(status="skipped_zero", hours=hours, **common)
+    return CategoryPlan(status="created", hours=hours, **common)
+
+
+def _resolved_quantity(
+    name: str, field: str, original: Decimal, overrides: dict[str, Decimal]
+) -> tuple[Decimal, dict | None]:
+    """
+    القيمة بعد تفويض المشرف، ومعها سطرُ تدقيقٍ حين تغيّرت فعلًا.
+
+    دالّةٌ على مستوى الوحدة لا إغلاقٌ داخل الحلقة: الإغلاق يربط متغيّر الحلقة
+    فيصير صحيحًا بالمصادفة (استُدعي في دورته) لا بالبناء.
+    """
+    value = overrides.get(field, original)
+    if value == original:
+        return original, None
+    return value, {
+        "name": name,
+        "field": field,
+        "original": str(original),
+        "override": str(value),
+    }
+
+
+def _plan_rows(
+    org: Org,
+    rows: list[dict],
+    matches: dict,
+    occurred_on: date,
+    occurred_at: datetime,
+    ruleset: RuleSet | None,
+    name_resolutions: dict[str, int],
+    value_overrides: dict[str, dict[str, Decimal]],
+) -> list[RowPlan]:
+    """
+    الصفوف المطبَّعة ⇒ خطّة لكل صفّ. **بلا كتابة إطلاقًا** — قراءاتٌ فقط،
+    فتصلح للمعاينة كما تصلح للتنفيذ.
+    """
+    # user_id النهائي: تفويض المشرف أوّلًا (يغلب المطابقة التلقائية عمدًا —
+    # يسمح بتصحيح مطابقة آلية خاطئة)، ثم نتيجة `match_names`.
+    resolved: dict[str, int] = {}
+    for row in rows:
+        name = row["name"]
+        if name in name_resolutions:
+            resolved[name] = name_resolutions[name]
+        elif matches[name].status == "matched":
+            resolved[name] = matches[name].user_id
+
+    team_by_user = dict(
+        db.session.execute(
+            select(Membership.user_id, Membership.team_id).where(
+                Membership.user_id.in_(list(resolved.values()) or [-1]),
+                Membership.left_at.is_(None),
+            )
+        ).all()
+    )
+
+    plans = []
+    for row in rows:
+        name = row["name"]
+        match = matches[name]
+        percentages = _row_percentages(row)
+        shared = {
+            "name": name,
+            "match_status": match.status,
+            "candidate_ids": match.candidate_ids,
+            "percentages": percentages,
+            "attendance": row["attendance"],
+            "tasmi3_days": row["tasmi3_days"],
+        }
+
+        user_id = resolved.get(name)
+        if user_id is None:
+            plans.append(
+                RowPlan(
+                    status=match.status,
+                    user_id=None,
+                    team_id=None,
+                    categories=(),
+                    overrides=(),
+                    **shared,
+                )
+            )
+            continue
+
+        team_id = team_by_user.get(user_id)
+        if team_id is None:
+            plans.append(
+                RowPlan(
+                    status="no_active_team",
+                    user_id=user_id,
+                    team_id=None,
+                    categories=(),
+                    overrides=(),
+                    **shared,
+                )
+            )
+            continue
+
+        overrides = value_overrides.get(name, {})
+        applied: list[dict] = []
+        categories: list[CategoryPlan] = []
+
+        for cat in PERCENT_CATEGORIES:
+            achieved, note = _resolved_quantity(
+                name, f"{cat}_achieved", row[f"{cat}_achieved"], overrides
+            )
+            if note is not None:
+                applied.append(note)
+            categories.append(
+                _category_plan(
+                    org.id,
+                    key=cat,
+                    activity_type=QURAN_ACTIVITY[cat],
+                    kind="quran",
+                    quantity=_percent(row[f"{cat}_target"], achieved),
+                    team_id=team_id,
+                    user_id=user_id,
+                    occurred_on=occurred_on,
+                    occurred_at=occurred_at,
+                    ruleset=ruleset,
+                )
+            )
+
+        attendance, note = _resolved_quantity(
+            name, ATTENDANCE_ACTIVITY, row["attendance"], overrides
+        )
+        if note is not None:
+            applied.append(note)
+
+        categories.append(
+            _category_plan(
+                org.id,
+                key=ATTENDANCE_ACTIVITY,
+                activity_type=ATTENDANCE_ACTIVITY,
+                kind="attendance",
+                quantity=attendance,
+                team_id=team_id,
+                user_id=user_id,
+                occurred_on=occurred_on,
+                occurred_at=occurred_at,
+                ruleset=ruleset,
+            )
+        )
+
+        plans.append(
+            RowPlan(
+                status="resolved",
+                user_id=user_id,
+                team_id=team_id,
+                categories=tuple(categories),
+                overrides=tuple(applied),
+                **shared,
+            )
+        )
+
+    return plans
+
+
+def _category_report(plan: CategoryPlan) -> dict:
+    """شكل الردّ لفئة واحدة — `hours` يحضر فقط حين يكون للاحتساب معنى."""
+    if plan.hours is None:
+        return {"status": plan.status}
+    return {"status": plan.status, "hours": str(plan.hours)}
+
+
+def _totals(plans: list[RowPlan]) -> dict:
+    """
+    ما سيُكتب فعلًا، معدودًا قبل الكتابة — «لا `commit` بلا معاينة مقروءة».
+    """
+    created = [c for p in plans for c in p.categories if c.status == "created"]
+    hours = sum((c.hours for c in created), Decimal("0"))
+    return {
+        "rows": len(plans),
+        "rows_resolved": sum(1 for p in plans if p.status == "resolved"),
+        "rows_needing_attention": sum(1 for p in plans if p.status != "resolved"),
+        "events_new": len(created),
+        "events_already_imported": sum(
+            1 for p in plans for c in p.categories if c.status == "already_imported"
+        ),
+        "events_skipped_zero": sum(
+            1 for p in plans for c in p.categories if c.status == "skipped_zero"
+        ),
+        "hours_total": hours.quantize(Decimal("0.01")),
+    }
+
+
+def _ruleset_or_none(org_id: int, occurred_at: datetime) -> RuleSet | None:
+    """
+    للمعاينة: غيابُ نسخة أوزان **لا يمنع النظر في الملفّ**، بل يُعرض تحذيرًا
+    ويُترك الاحتساب فارغًا. (التنفيذ يرفض صراحةً — `commit` أدناه.)
+    """
+    try:
+        return ruleset_at(org_id, occurred_at)
+    except ValueError:
+        return None
 
 
 def preview(org: Org, file_bytes: bytes, occurred_on: date) -> dict:
     """
     FR-031 — **بلا كتابة إطلاقًا** (ق-١٩٢): لا `raw_rows`، لا حدث، لا `commit`.
+
+    الحالات معروضة **بالمطابقة التلقائية وحدها**؛ تفويضات المشرف تُطبَّق في
+    `commit`، فما يُعرض هنا هو الأسوأ حالًا لا الأفضل.
     """
     if occurred_on > _local_today(org):
         raise PasteError("لا يمكن استيراد بيانات بتاريخ لم يأتِ بعد.")
 
-    rows = _parse_or_raise(org.id, file_bytes)
+    parsed = _parse_or_raise(org.id, file_bytes)
+    rows = parsed.rows
     matches = match_names(org.id, [r["name"] for r in rows])
     batch_id = _batch_id(org.id, occurred_on, rows)
+    occurred_at = _occurred_at_for(org, occurred_on)
+    ruleset = _ruleset_or_none(org.id, occurred_at)
 
     dup_row = db.session.execute(
         select(RawRow.imported_at, RawRow.imported_by)
@@ -169,28 +449,34 @@ def preview(org: Org, file_bytes: bytes, occurred_on: date) -> dict:
         .limit(1)
     ).first()
 
-    preview_rows = []
-    for row in rows:
-        m = matches[row["name"]]
-        percentages = {
-            cat: str(v.quantize(DISPLAY_PRECISION)) for cat, v in _row_percentages(row).items()
+    plans = _plan_rows(org, rows, matches, occurred_on, occurred_at, ruleset, {}, {})
+
+    preview_rows = [
+        {
+            "name": p.name,
+            "match_status": p.match_status,
+            "status": p.status,
+            "user_id": p.user_id,
+            "candidate_ids": p.candidate_ids,
+            "percentages": {
+                cat: str(v.quantize(DISPLAY_PRECISION)) for cat, v in p.percentages.items()
+            },
+            "attendance": str(p.attendance),
+            "tasmi3_days": str(p.tasmi3_days),
+            "categories": {c.key: _category_report(c) for c in p.categories},
         }
-        preview_rows.append(
-            {
-                "name": row["name"],
-                "match_status": m.status,
-                "user_id": m.user_id,
-                "candidate_ids": m.candidate_ids,
-                "percentages": percentages,
-                "attendance": str(row["attendance"]),
-                "tasmi3_days": str(row["tasmi3_days"]),
-            }
-        )
+        for p in plans
+    ]
 
     return {
         "batch_id": batch_id,
         "duplicate_warning": dup_row is not None,
         "duplicate_imported_at": dup_row[0].isoformat() if dup_row else None,
+        # الاستبعاد مُعلَن لا صامت: صفّا «الإجمالي» و«المتوسط» في ملفّ راصد
+        # بشكل صفّ طالبٍ تمامًا، فاختفاؤهما بلا ذكرٍ يُقرَأ كفقدان طالبَين.
+        "excluded_labels": parsed.excluded_labels,
+        "weights_missing": ruleset is None,
+        "totals": _totals(plans),
         "rows": preview_rows,
     }
 
@@ -214,10 +500,8 @@ def commit(
     if occurred_on > _local_today(org):
         raise PasteError("لا يمكن استيراد بيانات بتاريخ لم يأتِ بعد.")
 
-    name_resolutions = name_resolutions or {}
-    value_overrides = value_overrides or {}
-
-    rows = _parse_or_raise(org.id, file_bytes)
+    parsed = _parse_or_raise(org.id, file_bytes)
+    rows = parsed.rows
     matches = match_names(org.id, [r["name"] for r in rows])
     batch_id = _batch_id(org.id, occurred_on, rows)
     occurred_at = _occurred_at_for(org, occurred_on)
@@ -240,129 +524,49 @@ def commit(
         for row in rows
     )
 
-    # ٢) user_id النهائي: تفويض المشرف أوّلًا (يغلب المطابقة التلقائية عمدًا —
-    # يسمح بتصحيح مطابقة آلية خاطئة)، ثم نتيجة `match_names`.
-    resolved: dict[str, int] = {}
-    for row in rows:
-        name = row["name"]
-        if name in name_resolutions:
-            resolved[name] = name_resolutions[name]
-        elif matches[name].status == "matched":
-            resolved[name] = matches[name].user_id
-
-    team_by_user = dict(
-        db.session.execute(
-            select(Membership.user_id, Membership.team_id).where(
-                Membership.user_id.in_(list(resolved.values()) or [-1]),
-                Membership.left_at.is_(None),
-            )
-        ).all()
+    # ٢) نفس الخطّة التي تراها المعاينة — ثم تُنفَّذ.
+    plans = _plan_rows(
+        org,
+        rows,
+        matches,
+        occurred_on,
+        occurred_at,
+        ruleset,
+        name_resolutions or {},
+        value_overrides or {},
     )
 
     specs = []
     row_reports = []
     overrides_applied = []
-    for row in rows:
-        name = row["name"]
-        user_id = resolved.get(name)
-        if user_id is None:
-            row_reports.append({"name": name, "status": matches[name].status, "user_id": None})
-            continue
-        team_id = team_by_user.get(user_id)
-        if team_id is None:
-            row_reports.append({"name": name, "status": "no_active_team", "user_id": user_id})
+    for plan in plans:
+        overrides_applied.extend(plan.overrides)
+        if plan.status != "resolved":
+            row_reports.append({"name": plan.name, "status": plan.status, "user_id": plan.user_id})
             continue
 
-        overrides = value_overrides.get(name, {})
-        categories: dict[str, dict] = {}
-
-        for cat in PERCENT_CATEGORIES:
-            target = row[f"{cat}_target"]
-            original_achieved = row[f"{cat}_achieved"]
-            achieved = overrides.get(f"{cat}_achieved", original_achieved)
-            if achieved != original_achieved:
-                overrides_applied.append(
-                    {
-                        "name": name,
-                        "field": f"{cat}_achieved",
-                        "original": str(original_achieved),
-                        "override": str(achieved),
-                    }
-                )
-            activity_type = QURAN_ACTIVITY[cat]
-            ext_ref = _external_ref(team_id, occurred_on, user_id, activity_type)
-            if _already_imported(org.id, ext_ref):
-                categories[cat] = {"status": "already_imported"}
-                continue
-            percent = _percent(target, achieved)
-            hours = ruleset.hours_for(
-                Achievement(
-                    user_id=user_id,
-                    occurred_at=occurred_at,
-                    activity_type=activity_type,
-                    quantity=percent,
-                )
-            )
-            if hours == 0:
-                # لا حدث لصفرٍ حقيقيّ — نفس مبدأ `services/entry.record`: غيابٌ
-                # لا يُنشئ حدثًا أصلًا، لا حدثًا بصفر ساعة (`docs/slices/و-٥.md`).
-                categories[cat] = {"status": "skipped_zero", "hours": "0.00"}
+        for cat in plan.categories:
+            if cat.status != "created":
                 continue
             specs.append(
                 ledger.EventSpec(
                     org_id=org.id,
-                    kind="quran",
-                    delta=hours,
-                    user_id=user_id,
+                    kind=cat.kind,
+                    delta=cat.hours,
+                    user_id=plan.user_id,
                     occurred_at=occurred_at,
                     actor_id=actor_id,
-                    external_ref=ext_ref,
+                    external_ref=cat.external_ref,
                 )
             )
-            categories[cat] = {"status": "created", "hours": str(hours)}
-
-        original_attendance = row["attendance"]
-        attendance_qty = overrides.get("attendance", original_attendance)
-        if attendance_qty != original_attendance:
-            overrides_applied.append(
-                {
-                    "name": name,
-                    "field": "attendance",
-                    "original": str(original_attendance),
-                    "override": str(attendance_qty),
-                }
-            )
-        att_ref = _external_ref(team_id, occurred_on, user_id, ATTENDANCE_ACTIVITY)
-        if _already_imported(org.id, att_ref):
-            categories["attendance"] = {"status": "already_imported"}
-        else:
-            att_hours = ruleset.hours_for(
-                Achievement(
-                    user_id=user_id,
-                    occurred_at=occurred_at,
-                    activity_type=ATTENDANCE_ACTIVITY,
-                    quantity=attendance_qty,
-                )
-            )
-            if att_hours == 0:
-                # لا حدث لصفرٍ حقيقيّ — نفس مبدأ `services/entry.record`.
-                categories["attendance"] = {"status": "skipped_zero", "hours": "0.00"}
-            else:
-                specs.append(
-                    ledger.EventSpec(
-                        org_id=org.id,
-                        kind="attendance",
-                        delta=att_hours,
-                        user_id=user_id,
-                        occurred_at=occurred_at,
-                        actor_id=actor_id,
-                        external_ref=att_ref,
-                    )
-                )
-                categories["attendance"] = {"status": "created", "hours": str(att_hours)}
 
         row_reports.append(
-            {"name": name, "status": "resolved", "user_id": user_id, "categories": categories}
+            {
+                "name": plan.name,
+                "status": "resolved",
+                "user_id": plan.user_id,
+                "categories": {c.key: _category_report(c) for c in plan.categories},
+            }
         )
 
     events = ledger.append_pending(specs) if specs else []

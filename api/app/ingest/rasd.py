@@ -12,6 +12,7 @@
 
 import csv
 import io
+from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 
 STUDENT_COLUMN = "الطالب"
@@ -54,6 +55,20 @@ _FIELD_KEYS = {
 }
 
 
+@dataclass(frozen=True)
+class ParseResult:
+    """
+    صفوف الطلاب الحقيقيّين، **ومعها ما استُبعد صراحةً**.
+
+    الاستبعاد الصامت يُقرَأ كعطل: مشرفٌ يرى ٢٤ صفًّا في ملفٍّ فيه ٢٦ سطرًا
+    يحتاج أن يعرف أنّ الفارق صفّا تذييل لا طالبَين ضائعَين (و-٢٠).
+    """
+
+    rows: list[dict]
+    #: تسميات صفوف التذييل المستبعَدة، بترتيب ورودها في الملفّ.
+    excluded_labels: list[str]
+
+
 def _to_decimal(raw: str | None, column: str, default: Decimal) -> Decimal:
     text = (raw or "").strip()
     if text == "":
@@ -93,9 +108,9 @@ def parse(
     file_bytes: bytes,
     aliases: dict[str, list[str]] | None = None,
     defaults: dict[str, Decimal] | None = None,
-) -> list[dict]:
+) -> ParseResult:
     """
-    الملفّ كاملًا ⇒ صفوف الطلاب الحقيقيّين فقط، بلا صفوف التذييل.
+    الملفّ كاملًا ⇒ صفوف الطلاب الحقيقيّين، ومعها تسميات ما استُبعد.
 
     `aliases`: عمود كنسيّ ⇒ مرادفاته المقبولة (من `entry_defaults.aliases`،
     يُحمَّلها `services/paste.py`) — ترويسة راصد مستقبليّة مغايرة الأسماء
@@ -123,9 +138,13 @@ def parse(
     )
 
     rows = []
+    excluded_labels = []
     for raw in reader:
         name = (raw.get(student_actual_column) or "").strip()
-        if name == "" or name in FOOTER_LABELS:
+        if name in FOOTER_LABELS:
+            excluded_labels.append(name)
+            continue
+        if name == "":
             continue
 
         row = {"name": name, "raw": raw}
@@ -134,4 +153,4 @@ def parse(
             row[key] = _to_decimal(raw.get(actual_column), actual_column, default)
         rows.append(row)
 
-    return rows
+    return ParseResult(rows=rows, excluded_labels=excluded_labels)

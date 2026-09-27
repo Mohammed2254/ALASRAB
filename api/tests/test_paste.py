@@ -53,7 +53,11 @@ def _make_admin(user_id):
 
 
 def _add_weight(seeded, activity_type, hours="1.00"):
-    """أوزان الفئات الثلاث والحضور **غير مبذورة** (TBD، قرار #٣) — تُضاف محليًّا هنا فقط."""
+    """
+    إصدارات `conftest.seeded` تحمل `memorize`/`quran_progress`/`reading` وحدها —
+    فئات راصد والحضور تُضاف محليًّا هنا بأوزانٍ صريحة، فيبقى كل اختبار يعلن
+    الوزن الذي يحتسب به (بخلاف `seed.py` التشغيليّ الذي يبذرها بقيمٍ أوّلية).
+    """
     db.session.add(
         Weight(
             version_id=seeded["versions"]["new"],
@@ -577,3 +581,137 @@ def test_admin_value_override_is_used_and_audited(client, seeded):
         "original": "2",
         "override": "8",
     }
+
+
+# ═══ ق-٢٤١ — المعاينة هي الخطّة نفسها التي يُنفّذها الاستيراد (و-٢٠) ═══
+
+
+def test_footer_labels_are_reported_not_silently_dropped(client, seeded):
+    """
+    @covers ق-٢٤١
+
+    مشرفٌ يرى ٢٤ صفًّا في ملفٍّ فيه ٢٦ سطرًا يحتاج أن يعرف أنّ الفارق صفّا
+    تذييل — لا طالبَين ضائعَين. الاستبعاد الصامت يُقرَأ كعطل.
+    """
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+
+    r = _upload(client, PREVIEW, RICH.read_bytes())
+    assert r.json["excluded_labels"] == ["الإجمالي", "المتوسط"]
+    assert r.json["totals"]["rows"] == 24
+
+
+def test_preview_totals_equal_what_commit_actually_writes(client, seeded):
+    """
+    @covers ق-٢٤١
+
+    **الضمانة المركزية:** ما تَعِد به المعاينة هو ما يكتبه التنفيذ بالضبط —
+    عددًا وساعاتٍ. كانا مسارَي كودٍ منفصلَين، فكان انحرافُهما مسألةَ وقت.
+    """
+    _add_student(seeded, "سلمان الغفيص", "9001")
+    _add_student(seeded, "مهنا العليان", "9002")
+    _add_all_weights(seeded, quran_hours="1.00")
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+
+    preview = _upload(client, PREVIEW, RICH.read_bytes()).json
+    committed = _upload(client, COMMIT, RICH.read_bytes()).json
+
+    assert preview["totals"]["events_new"] == committed["events_created"]
+
+    # ومجموع الساعات المُعلَن = مجموع ما دخل الدفتر فعلًا.
+    written = db.session.scalar(select(db.func.coalesce(db.func.sum(PointEvent.delta), 0)))
+    assert Decimal(preview["totals"]["hours_total"]) == written
+
+
+def test_preview_hours_per_category_equal_committed_hours(client, seeded):
+    """@covers ق-٢٤١ — لا على المجموع فقط، بل فئةً فئة."""
+    _add_student(seeded, "سلمان الغفيص", "9001")
+    _add_all_weights(seeded, quran_hours="1.00")
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+
+    previewed = next(
+        x
+        for x in _upload(client, PREVIEW, RICH.read_bytes()).json["rows"]
+        if x["name"] == "سلمان الغفيص"
+    )
+    committed = next(
+        x
+        for x in _upload(client, COMMIT, RICH.read_bytes()).json["rows"]
+        if x["name"] == "سلمان الغفيص"
+    )
+    assert previewed["categories"] == committed["categories"]
+
+
+def test_preview_after_import_marks_every_category_already_imported(client, seeded):
+    """
+    @covers ق-٢٤١
+
+    إعادة رفع الملفّ نفسه: المعاينة تقول **قبل** الضغط إنّ لا شيء سيُكتب،
+    بدل أن يكتشف المشرف ذلك من ردّ التنفيذ.
+    """
+    _add_student(seeded, "سلمان الغفيص", "9001")
+    _add_all_weights(seeded, quran_hours="1.00")
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+
+    _upload(client, COMMIT, RICH.read_bytes())
+
+    again = _upload(client, PREVIEW, RICH.read_bytes()).json
+    assert again["totals"]["events_new"] == 0
+    assert again["totals"]["events_already_imported"] > 0
+    assert again["duplicate_warning"] is True
+
+    row = next(x for x in again["rows"] if x["name"] == "سلمان الغفيص")
+    assert {c["status"] for c in row["categories"].values()} == {"already_imported"}
+
+
+def test_preview_without_a_ruleset_warns_instead_of_failing(client, seeded):
+    """
+    @covers ق-٢٤١
+
+    غيابُ نسخة أوزان سارية **لا يمنع النظر في الملفّ** — المعاينة تُحذّر
+    وتترك الاحتساب فارغًا، فيعرف المشرف أن يضبط الأوزان أوّلًا. (التنفيذ
+    وحده يرفض صراحةً.)
+    """
+    _add_student(seeded, "سلمان الغفيص", "9001")
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+
+    # تاريخٌ يسبق كلّ إصدارات الأوزان في `conftest` ⇒ لا مجموعة قواعد سارية.
+    before_any_version = date(2020, 1, 1)
+
+    r = _upload(client, PREVIEW, RICH.read_bytes(), occurred_on=before_any_version)
+    assert r.status_code == 200
+    assert r.json["weights_missing"] is True
+    assert r.json["totals"]["events_new"] == 0
+
+    # والتنفيذ بنفس التاريخ يرفض بوضوح لا بـ٥٠٠.
+    c = _upload(client, COMMIT, RICH.read_bytes(), occurred_on=before_any_version)
+    assert c.status_code == 422
+
+
+def test_category_without_a_weight_is_reported_not_a_server_error(client, seeded):
+    """
+    @covers ق-٢٤١
+
+    فئةٌ بلا وزن في الإصدار السارّي كانت ترفع `ValueError` من المحرّك فتصير
+    ٥٠٠. الآن حالةٌ معروضة: المشرف يرى أيّ فئة لن تُحتسب ولماذا.
+    """
+    _add_student(seeded, "سلمان الغفيص", "9001")
+    # الحفظ وحده موزون — التثبيت والمراجعة والحضور بلا وزن.
+    _add_weight(seeded, "quran_hifz", "1.00")
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+
+    r = _upload(client, PREVIEW, RICH.read_bytes())
+    assert r.status_code == 200
+    row = next(x for x in r.json["rows"] if x["name"] == "سلمان الغفيص")
+    assert row["categories"]["hifz"]["status"] == "created"
+    assert row["categories"]["thabat"]["status"] == "no_weight"
+    assert row["categories"]["attendance"]["status"] == "no_weight"
+
+    # والتنفيذ يكتب الموزون ويتجاوز غيره بلا انفجار.
+    c = _upload(client, COMMIT, RICH.read_bytes())
+    assert c.status_code == 201

@@ -38,8 +38,9 @@ const NUMERIC_RE = /^\s*([a-z_0-9]+)\s*=\s*fields\.(?:Float|Int|Integer)\(/gm
 
 // حارس الفراغ — نفس درس `MIN_CRITERIA`: استخراجٌ دون هذا عطلٌ في الفحص لا
 // نجاحٌ له (مجلّد مُعاد تسميته، أو تغيّر صيغة الإعلان في Marshmallow).
-// ١٧ لا ١٠ — رُفع بعد تصحيح الرجعة أعلاه ليكشف أيّ تراجع مستقبليّ فورًا.
-const EXPECTED_MIN_DECIMALS = 17
+// رُفع بعد تصحيح الرجعة أعلاه ليكشف أيّ تراجع مستقبليّ فورًا؛ و١٨ في و-٢٠
+// مع `hours_total` (مجموع ساعات المعاينة) — يُرفع مع كل عشريٍّ جديد.
+const EXPECTED_MIN_DECIMALS = 18
 
 function namesFrom(dir, re) {
   const found = new Map() // الاسم → الملفّات التي أعلنته

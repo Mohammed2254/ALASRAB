@@ -63,6 +63,52 @@ function PreviewRowCard({
   )
 }
 
+/**
+ * «ما سيُكتب» — تُعرَض **قبل** زرّ الاعتماد لا بعده.
+ *
+ * الخادم يبني خطّة الاستيراد مرّة واحدة ويستعملها للمعاينة وللتنفيذ معًا
+ * (`services/paste._plan_rows`)، فهذه الأرقام ليست تقديرًا بل هي الخطّة
+ * نفسها. كلّها تصل محسوبةً — لا حساب هنا (`AGENTS.md` ٥).
+ */
+function PlanSummary({ preview }: { preview: PastePreview }) {
+  const t = preview.totals
+  return (
+    <Placard title="ما سيُكتب" aside={`${t.events_new} حدثًا جديدًا`}>
+      <Prow label="صفوف الطلاب في الملفّ" value={<bdi dir="ltr">{t.rows}</bdi>} />
+      <Prow label="جاهزة للاستيراد" value={<bdi dir="ltr">{t.rows_resolved}</bdi>} />
+      {t.rows_needing_attention ? (
+        <Prow
+          label="تحتاج انتباهك — لن تُستورَد بلا حلّ"
+          value={<bdi dir="ltr">{t.rows_needing_attention}</bdi>}
+          tone="red"
+        />
+      ) : null}
+      <Prow label="أحداث جديدة ستُضاف" value={<bdi dir="ltr">{t.events_new}</bdi>} tone="accent" />
+      {t.events_already_imported ? (
+        <Prow
+          label="مستبعَد لأنّه استُورد سابقًا"
+          value={<bdi dir="ltr">{t.events_already_imported}</bdi>}
+        />
+      ) : null}
+      {t.events_skipped_zero ? (
+        <Prow label="صفرٌ لا يُنشئ حدثًا" value={<bdi dir="ltr">{t.events_skipped_zero}</bdi>} />
+      ) : null}
+      <Prow label="مجموع الساعات" value={<bdi dir="ltr">{t.hours_total}</bdi>} tone="accent" />
+
+      {preview.excluded_labels.length ? (
+        <p className="pt-2 text-[12px] text-(--color-text-dim)">
+          استُبعد من الملفّ: {preview.excluded_labels.join(' · ')} — صفوف تلخيصٍ لا طلّاب.
+        </p>
+      ) : null}
+
+      <p className="pt-2 text-[12px] text-(--color-text-dim)">
+        النسب تُحتسب هنا من المستهدف والمنجز، وتجاوز ١٠٠٪ يُحتسب كما هو. لذلك يختلف مجموعنا عن
+        عمود «الإجمالي» في ملفّ راصد، فهو متوسّطٌ يقصّ كل نسبة عند ١٠٠٪.
+      </p>
+    </Placard>
+  )
+}
+
 function PreviewBody({
   preview,
   onCommit,
@@ -110,6 +156,17 @@ function PreviewBody({
               </p>
             </Placard>
           ) : null}
+
+          {preview.weights_missing ? (
+            <Placard title="لا أوزان سارية">
+              <p className="py-2 text-[14px] text-(--color-red-text)">
+                لا توجد نسخة أوزان سارية لهذا التاريخ، فلن تُحتسب أيّ ساعة. اضبط الأوزان أوّلًا من
+                شاشة «الأوزان» ثم أعد المعاينة.
+              </p>
+            </Placard>
+          ) : null}
+
+          <PlanSummary preview={preview} />
 
           {preview.rows.map((row) => (
             <PreviewRowCard

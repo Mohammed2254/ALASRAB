@@ -34,6 +34,7 @@ from .paste import (
     PasteCommitResultSchema,
     PastePreviewRowSchema,
     PastePreviewSchema,
+    PastePreviewTotalsSchema,
     PasteRowResultSchema,
 )
 from .quran import (
@@ -112,6 +113,7 @@ __all__ = [
     "PasteCommitResultSchema",
     "PastePreviewRowSchema",
     "PastePreviewSchema",
+    "PastePreviewTotalsSchema",
     "PasteRowResultSchema",
     "PilotsBoardSchema",
     "QueueSchema",

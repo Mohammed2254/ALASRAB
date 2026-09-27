@@ -5,12 +5,16 @@ from marshmallow import Schema, fields, validate
 
 class WeightRowSchema(Schema):
     activity_type = fields.Str(required=True, validate=validate.Length(min=1, max=50))
-    hours_per_unit = fields.Decimal(required=True, as_string=True)
+    # `min=0` لا `min=0.01`: **الصفر قرارٌ مشروع** — «نخلي الحضور ماله قيمة
+    # ونضربه بصفر» (قرار المستخدم، و-٢٠)، فتعطيل نشاطٍ يكون بوزنه لا بحذفه.
+    # والسالب مرفوض: كان يُقبل بلا مُصادِق فيطرح ساعاتٍ من كل استيراد صامتًا.
+    hours_per_unit = fields.Decimal(required=True, as_string=True, validate=validate.Range(min=0))
 
 
 class MultiplierRowSchema(Schema):
     grade = fields.Str(required=True, validate=validate.Length(min=1, max=50))
-    multiplier = fields.Decimal(required=True, as_string=True)
+    # نفس المنطق: صفرٌ مشروع (درجةٌ لا تُحتسب)، وسالبٌ مرفوض.
+    multiplier = fields.Decimal(required=True, as_string=True, validate=validate.Range(min=0))
 
 
 class CreateWeightVersionSchema(Schema):
