@@ -11,10 +11,10 @@
  */
 import { useEffect } from 'react'
 
-import { init, listen } from './nav/history'
+import { go, init, listen } from './nav/history'
 import { isAdminScreen } from './nav/adminNav'
 import { useScreen } from './nav/useNavigation'
-import { ADMIN_SCREENS } from './screens/admin/registry'
+import AdminShell from './screens/admin/AdminShell'
 import Login from './screens/Login'
 import PilotShell from './screens/PilotShell'
 import { PILOT_SUB, PILOT_TABS } from './screens/registry'
@@ -49,8 +49,25 @@ function SessionError({ message, onRetry }: { message: string; onRetry: () => vo
   )
 }
 
+function NotForYou() {
+  return (
+    <Shell>
+      <p className="mb-4 text-[14px] text-(--color-text-dim)">
+        هذه الشاشة للمشرفين. بطاقتك من هنا.
+      </p>
+      <button
+        type="button"
+        onClick={() => go('deck')}
+        className="min-h-[44px] rounded-(--radius-sm) border border-(--color-border-strong) px-5 text-[14px]"
+      >
+        بطاقتي
+      </button>
+    </Shell>
+  )
+}
+
 function Gate() {
-  const { status, error, refresh } = useApp()
+  const { status, error, refresh, user } = useApp()
   const screen = useScreen()
 
   useEffect(() => {
@@ -82,15 +99,12 @@ function Gate() {
     )
   }
 
-  // القشرة الإدارية تحلّ محلّ `Shell` العاري في الدفعة التالية؛ الحراسة
-  // الحقيقيّة في الخادم (`@admin_required`) لا هنا (`AGENTS.md` ٩).
+  // **حرسُ الدور هنا إنصافٌ لا أمن** — `@admin_required` في الخادم هو الحاكم
+  // (`AGENTS.md` ٩). وجودُه يمنع طالبًا يفتح رابطًا عميقًا من مواجهة قشرةٍ
+  // كل نداءٍ فيها ٤٠٣.
   if (isAdminScreen(screen)) {
-    const AdminScreen = ADMIN_SCREENS[screen]
-    return (
-      <Shell>
-        <AdminScreen />
-      </Shell>
-    )
+    if (user?.role !== 'admin') return <NotForYou />
+    return <AdminShell screen={screen} />
   }
 
   return (

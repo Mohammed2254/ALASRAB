@@ -1,9 +1,21 @@
 import { useEffect, useRef } from 'react'
 
+import type { Decimal } from '../api/brand'
 import { countUp } from '../motion/mo'
 
-/** رقم كبير + تسمية — شبكة إحصائيات لوحة القيادة. */
-type Props = { value: number; label: string; tone?: 'default' | 'accent' | 'danger' }
+/**
+ * رقم كبير + تسمية — شبكة إحصائيات لوحة القيادة.
+ *
+ * `value` عشريٌّ نصّيّ **أو** رقم: بعض أرقام اللوحة عشريّة مُوسَمة (ADR-009)
+ * وبعضها عدّاد صحيح، و`countUp` يقبل الاثنين أصلًا. و`decimals` يُمرَّر إليه
+ * كما هو — لا تنسيق هنا.
+ */
+type Props = {
+  value: Decimal | number
+  label: string
+  tone?: 'default' | 'accent' | 'danger'
+  decimals?: 0 | 2
+}
 
 const TONE_CLASS: Record<NonNullable<Props['tone']>, string> = {
   default: 'text-(--color-text)',
@@ -11,12 +23,12 @@ const TONE_CLASS: Record<NonNullable<Props['tone']>, string> = {
   danger: 'text-(--color-red-text)',
 }
 
-export default function StatCard({ value, label, tone = 'default' }: Props) {
+export default function StatCard({ value, label, tone = 'default', decimals = 0 }: Props) {
   const numRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    countUp(numRef.current, value)
-  }, [value])
+    countUp(numRef.current, value, { decimals })
+  }, [value, decimals])
 
   return (
     <div className="rounded-(--radius-md) border border-(--color-border) bg-(--color-surface) p-4.5">

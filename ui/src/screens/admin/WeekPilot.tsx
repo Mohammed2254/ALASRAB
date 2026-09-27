@@ -3,12 +3,10 @@ import { useState } from 'react'
 import { api, ApiError } from '../../api'
 import { fmtDecimal } from '../../api/format'
 import type { Mover } from '../../api/types/report'
-import { go } from '../../nav/history'
 import { useAsync } from '../../state/useAsync'
 import { Async } from '../../ui/Async'
 import EmptyState from '../../ui/EmptyState'
 import Placard from '../../ui/Placard'
-import Subback from '../../ui/Subback'
 
 /**
  * اختيار طيار الأسبوع — `POST /admin/week/pilot` (FR-062 · م-٦).
@@ -95,7 +93,6 @@ export default function AdminWeekPilot() {
 
   return (
     <div className="flex flex-col gap-3.5">
-      <Subback label="الرئيسية" onClick={() => go('deck')} />
       <Async state={state} loadingTitle="طيار الأسبوع">
         {({ week, report }) =>
           week.pilot ? (

@@ -8,6 +8,7 @@ import { request, requestForm } from '../client'
 import type { AdminEntryResult, AdminTahdirEntryForm, OrgTahdirReport, QueueItem, ReviewResult } from '../types/adminQueue'
 import type { AttendanceStatus, RecordedAttendance, UndoneAttendance } from '../types/attendance'
 import type { AuditLog } from '../types/audit'
+import type { AdminDashboard } from '../types/dashboard'
 import type { AdminNotesList, ChooseWeekPilotForm, ChosenWeekPilot, MarkedNote } from '../types/engagement'
 import type { ActivitiesList, AssessForm, Assessed, CreateActivityForm, CreatedActivity } from '../types/fuel'
 import type { PasteCommitResult, PastePreview } from '../types/paste'
@@ -43,6 +44,34 @@ const assessPayload = (form: AssessForm) => ({
 
 export const adminApi = {
   report: (days = 7) => request<Report>(`/admin/report?days=${days}`),
+
+  /**
+   * لوحة القيادة — **خمسة نداءات متوازية في `Promise.all` لا سلسلة انتظار.**
+   *
+   * ورفضتُ `allSettled` عمدًا: يدفع خمس فحوص حالة وخمس صور خطأ إلى الشاشة،
+   * وهي خمسة GET رخيصة على خادمٍ واحد — إن فشل أحدها فالمشرف يحتاج أن يرى
+   * فشلًا، لا لوحةً ينقصها رقمٌ بهدوء.
+   *
+   * والأعداد تُحسب هنا لا في الشاشة («الواجهة تعرض ولا تحسب»، `AGENTS.md` ٥).
+   */
+  dashboard: (): Promise<AdminDashboard> =>
+    Promise.all([
+      request<Report>('/admin/report?days=7'),
+      request<{ submissions: QueueItem[] }>('/admin/readings'),
+      request<{ submissions: QueueItem[] }>('/admin/tahdir'),
+      request<AdminNotesList>('/admin/notes'),
+      request<AuditLog>('/admin/audit'),
+    ]).then(([report, readings, tahdir, notes, audit]) => ({
+      window: report.window,
+      totals: report.totals,
+      teams_count: report.teams.length,
+      pending: {
+        readings: readings.submissions.length,
+        tahdir: tahdir.submissions.length,
+        notes: notes.notes.filter((n) => n.read_at === null).length,
+      },
+      activity: audit.entries,
+    })),
   resetPin: (userId: number) => request<ResetPinResult>(`/admin/users/${userId}/reset-pin`, { method: 'POST' }),
 
   readingQueue: () => request<{ submissions: QueueItem[] }>('/admin/readings'),

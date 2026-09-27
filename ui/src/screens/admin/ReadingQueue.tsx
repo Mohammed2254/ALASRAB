@@ -2,14 +2,12 @@ import { useState } from 'react'
 
 import { api, ApiError } from '../../api'
 import type { QueueItem } from '../../api/types/adminQueue'
-import { go } from '../../nav/history'
 import { useAsync } from '../../state/useAsync'
 import { Async } from '../../ui/Async'
 import Button from '../../ui/Button'
 import EmptyState from '../../ui/EmptyState'
 import Placard from '../../ui/Placard'
 import Prow from '../../ui/Prow'
-import Subback from '../../ui/Subback'
 
 /**
  * طابور اعتماد القراءات — `GET/POST /admin/readings*` (FR-022..024).
@@ -154,7 +152,6 @@ export default function ReadingQueue() {
 
   return (
     <div className="flex flex-col gap-3.5">
-      <Subback label="الرئيسية" onClick={() => go('deck')} />
       <Async state={state} loadingTitle="الطابور">
         {(data) => <Queue submissions={data.submissions} onChanged={state.reload} />}
       </Async>

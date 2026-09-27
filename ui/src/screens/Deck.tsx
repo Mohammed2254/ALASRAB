@@ -37,11 +37,9 @@ const KINDS: Record<string, string> = {
   correction: 'تصحيح',
   manual: 'إضافة يدوية',
 }
-// مقاس ٢٤×٢٤ — نفس منظومة `viewBox` في `FeedRow`، لا ٦٤×٦٤ الخاصّة بـ`HexIcon`.
-// الخطأ السابق (إحداثيات حتّى ٤٢ داخل صندوق ٢٤) كان يرسم علامةً أكبر من
-// الصندوق بمرّتين فتخرج عن الرؤية — مُكتشَفٌ بمعاينة حيّة لا افتراضًا.
-const CHECK = 'M5 12l4 4L19 6'
-const WARN = 'M6 6l12 12M18 6L6 18'
+// المسارات انتقلت إلى `ui/feedIcons.ts` وصار `FeedRow.icon` مفتاحًا مُنوَّعًا
+// (و-٢٠): التعليق الذي كان هنا لم يمنع تكرار الخطأ نفسه في لوحة القيادة،
+// فحلّ محلّه النوع.
 
 function Hero({ deck }: { deck: DeckData }) {
   const hoursRef = useRef<HTMLElement>(null)
@@ -123,53 +121,38 @@ function DeckCard({ deck }: { deck: DeckData }) {
 
 // بلاطات الوصول السريع — `formation`/`readings` مكرّرتان عمدًا مع شريط
 // التبويب (`و-١٦.md` §٢ قرار ٣): طريقٌ ثانٍ مقصود، مطابقًا للنموذج المعتمد.
+//
+// **والترتيب والتسميات من النموذج حرفيًّا** (و-٢٠): كان مختلفًا، و«ملاحظة»
+// كانت «أرسل ملاحظة» — فرقٌ صغير لكنه من جملة ما جعل الواجهة تُقرَأ غير
+// المتّفق عليه.
 const TILES: { screen: ScreenKey; label: string; glyph: string }[] = [
+  { screen: 'formation', label: 'التشكيل', glyph: GLYPHS.formation },
+  { screen: 'readings', label: 'قراءاتي', glyph: GLYPHS.book },
   { screen: 'tahdir', label: 'تحضير القراءة', glyph: GLYPHS.checklist },
   { screen: 'question', label: 'سؤال اليوم', glyph: GLYPHS.question },
   { screen: 'weekPilot', label: 'طيار الأسبوع', glyph: GLYPHS.star },
-  { screen: 'note', label: 'ملاحظة', glyph: GLYPHS.note },
-  { screen: 'formation', label: 'التشكيل', glyph: GLYPHS.formation },
-  { screen: 'readings', label: 'قراءاتي', glyph: GLYPHS.book },
-]
-
-// بلاطات المشرف — لا شريط تبويب إداريّ منفصل (`و-١٧.md` §١.٤): تُتاح من نفس
-// شبكة البطاقة، مشروطة بالدور وحده. **إخفاء البلاطة راحةٌ لا حماية** — الحارس
-// الحقيقيّ `@admin_required` في كل مسار خلفيّ (`AGENTS.md` ٩)، تمامًا كتعليق
-// `NavBar.jsx` في `web/`.
-const ADMIN_TILES: { screen: ScreenKey; label: string; glyph: string }[] = [
-  { screen: 'adminReport', label: 'التقرير', glyph: GLYPHS.board },
-  { screen: 'adminQueue', label: 'طابور القراءات', glyph: GLYPHS.queue },
-  { screen: 'adminTahdirQueue', label: 'طابور تحضير القراءة', glyph: GLYPHS.queue },
-  { screen: 'adminTahdirReport', label: 'تقرير تحضير القراءة', glyph: GLYPHS.checklist },
-  { screen: 'adminTeams', label: 'الأسراب', glyph: GLYPHS.team },
-  { screen: 'adminWeights', label: 'الأوزان', glyph: GLYPHS.scale },
-  { screen: 'adminThresholds', label: 'العتبات', glyph: GLYPHS.ladder },
-  { screen: 'adminNotes', label: 'الملاحظات', glyph: GLYPHS.note },
-  { screen: 'adminWeekPilot', label: 'اختيار طيار الأسبوع', glyph: GLYPHS.star },
-  { screen: 'adminAudit', label: 'الصندوق الأسود', glyph: GLYPHS.ledger },
-  { screen: 'adminFuelActivities', label: 'أنشطة الوقود', glyph: GLYPHS.fuel },
-  { screen: 'adminFuelAssess', label: 'تقييم نشاط', glyph: GLYPHS.checklist },
-  { screen: 'adminAttendance', label: 'الحضور', glyph: GLYPHS.calendarCheck },
-  { screen: 'adminQuranEdit', label: 'التصحيح والتعديل القرآني', glyph: GLYPHS.book },
-  { screen: 'adminRasdImport', label: 'استيراد راصد', glyph: GLYPHS.importArrow },
+  { screen: 'note', label: 'أرسل ملاحظة', glyph: GLYPHS.note },
 ]
 
 function QuickAccess({ isAdmin }: { isAdmin: boolean }) {
   return (
     <>
-      <div className="grid grid-cols-3 gap-2.5">
+      {/* عمودان لا ثلاثة — `.tiles{1fr 1fr}` في النموذج. */}
+      <div className="grid grid-cols-2 gap-2.5">
         {TILES.map((t) => (
           <Tile key={t.screen} glyph={t.glyph} label={t.label} onClick={() => go(t.screen)} />
         ))}
       </div>
+      {/* **مدخلٌ واحد لا خمس عشرة بلاطة** (و-٢٠): كانت شبكةُ التنقّل الإداريّ
+          كلّها ملصوقةً بأسفل بطاقة الطالب، وهي في النموذج المعتمد قشرةٌ
+          مستقلّة بقائمة جانبية. وإخفاءُ المدخل راحةٌ لا حماية — الحارس
+          `@admin_required` في كل مسار خلفيّ (`AGENTS.md` ٩). */}
       {isAdmin ? (
-        <Placard title="المشرف">
-          <div className="grid grid-cols-3 gap-2.5">
-            {ADMIN_TILES.map((t) => (
-              <Tile key={t.screen} glyph={t.glyph} label={t.label} onClick={() => go(t.screen)} />
-            ))}
-          </div>
-        </Placard>
+        <Tile
+          glyph={GLYPHS.board}
+          label="لوحة المشرف"
+          onClick={() => go('adminDashboard')}
+        />
       ) : null}
     </>
   )
@@ -196,7 +179,7 @@ export default function Deck() {
                 <div key={e.id}>
                   <FeedRow
                     tone={e.kind === 'correction' ? 'red' : 'accent'}
-                    icon={e.kind === 'correction' ? WARN : CHECK}
+                    icon={e.kind === 'correction' ? 'cross' : 'check'}
                     text={
                       <span>
                         {KINDS[e.kind] ?? e.kind} <bdi dir="ltr">({e.delta})</bdi>

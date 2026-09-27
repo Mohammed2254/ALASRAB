@@ -1,11 +1,9 @@
 import { api } from '../../api'
-import { go } from '../../nav/history'
 import { useAsync } from '../../state/useAsync'
 import { Async } from '../../ui/Async'
 import EmptyState from '../../ui/EmptyState'
 import Placard from '../../ui/Placard'
 import Prow from '../../ui/Prow'
-import Subback from '../../ui/Subback'
 
 /**
  * تقرير تحضير القراءة الأسبوعي — `GET /admin/tahdir/report` (FR-093).
@@ -17,7 +15,6 @@ export default function TahdirReport() {
 
   return (
     <div className="flex flex-col gap-3.5">
-      <Subback label="الرئيسية" onClick={() => go('deck')} />
       <Async state={state} loadingTitle="تقرير تحضير القراءة">
         {(report) =>
           report.students.length === 0 ? (

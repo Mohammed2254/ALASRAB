@@ -2,14 +2,12 @@ import { useState } from 'react'
 
 import { api, ApiError } from '../../api'
 import type { AdminTeamRow } from '../../api/types/teams'
-import { go } from '../../nav/history'
 import { useAsync } from '../../state/useAsync'
 import { Async } from '../../ui/Async'
 import Button from '../../ui/Button'
 import Field from '../../ui/Field'
 import Placard from '../../ui/Placard'
 import Prow from '../../ui/Prow'
-import Subback from '../../ui/Subback'
 
 /**
  * الأسراب والعضويات — `GET/POST /admin/teams*` (FR-083). **أرشفة لا حذف،
@@ -155,7 +153,6 @@ export default function Teams() {
 
   return (
     <div className="flex flex-col gap-3.5">
-      <Subback label="الرئيسية" onClick={() => go('deck')} />
       <Async state={state} loadingTitle="الأسراب">
         {(data) => (
           <div className="flex flex-col gap-3.5">

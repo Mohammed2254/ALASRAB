@@ -2,13 +2,11 @@ import { useState } from 'react'
 
 import { api, ApiError } from '../../api'
 import type { AttendanceStatus, PilotRosterRow } from '../../api/types/attendance'
-import { go } from '../../nav/history'
 import { useAsync } from '../../state/useAsync'
 import { Async } from '../../ui/Async'
 import Button from '../../ui/Button'
 import Placard from '../../ui/Placard'
 import Prow from '../../ui/Prow'
-import Subback from '../../ui/Subback'
 
 /**
  * الحضور اليدويّ — `GET/POST /admin/attendance*` (FR-041/042، احتياطيّ).
@@ -113,7 +111,6 @@ export default function Attendance() {
 
   return (
     <div className="flex flex-col gap-3.5">
-      <Subback label="الرئيسية" onClick={() => go('deck')} />
       <Async state={state} loadingTitle="الحضور">
         {(data) =>
           data.already_recorded ? (

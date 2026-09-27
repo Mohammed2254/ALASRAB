@@ -21,6 +21,7 @@
  * (`{...PILOT_PATHS, ...ADMIN_PATHS}`)، فيبقى `ScreenKey` سطحًا واحدًا.
  */
 export const ADMIN_PATHS = {
+  adminDashboard: '/admin',
   adminQueue: '/admin/queue',
   adminTahdirQueue: '/admin/tahdir',
   adminNotes: '/admin/notes',
@@ -48,11 +49,12 @@ export type AdminNavGroup = { label: string | null; items: readonly AdminNavItem
 /**
  * المجموعات الخمس بترتيب النموذج وتسمياته حرفيًّا.
  *
- * **لا `adminDashboard` بعد** — تصل مع `AdminShell` في الدفعة التالية، لأن
- * `Record<AdminKey, ComponentType>` مُستوفًى بالمترجم: مفتاحٌ بلا شاشة يُسقط
- * البناء، فلا يُعلَن مسارٌ قبل وجود وجهته.
+ * و`adminDashboard` في صدر القائمة بلا عنوان مجموعة — كما في النموذج. كان
+ * قد سقط في و-١٧ بحجّة «لا مسار خلفيّ يقابله»، وهو تجميعٌ لمسارات قائمة لا
+ * نقطةٌ جديدة.
  */
 export const ADMIN_NAV: readonly AdminNavGroup[] = [
+  { label: null, items: [{ key: 'adminDashboard', label: 'لوحة القيادة' }] },
   {
     label: 'المراجعة',
     items: [

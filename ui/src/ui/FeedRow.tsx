@@ -1,7 +1,15 @@
 import type { ReactNode } from 'react'
 
-/** صفّ حدث بنقطة أيقونة ملوّنة — الصندوق الأسود والنشاط الأخير. */
-type Props = { tone: 'green' | 'red' | 'accent'; icon: string; text: ReactNode; time: ReactNode }
+import { FEED_ICONS, type FeedIcon } from './feedIcons'
+
+/**
+ * صفّ حدث بنقطة أيقونة ملوّنة — الصندوق الأسود والنشاط الأخير.
+ *
+ * `icon` **مفتاحٌ لا مسار**: الصندوق ٢٤×٢٤، ومسارُ `HexIcon` (٦٤×٦٤) يُرسَم
+ * خارجه كليًّا بلا أن يسقط شيء. انظر `feedIcons.ts` — وقع الخطأ مرّتين قبل
+ * أن يصير النوعُ يمنعه.
+ */
+type Props = { tone: 'green' | 'red' | 'accent'; icon: FeedIcon; text: ReactNode; time: ReactNode }
 
 const DOT_CLASS: Record<Props['tone'], string> = {
   green: 'bg-(--color-green-tint) text-(--color-green)',
@@ -14,7 +22,7 @@ export default function FeedRow({ tone, icon, text, time }: Props) {
     <div className="flex items-start gap-3 border-b border-(--color-border) py-2.5 last:border-none">
       <div className={`flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-[9px] ${DOT_CLASS[tone]}`}>
         <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
-          <path d={icon} />
+          <path d={FEED_ICONS[icon]} />
         </svg>
       </div>
       <div>

@@ -1,10 +1,8 @@
 import { api } from '../../api'
-import { go } from '../../nav/history'
 import { useAsync } from '../../state/useAsync'
 import { Async } from '../../ui/Async'
 import EmptyState from '../../ui/EmptyState'
 import Placard from '../../ui/Placard'
-import Subback from '../../ui/Subback'
 
 /**
  * سجلّ التغييرات («الصندوق الأسود») — `GET /admin/audit` (FR-084).
@@ -35,7 +33,6 @@ export default function AuditLog() {
 
   return (
     <div className="flex flex-col gap-3.5">
-      <Subback label="الرئيسية" onClick={() => go('deck')} />
       <Async state={state} loadingTitle="سجلّ التغييرات">
         {(data) =>
           data.entries.length ? (

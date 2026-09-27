@@ -4,14 +4,12 @@ import { api, ApiError } from '../../api'
 import { fmtDecimal } from '../../api/format'
 import type { ActivityRow, ScoreRowForm } from '../../api/types/fuel'
 import type { AdminTeamRow } from '../../api/types/teams'
-import { go } from '../../nav/history'
 import { useAsync } from '../../state/useAsync'
 import { Async } from '../../ui/Async'
 import Button from '../../ui/Button'
 import Field from '../../ui/Field'
 import Placard from '../../ui/Placard'
 import Prow from '../../ui/Prow'
-import Subback from '../../ui/Subback'
 
 /**
  * تقييم نشاط الوقود — `POST /admin/fuel/assess` (FR-070 · FR-071).
@@ -119,7 +117,6 @@ export default function FuelAssess() {
 
   return (
     <div className="flex flex-col gap-3.5">
-      <Subback label="الرئيسية" onClick={() => go('deck')} />
       <Async state={activitiesState} loadingTitle="تقييم نشاط">
         {(activityData) => (
           <Async state={teamsState} loadingTitle="تقييم نشاط">

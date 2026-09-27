@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { api, ApiError } from '../../api'
 import { fmtDecimal } from '../../api/format'
 import type { CurrentWeightVersion, MultiplierRowForm, WeightRowForm } from '../../api/types/rulesAdmin'
-import { go } from '../../nav/history'
 import { useAsync } from '../../state/useAsync'
 import { Async } from '../../ui/Async'
 import Button from '../../ui/Button'
@@ -11,7 +10,6 @@ import EmptyState from '../../ui/EmptyState'
 import Field from '../../ui/Field'
 import Placard from '../../ui/Placard'
 import Prow from '../../ui/Prow'
-import Subback from '../../ui/Subback'
 
 /**
  * إصدارات الأوزان — `GET/POST /admin/weights` (FR-081). **إصدارٌ جديد لا
@@ -125,7 +123,6 @@ export default function Weights() {
 
   return (
     <div className="flex flex-col gap-3.5">
-      <Subback label="الرئيسية" onClick={() => go('deck')} />
       <Async state={state} loadingTitle="الأوزان">
         {(data) => (
           <div className="flex flex-col gap-3.5">

@@ -11,6 +11,7 @@
 import type { AdminKey } from '../../nav/adminNav'
 
 import Attendance from './Attendance'
+import Dashboard from './Dashboard'
 import AuditLog from './AuditLog'
 import FuelActivities from './FuelActivities'
 import FuelAssess from './FuelAssess'
@@ -27,6 +28,7 @@ import Weights from './Weights'
 import WeekPilot from './WeekPilot'
 
 export const ADMIN_SCREENS: Record<AdminKey, () => React.JSX.Element> = {
+  adminDashboard: Dashboard,
   adminQueue: ReadingQueue,
   adminTahdirQueue: TahdirQueue,
   adminNotes: Notes,

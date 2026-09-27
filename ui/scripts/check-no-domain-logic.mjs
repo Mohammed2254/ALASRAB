@@ -80,6 +80,8 @@ const VISUAL_PRIMITIVES = [
   'src/ui/ChartBars.tsx',
   'src/ui/CelebrateBadge.tsx',
   'src/ui/BottomTabs.tsx',
+  'src/ui/SideNav.tsx',
+  'src/ui/TaskRow.tsx',
   'src/ui/Async.tsx',
 ]
 const MOTION_ONLY = 'src/motion/'

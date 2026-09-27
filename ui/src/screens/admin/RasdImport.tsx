@@ -3,14 +3,12 @@ import { useState } from 'react'
 import { api, ApiError } from '../../api'
 import type { PasteCommitResult, PastePreview, PastePreviewRow } from '../../api/types/paste'
 import type { StudentRef } from '../../api/types/quran'
-import { go } from '../../nav/history'
 import { useAsync } from '../../state/useAsync'
 import { Async } from '../../ui/Async'
 import Button from '../../ui/Button'
 import Field from '../../ui/Field'
 import Placard from '../../ui/Placard'
 import Prow from '../../ui/Prow'
-import Subback from '../../ui/Subback'
 
 /**
  * استيراد راصد — `POST /admin/paste/{preview,commit}` (FR-030..034/040).
@@ -233,7 +231,6 @@ export default function RasdImport() {
 
   return (
     <div className="flex flex-col gap-3.5">
-      <Subback label="الرئيسية" onClick={() => go('deck')} />
 
       <Placard title="رفع الملفّ">
         <Field label="ملفّ CSV من راصد" htmlFor="rasd_file">

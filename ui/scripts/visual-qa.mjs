@@ -1,5 +1,5 @@
 /*
-  @covers ق-٢١٧, ق-٢٢٠, ق-٢٢١, ق-٢٢٢, ق-٢٢٣
+  @covers ق-٢١٧, ق-٢٢٠, ق-٢٢١, ق-٢٢٢, ق-٢٢٣, ق-٢٤٤
 
   القياس البصريّ الحيّ لواجهة `ui/` — في متصفّح حقيقي، لا في jsdom.
 
@@ -25,6 +25,11 @@ const VIEWPORTS = [
   { width: 320, height: 720, slug: '320', label: '٣٢٠px أضيق جوّال' },
   { width: 375, height: 812, slug: '375', label: '٣٧٥px الأساس' },
   { width: 1280, height: 800, slug: '1280', label: '١٢٨٠px سطح المكتب' },
+  // ١٤٤٠px هو المقاس الذي يسمّيه النموذج المعتمد للوحة المشرف حرفيًّا
+  // («لوحة المشرف — 1440px»)، وأُضيف في و-٢٠ مع القشرة الإدارية. والارتفاع
+  // ٨٠٠px مقصود: القائمة الجانبية أطول منه (≈٩٩٠px) فيُقاس تمريرها الداخليّ
+  // فعلًا بدل أن يتّسع المنفذ فيخفي الحاجة إليه.
+  { width: 1440, height: 800, slug: '1440', label: '١٤٤٠px لوحة المشرف' },
 ]
 
 const PIN = '1234'
@@ -41,6 +46,7 @@ const SCREENS = [
   { path: '/question', slug: 'question', label: 'سؤال اليوم' },
   { path: '/week-pilot', slug: 'week-pilot', label: 'طيار الأسبوع' },
   { path: '/note', slug: 'note', label: 'ملاحظة' },
+  { path: '/admin', slug: 'admin-dashboard', label: 'لوحة القيادة' },
   { path: '/admin/report', slug: 'admin-report', label: 'التقرير' },
   { path: '/admin/queue', slug: 'admin-queue', label: 'طابور القراءات' },
   { path: '/admin/tahdir', slug: 'admin-tahdir-queue', label: 'طابور تحضير القراءة' },
@@ -212,4 +218,4 @@ if (failures.length) {
   for (const f of failures) console.error(`   ${f}`)
   process.exit(1)
 }
-console.log('\n✅ ق-٢١٧ · ق-٢٢٠ · ق-٢٢١ · ق-٢٢٢ · ق-٢٢٣ — مقيسة ومجتازة عند ٣٢٠ و٣٧٥ و١٢٨٠px.')
+console.log('\n✅ ق-٢١٧ · ق-٢٢٠ · ق-٢٢١ · ق-٢٢٢ · ق-٢٢٣ — مقيسة ومجتازة عند ٣٢٠ و٣٧٥ و١٢٨٠ و١٤٤٠px.')
