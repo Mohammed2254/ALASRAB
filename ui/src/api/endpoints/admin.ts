@@ -10,7 +10,15 @@ import type { AttendanceStatus, RecordedAttendance, UndoneAttendance } from '../
 import type { AuditLog } from '../types/audit'
 import type { AdminDashboard } from '../types/dashboard'
 import type { AdminNotesList, ChooseWeekPilotForm, ChosenWeekPilot, MarkedNote } from '../types/engagement'
-import type { ActivitiesList, AssessForm, Assessed, CreateActivityForm, CreatedActivity } from '../types/fuel'
+import type {
+  ActivitiesList,
+  AssessForm,
+  Assessed,
+  CreateActivityForm,
+  CreatedActivity,
+  FuelWeek,
+  ScoreRowForm,
+} from '../types/fuel'
 import type { PasteCommitResult, PastePreview } from '../types/paste'
 import type { AddedQuranEntry, AddQuranEntryForm, QuranEventsList, QuranRoster, ReversedEvent } from '../types/quran'
 import type { Report, ResetPinResult } from '../types/report'
@@ -24,6 +32,9 @@ import type {
   Weights,
 } from '../types/rulesAdmin'
 import type { ArchivedTeam, CreatedTeam, CreateTeamForm, Teams, TransferredMember } from '../types/teams'
+
+const weekQuery = (weekStart?: string) =>
+  weekStart ? `?week_start=${weekStart}` : ''
 
 const thresholdsPayload = (rows: ThresholdRowForm[]) =>
   rows.map((r) => ({ key: r.key, name: r.name, tier: Number(r.tier), at_hours: r.at_hours }))
@@ -114,6 +125,45 @@ export const adminApi = {
       method: 'POST',
       body: { thresholds: thresholdsPayload(form.thresholds) },
     }),
+
+  // ═══ أسبوع الوقود — و-٢٠ ═══
+  //
+  // `week_start` اختياريّ: بدونه أسبوع اليوم. والخادم **يُطبّعه** إلى بداية
+  // الأسبوع، فلا تُرسل الواجهة تاريخًا «صحيحًا» بحسابها هي.
+  fuelWeek: (weekStart?: string) =>
+    request<FuelWeek>(`/admin/fuel/week${weekQuery(weekStart)}`),
+
+  // `teamId` نصٌّ خام من `<select>` — التحويل هنا لا في الشاشة (قرار و-١٧ ٥:
+  // `Number()` ممنوعة في `src/screens`، تحرسها بوابة AST).
+  assignFuelTeam: (activityId: number, teamId: string, weekStart?: string) =>
+    request<FuelWeek>(`/admin/fuel/week/team${weekQuery(weekStart)}`, {
+      method: 'POST',
+      body: { activity_id: activityId, team_id: teamId ? Number(teamId) : null },
+    }),
+
+  addFuelTask: (activityId: number, weekStart?: string) =>
+    request<FuelWeek>(`/admin/fuel/week/tasks${weekQuery(weekStart)}`, {
+      method: 'POST',
+      body: { activity_id: activityId },
+    }),
+
+  removeFuelTask: (activityId: number, weekStart?: string) =>
+    request<FuelWeek>(`/admin/fuel/week/tasks${weekQuery(weekStart)}`, {
+      method: 'DELETE',
+      body: { activity_id: activityId },
+    }),
+
+  saveFuelScores: (activityId: number, scores: ScoreRowForm[], weekStart?: string) =>
+    request<FuelWeek>(`/admin/fuel/week/scores${weekQuery(weekStart)}`, {
+      method: 'POST',
+      body: {
+        activity_id: activityId,
+        scores: scores.map((s) => ({ criterion_id: s.criterion_id, score_pct: s.score_pct })),
+      },
+    }),
+
+  approveFuelWeek: (weekStart?: string) =>
+    request<FuelWeek>(`/admin/fuel/week/approve${weekQuery(weekStart)}`, { method: 'POST' }),
 
   notes: () => request<AdminNotesList>('/admin/notes'),
   markNoteRead: (id: number) => request<MarkedNote>(`/admin/notes/${id}`, { method: 'PATCH', body: { read: true } }),

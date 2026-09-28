@@ -58,7 +58,7 @@ function SubmitForm({ onSubmitted }: { onSubmitted: () => void }) {
     'min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)'
 
   return (
-    <Placard title="تسجيل قراءة">
+    <Placard title="أرسل قراءة جديدة">
       <form onSubmit={onSubmit} noValidate>
         <Field label="تاريخ القراءة" htmlFor="read_on">
           <input id="read_on" type="date" value={readOn} onChange={(e) => setReadOn(e.target.value)} className={fieldClass} />

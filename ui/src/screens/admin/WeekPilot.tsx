@@ -43,7 +43,7 @@ function ChooseForm({ candidates, onChosen }: { candidates: Mover[]; onChosen: (
   }
 
   return (
-    <Placard title="اختر من متحرّكي هذا الأسبوع">
+    <Placard title="المرشّحون">
       <div className="flex flex-col gap-3.5">
         <div className="flex flex-col gap-2">
           {candidates.map((c) => (

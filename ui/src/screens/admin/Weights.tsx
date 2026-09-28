@@ -127,7 +127,7 @@ export default function Weights() {
         {(data) => (
           <div className="flex flex-col gap-3.5">
             {data.current ? (
-              <Placard title="الإصدار الساري" aside={formatDay(data.current.effective_from)}>
+              <Placard title="أوزان الاحتساب" aside={formatDay(data.current.effective_from)}>
                 {data.current.note ? <p className="mb-2 text-[13px] text-(--color-text-dim)">{data.current.note}</p> : null}
                 {data.current.weights.map((w) => (
                   <Prow key={w.activity_type} label={w.activity_type} value={<bdi dir="ltr">{fmtDecimal(w.hours_per_unit)}</bdi>} />
@@ -137,7 +137,7 @@ export default function Weights() {
                 ))}
               </Placard>
             ) : (
-              <Placard title="الإصدار الساري">
+              <Placard title="أوزان الاحتساب">
                 <EmptyState>لا إصدار أوزان مهيّأ بعد.</EmptyState>
               </Placard>
             )}

@@ -142,7 +142,7 @@ function AddEntryForm({ students, defaultUserId }: { students: StudentRef[]; def
   }
 
   return (
-    <Placard title="إضافة سجلّ ناقص يدويًّا">
+    <Placard title="إضافة سجلّ جديد">
       <Field label="الطالب" htmlFor="qe_add_student">
         <select id="qe_add_student" value={effectiveUserId} onChange={(e) => setUserId(e.target.value)} className={fieldClass}>
           <option value="">اختر طالبًا</option>
@@ -195,7 +195,7 @@ function Body({ students }: { students: StudentRef[] }) {
 
   return (
     <div className="flex flex-col gap-3.5">
-      <Placard title="اختر طالبًا">
+      <Placard title="بحث عن طالب">
         <Field label="الطالب" htmlFor="qe_student">
           <select id="qe_student" value={userId} onChange={(e) => setUserId(e.target.value)} className={fieldClass}>
             <option value="">اختر طالبًا</option>

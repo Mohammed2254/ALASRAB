@@ -66,7 +66,7 @@ export default function AuditLog() {
             columns={COLUMNS}
             rows={data.entries}
             rowKey={(e) => e.id}
-            caption="التغييرات"
+            caption="الأحداث"
             empty="لا تغييرات بعد."
           />
         )}

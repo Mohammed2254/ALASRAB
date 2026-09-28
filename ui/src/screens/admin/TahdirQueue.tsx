@@ -129,7 +129,7 @@ function Queue({ submissions, onChanged }: { submissions: QueueItem[]; onChanged
   return (
     <div className="flex flex-col gap-3.5">
       <Button disabled={busy} onClick={() => run(() => api.admin.approveReadings(idsToApprove))} className="w-full">
-        {busy ? 'جارٍ الاعتماد…' : selected.length ? `اعتماد المحدَّد (${selected.length})` : `اعتماد الكلّ (${submissions.length})`}
+        {busy ? 'جارٍ الاعتماد…' : selected.length ? `اعتماد المحدَّد (${selected.length})` : `قبول الكلّ (${submissions.length})`}
       </Button>
 
       {error ? (

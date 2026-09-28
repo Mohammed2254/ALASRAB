@@ -19,3 +19,41 @@ export type CreatedActivity = { id: Count }
 export type ScoreRowForm = { criterion_id: Count; score_pct: string }
 export type AssessForm = { team_id: string; activity_id: string; occurred_on: string; scores: ScoreRowForm[] }
 export type Assessed = { id: Count; total_pct: Decimal; litres: Decimal }
+
+// ═══ أسبوع الوقود — و-٢٠ ═══
+
+/**
+ * حالة الأسبوع **حقلٌ معلَن لا استنتاج**: «مسوّدة» لا تُخمَّن من غياب
+ * الدرجات، وإلّا التبست بـ«لم يُقيَّم بعد».
+ */
+export type FuelWeekState = 'unopened' | 'draft' | 'approved'
+
+export type WeekCriterion = {
+  id: Count
+  name: string
+  weight_pct: Decimal
+  /** العدم = لم يُقيَّم بعد — لا صفر. */
+  score_pct: Decimal | null
+}
+
+export type WeekTask = {
+  activity_id: Count
+  name: string
+  litres_full: Decimal
+  team_id: Count | null
+  team_name: string | null
+  assessed: boolean
+  total_pct: Decimal
+  litres: Decimal
+  criteria: WeekCriterion[]
+}
+
+export type WeekTeamRef = { id: Count; name: string }
+
+export type FuelWeek = {
+  week_start: string
+  state: FuelWeekState
+  approved_at: string | null
+  tasks: WeekTask[]
+  teams: WeekTeamRef[]
+}

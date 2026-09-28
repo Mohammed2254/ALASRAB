@@ -128,7 +128,7 @@ function PreviewTable({
       columns={columns}
       rows={rows}
       rowKey={(r) => r.name}
-      caption="صفوف الملفّ"
+      caption="كل الطلاب في الملفّ"
       empty="لا صفوف طلّاب في هذا الملفّ."
       action={(r) =>
         r.match_status === 'matched' ? null : (

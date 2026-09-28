@@ -62,7 +62,7 @@ function SubmitForm({ onSubmitted }: { onSubmitted: () => void }) {
     'min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)'
 
   return (
-    <Placard title="تحضير اليوم">
+    <Placard title="تحضير جديد">
       <form onSubmit={onSubmit} noValidate>
         <Field label="التاريخ — الأحد إلى الأربعاء فقط" htmlFor="td_read_on">
           <input id="td_read_on" type="date" value={readOn} onChange={(e) => setReadOn(e.target.value)} className={fieldClass} />
@@ -103,7 +103,7 @@ export default function Tahdir() {
       <Async state={state} loadingTitle="تحضير القراءة">
         {(data) => (
           <>
-            <Placard title="أسبوعي الحاليّ" aside={data.week.struggling ? 'متعثّر' : 'على المسار'}>
+            <Placard title="تحضيراتي هذا الأسبوع" aside={data.week.struggling ? 'متعثّر' : 'على المسار'}>
               {data.week.days.map((d) => (
                 <Prow
                   key={d.date}

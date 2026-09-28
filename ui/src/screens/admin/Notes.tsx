@@ -28,11 +28,11 @@ export default function Notes() {
       <Async state={state} loadingTitle="الملاحظات">
         {(data) =>
           data.notes.length === 0 ? (
-            <Placard title="الوارد">
+            <Placard title="ملاحظات واردة">
               <EmptyState>لا ملاحظات بعد.</EmptyState>
             </Placard>
           ) : (
-            <Placard title="الوارد" aside={`${data.notes.length}`}>
+            <Placard title="ملاحظات واردة" aside={`${data.notes.length}`}>
               {data.notes.map((n) => (
                 <div key={n.id} className="mb-3 border-b border-(--color-border) pb-3 last:mb-0 last:border-none">
                   <p className={`text-[14px] ${n.read_at ? 'text-(--color-text-dim)' : 'text-(--color-text)'}`}>{n.body}</p>
