@@ -1,8 +1,9 @@
 import { api } from '../../api'
+import type { AuditEntry } from '../../api/types/audit'
 import { useAsync } from '../../state/useAsync'
 import { Async } from '../../ui/Async'
-import EmptyState from '../../ui/EmptyState'
-import Placard from '../../ui/Placard'
+import type { Column } from '../../ui/DataTable'
+import DataTable from '../../ui/DataTable'
 
 /**
  * سجلّ التغييرات («الصندوق الأسود») — `GET /admin/audit` (FR-084).
@@ -28,32 +29,47 @@ const KIND_LABELS: Record<string, string> = {
   quran_correction: 'تصحيح قرآني',
 }
 
+const COLUMNS: Column<AuditEntry>[] = [
+  { id: 'summary', header: 'ما جرى', cell: (e) => e.summary, primary: true },
+  {
+    id: 'kind',
+    header: 'النوع',
+    cell: (e) => (
+      <span className="text-(--color-text-dim)">{KIND_LABELS[e.kind] ?? e.kind}</span>
+    ),
+  },
+  { id: 'actor', header: 'بواسطة', cell: (e) => e.actor_name },
+  {
+    id: 'at',
+    header: 'الوقت',
+    numeric: true,
+    cell: (e) => <bdi dir="ltr">{timeFormatter.format(new Date(e.at))}</bdi>,
+  },
+]
+
+/**
+ * الصندوق الأسود.
+ *
+ * **بلا مُرشِّح بعد، عمدًا.** النموذج يعرض أربعة مرشّحات (الكلّ · اعتمادات ·
+ * سلبي · إداري)، و`AuditEntry.kind` القائمة لا تحمل شيئًا يقابلها: لا نوعَ
+ * «اعتماد» ولا «سلبي» فيها أصلًا. وتصنيفُ الأنواع الثمانية في تلك السلال
+ * **اختراعُ تصنيفٍ للمنتج** لا عرضٌ له — فيُترك حتى يُقرَّر في `SCOPE.md`.
+ */
 export default function AuditLog() {
   const state = useAsync(() => api.admin.auditLog(), [])
 
   return (
     <div className="flex flex-col gap-3.5">
       <Async state={state} loadingTitle="سجلّ التغييرات">
-        {(data) =>
-          data.entries.length ? (
-            <Placard title="التغييرات" aside={`الأحدث أوّلًا · ${data.entries.length}`}>
-              {data.entries.map((e) => (
-                <div key={e.id} className="mb-2 border-b border-(--color-border) pb-2 last:border-none">
-                  <div className="flex items-baseline justify-between gap-2.5">
-                    <span className="text-[13px] text-(--color-text-dim)">{KIND_LABELS[e.kind] ?? e.kind}</span>
-                    <span className="text-[12px] text-(--color-text-dim)">{timeFormatter.format(new Date(e.at))}</span>
-                  </div>
-                  <p className="text-[13px] text-(--color-text)">{e.summary}</p>
-                  <p className="text-[12px] text-(--color-text-dim)">بواسطة {e.actor_name}</p>
-                </div>
-              ))}
-            </Placard>
-          ) : (
-            <Placard title="التغييرات">
-              <EmptyState>لا تغييرات بعد.</EmptyState>
-            </Placard>
-          )
-        }
+        {(data) => (
+          <DataTable
+            columns={COLUMNS}
+            rows={data.entries}
+            rowKey={(e) => e.id}
+            caption="التغييرات"
+            empty="لا تغييرات بعد."
+          />
+        )}
       </Async>
     </div>
   )

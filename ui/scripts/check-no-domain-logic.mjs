@@ -82,6 +82,7 @@ const VISUAL_PRIMITIVES = [
   'src/ui/BottomTabs.tsx',
   'src/ui/SideNav.tsx',
   'src/ui/TaskRow.tsx',
+  'src/ui/DataTable.tsx',
   'src/ui/Async.tsx',
 ]
 const MOTION_ONLY = 'src/motion/'

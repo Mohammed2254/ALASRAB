@@ -2,9 +2,11 @@ import { useState } from 'react'
 
 import { api, ApiError } from '../../api'
 import { fmtDecimal } from '../../api/format'
-import type { Grounded } from '../../api/types/report'
+import type { Grounded, ReportTeamRow } from '../../api/types/report'
 import { useAsync } from '../../state/useAsync'
 import { Async } from '../../ui/Async'
+import type { Column } from '../../ui/DataTable'
+import DataTable from '../../ui/DataTable'
 import EmptyState from '../../ui/EmptyState'
 import Placard from '../../ui/Placard'
 import Prow from '../../ui/Prow'
@@ -65,6 +67,32 @@ function GroundedRow({ pilot }: { pilot: Grounded }) {
   )
 }
 
+/**
+ * الأسراب وحدها جدول — بقيّة الألواح أزواجُ تسمية/قيمة، و`Prow` أصدقُ لها من
+ * جدولٍ بعمودين.
+ */
+const TEAM_COLUMNS: Column<ReportTeamRow>[] = [
+  { id: 'name', header: 'السرب', cell: (t) => t.name, primary: true },
+  {
+    id: 'avg',
+    header: 'المعدّل',
+    numeric: true,
+    cell: (t) => <bdi dir="ltr" className="text-(--color-accent)">{fmtDecimal(t.avg_hours)}</bdi>,
+  },
+  {
+    id: 'total',
+    header: 'المجموع',
+    numeric: true,
+    cell: (t) => <bdi dir="ltr">{fmtDecimal(t.hours)}</bdi>,
+  },
+  {
+    id: 'members',
+    header: 'الأعضاء',
+    numeric: true,
+    cell: (t) => <bdi dir="ltr">{t.members}</bdi>,
+  },
+]
+
 export default function Report() {
   const state = useAsync(() => api.admin.report(7), [])
 
@@ -83,22 +111,13 @@ export default function Report() {
               />
             </Placard>
 
-            <Placard title="الأسراب" aside="بالمعدّل">
-              {report.teams.map((t) => (
-                <Prow
-                  key={t.id}
-                  label={t.name}
-                  value={
-                    <span>
-                      <bdi dir="ltr">{fmtDecimal(t.avg_hours)}</bdi>{' '}
-                      <span className="text-(--color-text-dim)">
-                        (<bdi dir="ltr">{t.members}</bdi>)
-                      </span>
-                    </span>
-                  }
-                />
-              ))}
-            </Placard>
+            <DataTable
+              columns={TEAM_COLUMNS}
+              rows={report.teams}
+              rowKey={(t) => t.id}
+              caption="الأسراب"
+              empty="لا أسراب نشطة."
+            />
 
             <Placard title="الأكثر تقدّمًا">
               {report.top_movers.length ? (

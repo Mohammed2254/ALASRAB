@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { api, ApiError } from '../../api'
 import type { PasteCommitResult, PastePreview, PastePreviewRow } from '../../api/types/paste'
@@ -6,6 +6,8 @@ import type { StudentRef } from '../../api/types/quran'
 import { useAsync } from '../../state/useAsync'
 import { Async } from '../../ui/Async'
 import Button from '../../ui/Button'
+import type { Column } from '../../ui/DataTable'
+import DataTable from '../../ui/DataTable'
 import Field from '../../ui/Field'
 import Placard from '../../ui/Placard'
 import Prow from '../../ui/Prow'
@@ -19,47 +21,6 @@ import Prow from '../../ui/Prow'
  */
 const STATUS_LABEL: Record<string, string> = { matched: 'مطابَق', ambiguous: 'تطابق متعدّد', unmatched: 'غير مطابَق' }
 const fieldClass = 'min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)'
-
-function PreviewRowCard({
-  row,
-  students,
-  resolution,
-  onResolve,
-}: {
-  row: PastePreviewRow
-  students: StudentRef[]
-  resolution: string | undefined
-  onResolve: (userId: string | null) => void
-}) {
-  return (
-    <Placard title={row.name} aside={STATUS_LABEL[row.match_status] ?? row.match_status}>
-      <Prow label="حفظ" value={<bdi dir="ltr">{row.percentages.hifz}%</bdi>} />
-      <Prow label="تثبيت" value={<bdi dir="ltr">{row.percentages.thabat}%</bdi>} />
-      <Prow label="مراجعة" value={<bdi dir="ltr">{row.percentages.muraja3a}%</bdi>} />
-      <Prow label="الحضور" value={<bdi dir="ltr">{row.attendance}</bdi>} />
-
-      {row.match_status !== 'matched' ? (
-        <div className="mt-2 border-t border-(--color-border) pt-2">
-          <Field label="اختر الطالب الصحيح — لن يُستورَد بلا اختيار" htmlFor={`resolve_${row.name}`}>
-            <select
-              id={`resolve_${row.name}`}
-              value={resolution ?? ''}
-              onChange={(e) => onResolve(e.target.value || null)}
-              className={fieldClass}
-            >
-              <option value="">بلا اختيار</option>
-              {students.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.full_name}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-      ) : null}
-    </Placard>
-  )
-}
 
 /**
  * «ما سيُكتب» — تُعرَض **قبل** زرّ الاعتماد لا بعده.
@@ -104,6 +65,89 @@ function PlanSummary({ preview }: { preview: PastePreview }) {
         عمود «الإجمالي» في ملفّ راصد، فهو متوسّطٌ يقصّ كل نسبة عند ١٠٠٪.
       </p>
     </Placard>
+  )
+}
+
+const pct = (value: string) => <bdi dir="ltr">{value}%</bdi>
+
+/**
+ * سبعة أعمدة — **أسوأ حالة في المستودع**، فهُوجرت أوّلًا: إن لاءمت فالبقيّة
+ * تلائم. فوق ١٠٢٤px جدول، وتحته بطاقةٌ لكل طالب باسمه عنوانًا.
+ *
+ * و`columns` تُبنى داخل المكوّن بـ`useMemo` لأن خلايا الحلّ اليدويّ تُغلق على
+ * المُعالِج — بخلاف الجداول الساكنة التي تُعرَّف مرّةً في نطاق الوحدة.
+ */
+function PreviewTable({
+  rows,
+  students,
+  resolutions,
+  onResolve,
+}: {
+  rows: PastePreviewRow[]
+  students: StudentRef[]
+  resolutions: Record<string, string>
+  onResolve: (name: string, userId: string | null) => void
+}) {
+  const columns = useMemo<Column<PastePreviewRow>[]>(
+    () => [
+      { id: 'name', header: 'الطالب', cell: (r) => r.name, primary: true },
+      { id: 'hifz', header: 'حفظ', numeric: true, cell: (r) => pct(r.percentages.hifz) },
+      { id: 'thabat', header: 'تثبيت', numeric: true, cell: (r) => pct(r.percentages.thabat) },
+      {
+        id: 'muraja3a',
+        header: 'مراجعة',
+        numeric: true,
+        cell: (r) => pct(r.percentages.muraja3a),
+      },
+      {
+        id: 'attendance',
+        header: 'الحضور',
+        numeric: true,
+        // عددٌ من أيام التسميع لا حاضر/غائب — هكذا يصل من راصد فعلًا.
+        cell: (r) => (
+          <>
+            <bdi dir="ltr">{r.attendance}</bdi> من <bdi dir="ltr">{r.tasmi3_days}</bdi>
+          </>
+        ),
+      },
+      {
+        id: 'status',
+        header: 'المطابقة',
+        cell: (r) => (
+          <span className={r.match_status === 'matched' ? '' : 'text-(--color-red-text)'}>
+            {STATUS_LABEL[r.match_status] ?? r.match_status}
+          </span>
+        ),
+      },
+    ],
+    []
+  )
+
+  return (
+    <DataTable
+      columns={columns}
+      rows={rows}
+      rowKey={(r) => r.name}
+      caption="صفوف الملفّ"
+      empty="لا صفوف طلّاب في هذا الملفّ."
+      action={(r) =>
+        r.match_status === 'matched' ? null : (
+          <select
+            aria-label={`اختر الطالب الصحيح لـ${r.name}`}
+            value={resolutions[r.name] ?? ''}
+            onChange={(e) => onResolve(r.name, e.target.value || null)}
+            className="min-h-[44px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-2 text-[13px] text-(--color-text)"
+          >
+            <option value="">بلا اختيار — لن يُستورَد</option>
+            {students.map((st) => (
+              <option key={st.id} value={st.id}>
+                {st.full_name}
+              </option>
+            ))}
+          </select>
+        )
+      }
+    />
   )
 }
 
@@ -166,15 +210,12 @@ function PreviewBody({
 
           <PlanSummary preview={preview} />
 
-          {preview.rows.map((row) => (
-            <PreviewRowCard
-              key={row.name}
-              row={row}
-              students={studentsData.students}
-              resolution={resolutions[row.name]}
-              onResolve={(id) => resolve(row.name, id)}
-            />
-          ))}
+          <PreviewTable
+            rows={preview.rows}
+            students={studentsData.students}
+            resolutions={resolutions}
+            onResolve={resolve}
+          />
 
           {error ? (
             <p role="alert" className="text-[13px] text-(--color-red-text)">

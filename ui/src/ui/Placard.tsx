@@ -4,7 +4,8 @@ import type { ReactNode } from 'react'
  * اللوح — الحاوية الوحيدة (`VISUAL.md §٥`). لا لوح داخل لوح.
  */
 type Props = {
-  title: string
+  /** `ReactNode` لا `string`: عنوان بطاقة الصفّ في `DataTable` خليّةٌ مُنسَّقة. */
+  title: ReactNode
   aside?: ReactNode
   children: ReactNode
 }

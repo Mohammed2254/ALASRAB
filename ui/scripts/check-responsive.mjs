@@ -115,7 +115,23 @@ if (!tokens.includes('--breakpoint-desk: 1024px')) {
   failed++
 }
 
-// ═══ ٣· لا استعلام وسائط بيدٍ خارج `base.css`، وذاك لتقليل الحركة وحده ═══
+// ═══ ٣· احتياطيّ `useDesk` يطابق الرمز ═══
+// `useDesk.ts` يقرأ `--breakpoint-desk` من `:root` حيًّا، ولجسدوم احتياطيٌّ
+// مكتوب. ورقمان يعنيان الشيء نفسه في موضعين يتباعدان — فيُربطان هنا.
+const deskSource = readFileSync(join(SRC, 'ui', 'useDesk.ts'), 'utf8')
+const fallback = /const FALLBACK = '([^']+)'/.exec(stripBlockComments(deskSource))
+if (!fallback) {
+  console.error('  ❌ `useDesk.ts` بلا `FALLBACK` — تعذّر ربطه بالرمز.')
+  failed++
+} else if (!tokens.includes(`--breakpoint-desk: ${fallback[1]}`)) {
+  console.error(
+    `  ❌ احتياطيّ \`useDesk\` (${fallback[1]}) لا يطابق ` +
+      '`--breakpoint-desk` في `tokens.css` — رقمٌ واحد في موضعين تباعدا.'
+  )
+  failed++
+}
+
+// ═══ ٤· لا استعلام وسائط بيدٍ خارج `base.css`، وذاك لتقليل الحركة وحده ═══
 for (const file of files) {
   const source = stripBlockComments(readFileSync(file, 'utf8'))
   if (!source.includes('@media (')) continue

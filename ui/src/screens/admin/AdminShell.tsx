@@ -46,7 +46,10 @@ export default function AdminShell({ screen }: { screen: AdminKey }) {
       <div className="min-w-0">
         {/* شريط الجوّال — يختفي فوق الحدّ حيث القائمة حاضرة دائمًا. */}
         <div className="sticky top-0 z-30 flex min-h-[56px] items-center gap-2 border-b border-(--color-border) bg-(--color-bg-2) px-4 desk:hidden">
-          <span className="min-w-0 flex-1 truncate text-[15px] font-bold">{title}</span>
+          {/* عنوانُ الجوّال هو `h1` نفسه — ولا يُكرَّر أدناه. عنصران أحدهما
+              `display:none` دائمًا: المخفيّ يخرج من شجرة الإتاحة، فلا يُقرَأ
+              العنوان مرّتين ولا يبقى المستند بلا عنوان. */}
+          <h1 className="min-w-0 flex-1 truncate text-[15px] font-bold">{title}</h1>
           <button
             type="button"
             onClick={() => setNavOpen((open) => !open)}
@@ -67,7 +70,7 @@ export default function AdminShell({ screen }: { screen: AdminKey }) {
         ) : null}
 
         <main className="mx-auto w-full max-w-[1100px] min-w-0 px-4 pt-4 pb-12 desk:px-6 desk:pt-8">
-          <h1 className="mb-4 text-[18px] font-bold desk:mb-6">{title}</h1>
+          <h1 className="hidden text-[18px] font-bold desk:mb-6 desk:block">{title}</h1>
           <Screen key={screen} />
         </main>
       </div>
