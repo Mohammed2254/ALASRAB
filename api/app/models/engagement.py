@@ -123,3 +123,10 @@ class PilotOfWeek(db.Model):
     # نصّ حرّ إلزاميّ — القيمة كلّها في «لماذا» لا في الاسم (ط-١٠ الحرفي).
     reason: Mapped[str] = mapped_column(String, nullable=False)
     actor_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+
+    # «وزن الاختيار» في النموذج المعتمد — ساعاتٌ إضافية تُمنَح للمختار
+    # **بتاريخ الأسبوع بالضبط** لا بتاريخ الاختيار. صفرٌ اختيارٌ مشروع:
+    # تكريمٌ بلا ساعات.
+    bonus_hours: Mapped[Decimal] = mapped_column(Numeric(8, 2), nullable=False, server_default="0")
+    # العدم حين تكون الساعات صفرًا — لا حدث يُكتب أصلًا، فلا مرجع له.
+    point_event_id: Mapped[int | None] = mapped_column(ForeignKey("point_events.id"), nullable=True)

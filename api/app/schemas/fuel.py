@@ -79,8 +79,20 @@ class StationTeamSchema(Schema):
     litres = fields.Decimal(as_string=True)
 
 
+class StationTaskSchema(Schema):
+    """مهمّة هذا الأسبوع كما يراها الطالب — لتراتُها **متوقَّعة** حتى الاعتماد."""
+
+    name = fields.Str()
+    state = fields.Str()  # 'draft' | 'approved'
+    assessed = fields.Bool()
+    total_pct = fields.Decimal(as_string=True)
+    litres = fields.Decimal(as_string=True)
+
+
 class StationSchema(Schema):
     team = fields.Nested(StationTeamSchema, allow_none=True)
+    # `null` لسربٍ بلا مهمّة هذا الأسبوع — حالةٌ مصمَّمة لا عطل.
+    week_task = fields.Nested(StationTaskSchema, allow_none=True)
     tank_capacity_l = fields.Decimal(as_string=True, allow_none=True)
     recent = fields.List(fields.Nested(RecentAssessmentSchema))
 

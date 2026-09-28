@@ -20,7 +20,7 @@ from sqlalchemy.exc import IntegrityError
 
 from ..extensions import db
 from ..ingest import rasd
-from ..models import EntryDefault, Membership, Org, PointEvent, RawRow
+from ..models import EntryDefault, Membership, Org, PointEvent, RawRow, Team
 from ..rules.engine import Achievement, RuleSet, ruleset_at
 from . import audit, ledger
 from .matching import match_names
@@ -595,3 +595,79 @@ def commit(
         ) from exc
 
     return {"batch_id": batch_id, "rows": row_reports, "events_created": len(events)}
+
+
+# ═══ عرض الحضور من راصد — و-٢٠ ═══
+
+
+def latest_import_view(org: Org) -> dict:
+    """
+    آخر استيراد راصد: تاريخه وصفوف حضوره — **للعرض فقط**.
+
+    النموذج المعتمد يجعل شاشة الحضور «للعرض فقط — تصل من استيراد راصد، لا
+    تُعدَّل هنا». والبيانات موجودة أصلًا منذ و-٥ في `raw_rows`؛ الناقص كان
+    قراءتَها.
+
+    **وتُقرأ بنفس إعدادات أعمدة الاستيراد** (`entry_defaults`) لا بأسماء
+    مكتوبة هنا: ملفٌّ بترويسة مرادفة يُستورَد بنجاح ثم لا يُقرأ في هذه الشاشة
+    — تباعدٌ صامت بين مسارَي قراءةٍ لنفس الملفّ.
+
+    **والحضور عددٌ لا حاضر/غائب:** هكذا يصل من راصد فعلًا (`٢`/`١`/`٠` من
+    أيام التسميع)، والنموذج يعرض حاصرتين لأن بياناته تجريبية.
+    """
+    latest = db.session.execute(
+        select(RawRow.batch_id, RawRow.imported_at)
+        .where(RawRow.org_id == org.id, RawRow.source == SOURCE)
+        .order_by(RawRow.imported_at.desc(), RawRow.id.desc())
+        .limit(1)
+    ).first()
+    if latest is None:
+        return {"imported_at": None, "rows": []}
+
+    batch_id, imported_at = latest
+    payloads = db.session.scalars(
+        select(RawRow.payload)
+        .where(RawRow.org_id == org.id, RawRow.batch_id == batch_id)
+        .order_by(RawRow.id)
+    ).all()
+
+    aliases, _defaults = _load_column_config(org.id)
+
+    def column_for(canonical: str) -> set[str]:
+        return {canonical, *aliases.get(canonical, [])}
+
+    name_cols = column_for(rasd.STUDENT_COLUMN)
+    attendance_cols = column_for("الحضور")
+    days_cols = column_for("أيام التسميع")
+
+    def pick(payload: dict, wanted: set[str]) -> str:
+        for key, value in payload.items():
+            if key in wanted:
+                return (value or "").strip()
+        return ""
+
+    names = [pick(p, name_cols) for p in payloads]
+    matches = match_names(org.id, names)
+    team_names = dict(
+        db.session.execute(
+            select(Membership.user_id, Team.name)
+            .join(Team, Team.id == Membership.team_id)
+            .where(Membership.org_id == org.id, Membership.left_at.is_(None))
+        ).all()
+    )
+
+    rows = []
+    for payload, name in zip(payloads, names, strict=True):
+        match = matches.get(name)
+        user_id = match.user_id if match and match.status == "matched" else None
+        rows.append(
+            {
+                "name": name,
+                "team_name": team_names.get(user_id) if user_id else None,
+                "attendance": pick(payload, attendance_cols),
+                "tasmi3_days": pick(payload, days_cols),
+                "matched": user_id is not None,
+            }
+        )
+
+    return {"imported_at": imported_at.isoformat(), "rows": rows}

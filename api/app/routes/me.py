@@ -6,6 +6,8 @@
 هنا** — وكلٌّ منها له مالك واحد في `services/`.
 """
 
+from datetime import UTC, datetime
+
 from flask import g, request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
@@ -34,8 +36,10 @@ from ..security import login_required
 from ..services import deck as deck_service
 from ..services import engagement as engagement_service
 from ..services import fuel as fuel_service
+from ..services import fuel_week as fuel_week_service
 from ..services import reading as reading_service
 from ..services import standings as standings_service
+from ..services import week as week_service
 
 blp = Blueprint("me", __name__, url_prefix="/api", description="بطاقة الطيار")
 
@@ -323,12 +327,22 @@ class Station(MethodView):
         """
         org = db.session.get(Org, g.user.org_id)
         if g.membership is None:
-            return {"team": None, "tank_capacity_l": org.tank_capacity_l, "recent": []}
+            return {
+                "team": None,
+                "week_task": None,
+                "tank_capacity_l": org.tank_capacity_l,
+                "recent": [],
+            }
 
         data = fuel_service.team_fuel(g.user.org_id, g.membership.team_id)
         team = db.session.get(Team, g.membership.team_id)
+        week_start = week_service.week_start_local(org, datetime.now(UTC))
         return {
             "team": {"name": team.name, "litres": data["litres"]},
+            # مهمّة هذا الأسبوع — يراها الطالب **قبل** الاعتماد لا بعده.
+            "week_task": fuel_week_service.team_task_this_week(
+                org, g.membership.team_id, week_start
+            ),
             "tank_capacity_l": org.tank_capacity_l,
             "recent": data["recent"],
         }

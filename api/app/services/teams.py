@@ -33,6 +33,22 @@ def list_teams(org_id: int) -> list[dict]:
         ).all()
     )
     teams = db.session.scalars(select(Team).where(Team.org_id == org_id).order_by(Team.id)).all()
+
+    # أعضاء كل سرب — استعلامٌ واحد لكل الأسراب لا واحدٌ لكل سربٍ (N+1 في
+    # شاشةٍ يفتحها المشرف كثيرًا). النموذج المعتمد يعرض الأعضاء لا عددهم
+    # فقط: «٩ عضو» بلا أسماءٍ لا يُدار به سرب.
+    roster: dict[int, list[dict]] = {}
+    rows = db.session.execute(
+        select(Membership.team_id, User.id, User.full_name, User.student_no)
+        .join(User, User.id == Membership.user_id)
+        .where(Membership.org_id == org_id, Membership.left_at.is_(None))
+        .order_by(Membership.team_id, User.full_name)
+    ).all()
+    for team_id, user_id, full_name, student_no in rows:
+        roster.setdefault(team_id, []).append(
+            {"user_id": user_id, "full_name": full_name, "student_no": student_no}
+        )
+
     return [
         {
             "id": t.id,
@@ -40,6 +56,7 @@ def list_teams(org_id: int) -> list[dict]:
             "code": t.code,
             "archived_at": t.archived_at,
             "active_members": active_counts.get(t.id, 0),
+            "members": roster.get(t.id, []),
         }
         for t in teams
     ]

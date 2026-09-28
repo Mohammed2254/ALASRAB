@@ -1,12 +1,21 @@
 from marshmallow import Schema, fields, validate
 
 
+class TeamMemberSchema(Schema):
+    """عضوٌ في سرب — النموذج يعرض الأسماء لا العدد وحده."""
+
+    user_id = fields.Int()
+    full_name = fields.Str()
+    student_no = fields.Str()
+
+
 class AdminTeamRowSchema(Schema):
     id = fields.Int()
     name = fields.Str()
     code = fields.Str()
     archived_at = fields.DateTime(allow_none=True)
     active_members = fields.Int()
+    members = fields.List(fields.Nested(TeamMemberSchema))
 
 
 class TeamsListSchema(Schema):

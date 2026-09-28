@@ -17,7 +17,7 @@
 """
 
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -180,13 +180,25 @@ def week_pilot(org: Org, now: datetime | None = None) -> PilotOfWeek | None:
 
 
 def choose_week_pilot(
-    org: Org, actor_id: int, user_id: int, reason: str, now: datetime | None = None
+    org: Org,
+    actor_id: int,
+    user_id: int,
+    reason: str,
+    bonus_hours: Decimal | None = None,
+    now: datetime | None = None,
 ) -> PilotOfWeek:
     """
     اختيار طيار الأسبوع — FR-062 · م-٦. **واحدٌ لكل أسبوع** (ث-٩).
 
     اختيار ثانٍ لا يستبدل الأوّل — يُرفض بـ`409` (نمط أرشفة السرب: قرارٌ
     أحاديّ الاتّجاه، وتغييره مسارٌ صريح لا حقلٌ يُستبدَل ضمنيًّا).
+
+    **و«وزن الاختيار» (و-٢٠):** ساعاتٌ إضافية تُمنَح للمختار، وحدثُها مؤرَّخٌ
+    **ببداية الأسبوع** لا بلحظة الاختيار — كما ينصّ النموذج حرفيًّا: «تظهر في
+    سجلّ ساعاتي مع تاريخ هذا الأسبوع بالضبط». واختيارٌ متأخّر يوم الخميس عن
+    أسبوعٍ بدأ السبت يجب ألّا ينقل ساعاته إلى يوم الخميس.
+
+    وصفرٌ اختيارٌ مشروع: تكريمٌ بلا ساعات — فلا حدث يُكتب أصلًا.
     """
     reason = (reason or "").strip()
     if not reason:
@@ -194,13 +206,19 @@ def choose_week_pilot(
     if db.session.get(User, user_id) is None:
         raise EngagementError("لا طالب بهذا المعرّف.", status=422)
 
+    bonus = Decimal(bonus_hours if bonus_hours is not None else 0)
+    if bonus < 0:
+        raise EngagementError("وزن الاختيار لا يكون سالبًا.", status=422)
+
     now = now or datetime.now(UTC)
+    week_start = week.week_start_local(org, now)
     row = PilotOfWeek(
         org_id=org.id,
-        week_start=week.week_start_local(org, now),
+        week_start=week_start,
         user_id=user_id,
         reason=reason,
         actor_id=actor_id,
+        bonus_hours=bonus,
     )
     db.session.add(row)
     try:
@@ -208,5 +226,25 @@ def choose_week_pilot(
     except IntegrityError as exc:
         db.session.rollback()
         raise EngagementError("طيار الأسبوع مُختار من قبل لهذا الأسبوع.", status=409) from exc
+
+    if bonus > 0:
+        occurred_at = datetime.combine(
+            week_start, time.min, tzinfo=ZoneInfo(org.timezone)
+        ).astimezone(UTC)
+        event = ledger.append(
+            [
+                ledger.EventSpec(
+                    org_id=org.id,
+                    kind="week_pilot",
+                    delta=bonus,
+                    user_id=user_id,
+                    occurred_at=occurred_at,
+                    actor_id=actor_id,
+                    reason=f"طيار الأسبوع — {reason}",
+                )
+            ]
+        )[0]
+        row.point_event_id = event.id
+
     db.session.commit()
     return row

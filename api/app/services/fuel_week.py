@@ -362,3 +362,51 @@ def approve_week(org: Org, week_start: date, actor_id: int, now: datetime) -> di
         raise FuelError("تصادمٌ في الاعتماد — حدِّث الصفحة وحاول مجدَّدًا.", status=409) from exc
 
     return week_view(org, week_start)
+
+
+# ═══ الشقّ الطيّاريّ — محطة التزوّد ═══
+
+
+def team_task_this_week(org: Org, team_id: int, week_start: date) -> dict | None:
+    """
+    مهمّة السرب في أسبوعٍ بعينه — لمحطة التزوّد (`GET /me/station`).
+
+    **يرى الطالب المسوّدة وحالتَها.** النموذج المعتمد يعرض «مسوّدة — بانتظار
+    اعتماد المشرف»، وهذا مقصود: السرب يعرف ما يُقيَّم عليه **قبل** أن يُحتسب،
+    لا بعده. ولا يلتبس ذلك بالوقود المحتسَب — اللترات هنا **متوقَّعة** حتى
+    يُعتمد الأسبوع، وحقلُ `state` هو ما يفصل بينهما.
+
+    `None` لسربٍ بلا مهمّة هذا الأسبوع — حالةٌ مصمَّمة لا عطل.
+    """
+    week = _week_row(org.id, week_start)
+    if week is None:
+        return None
+
+    task = db.session.scalar(
+        select(FuelWeekTask).where(FuelWeekTask.week_id == week.id, FuelWeekTask.team_id == team_id)
+    )
+    if task is None:
+        return None
+
+    activity = db.session.get(FuelActivity, task.activity_id)
+    if activity is None:
+        return None
+
+    criteria = {c.id: c for c in _criteria_of(activity.id)}
+    scores = {
+        s.criterion_id: s.score_pct
+        for s in db.session.scalars(select(FuelWeekScore).where(FuelWeekScore.task_id == task.id))
+        if s.criterion_id in criteria
+    }
+    total_pct, litres = (
+        score_totals(criteria, scores, activity.litres_full)
+        if scores
+        else (Decimal("0.00"), Decimal("0.00"))
+    )
+    return {
+        "name": activity.name,
+        "state": "approved" if week.approved_at is not None else "draft",
+        "assessed": bool(scores),
+        "total_pct": total_pct,
+        "litres": litres,
+    }

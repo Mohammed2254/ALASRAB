@@ -57,3 +57,19 @@ class PasteCommitResultSchema(Schema):
     batch_id = fields.Str()
     rows = fields.List(fields.Nested(PasteRowResultSchema))
     events_created = fields.Int()
+
+
+class RasdAttendanceRowSchema(Schema):
+    name = fields.Str()
+    team_name = fields.Str(allow_none=True)
+    # عددٌ نصّيّ كما ورد في الملفّ — لا حاضر/غائب (`٢` من `أيام التسميع`).
+    attendance = fields.Str()
+    tasmi3_days = fields.Str()
+    matched = fields.Bool()
+
+
+class RasdLatestImportSchema(Schema):
+    """آخر استيراد راصد — `null` قبل أوّل استيراد، حالةٌ مصمَّمة لا عطل."""
+
+    imported_at = fields.Str(allow_none=True)
+    rows = fields.List(fields.Nested(RasdAttendanceRowSchema))

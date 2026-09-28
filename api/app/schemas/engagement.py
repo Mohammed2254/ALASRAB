@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from marshmallow import Schema, fields, validate
 
 
@@ -70,9 +72,15 @@ class ChooseWeekPilotSchema(Schema):
     user_id = fields.Int(required=True, validate=validate.Range(min=1))
     # نصّ حرّ إلزاميّ — القيمة كلّها في «لماذا» (ط-١٠).
     reason = fields.Str(required=True, validate=validate.Length(min=1, max=1000))
+    # «وزن الاختيار» — ساعاتٌ إضافية. صفرٌ مشروع (تكريمٌ بلا ساعات)، والسالب
+    # مرفوض. غيابُه = صفر، فالعقد القديم يبقى صالحًا.
+    bonus_hours = fields.Decimal(
+        load_default=Decimal("0"), as_string=True, validate=validate.Range(min=0)
+    )
 
 
 class ChosenWeekPilotSchema(Schema):
     user_id = fields.Int()
     full_name = fields.Str()
     week_start = fields.Date()
+    bonus_hours = fields.Decimal(as_string=True)

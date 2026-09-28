@@ -482,3 +482,79 @@ def test_admin_week_pilot_requires_admin(client, seeded):
     assert client.post(ADMIN_WEEK_PILOT, json=body, headers=ORIGIN).status_code == 401
     _login(client)
     assert client.post(ADMIN_WEEK_PILOT, json=body, headers=ORIGIN).status_code == 403
+
+
+# ═══ ق-٢٥١ — وزن اختيار طيّار الأسبوع (و-٢٠) ═══
+
+
+def test_bonus_hours_land_on_the_week_start_not_the_choice_day(client, seeded):
+    """
+    @covers ق-٢٥١
+
+    النموذج ينصّ حرفيًّا: «تظهر في سجلّ ساعاتي **مع تاريخ هذا الأسبوع
+    بالضبط**». واختيارٌ يوم الخميس عن أسبوعٍ بدأ السبت يجب ألّا ينقل ساعاته
+    إلى الخميس — وإلّا تغيّر ترتيبُ أسبوعٍ بحدثٍ لا ينتمي إليه.
+    """
+    org = db.session.get(Org, seeded["org_id"])
+    local_now = datetime.now(UTC).astimezone(ZoneInfo(org.timezone))
+    expected = local_now.date() - timedelta(
+        days=(local_now.weekday() - org.week_starts_on) % 7
+    )
+
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+    r = client.post(
+        ADMIN_WEEK_PILOT,
+        json={
+            "user_id": seeded["users"]["1002"],
+            "reason": "ثبات حضوره.",
+            "bonus_hours": "10",
+        },
+        headers=ORIGIN,
+    )
+    assert r.status_code == 201
+    assert r.json["bonus_hours"] == "10.00"
+
+    event = db.session.scalar(select(PointEvent).where(PointEvent.kind == "week_pilot"))
+    assert event is not None, "وزنٌ موجب يجب أن يكتب حدثًا"
+    assert event.delta == 10
+    assert event.user_id == seeded["users"]["1002"]
+    assert event.occurred_at.astimezone(ZoneInfo(org.timezone)).date() == expected
+
+
+def test_zero_weight_grants_no_event_at_all(client, seeded):
+    """@covers ق-٢٥١ — تكريمٌ بلا ساعات اختيارٌ مشروع، لا حدثٌ بصفر."""
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+    r = client.post(
+        ADMIN_WEEK_PILOT,
+        json={"user_id": seeded["users"]["1002"], "reason": "تكريم.", "bonus_hours": "0"},
+        headers=ORIGIN,
+    )
+    assert r.status_code == 201
+    assert db.session.scalar(select(PointEvent).where(PointEvent.kind == "week_pilot")) is None
+
+
+def test_omitted_weight_keeps_the_old_contract(client, seeded):
+    """@covers ق-٢٥١ — الحقل جديد، والطلبات التي لا ترسله تبقى صالحة."""
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+    r = client.post(
+        ADMIN_WEEK_PILOT,
+        json={"user_id": seeded["users"]["1002"], "reason": "بلا وزن."},
+        headers=ORIGIN,
+    )
+    assert r.status_code == 201
+    assert r.json["bonus_hours"] == "0.00"
+
+
+def test_negative_weight_is_rejected(client, seeded):
+    """@covers ق-٢٥١ — وزنٌ سالب يسحب ساعاتٍ باسم تكريم."""
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+    r = client.post(
+        ADMIN_WEEK_PILOT,
+        json={"user_id": seeded["users"]["1002"], "reason": "سالب.", "bonus_hours": "-5"},
+        headers=ORIGIN,
+    )
+    assert r.status_code == 422

@@ -7,6 +7,7 @@
 عند الحاجة، وغيابه عمدًا هو أساس إثبات ق-١٣٦.
 """
 
+import io
 from datetime import UTC, datetime, time, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
@@ -241,3 +242,58 @@ def test_missing_attendance_weight_is_422(client, seeded):
     _login(client)
     r = client.post(ATTENDANCE, json={"absent_user_ids": []}, headers=ORIGIN)
     assert r.status_code == 422
+
+
+# ═══ ق-٢٥٢ — الحضور للعرض من راصد (و-٢٠) ═══
+
+
+def test_rasd_attendance_view_is_empty_before_any_import(client, seeded):
+    """@covers ق-٢٥٢ — حالةٌ مصمَّمة لا عطل."""
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+    r = client.get("/api/admin/attendance/rasd", headers=ORIGIN)
+    assert r.status_code == 200
+    assert r.json["imported_at"] is None
+    assert r.json["rows"] == []
+
+
+def test_rasd_attendance_view_reads_the_latest_import(client, seeded):
+    """
+    @covers ق-٢٥٢
+
+    البيانات مستورَدة منذ و-٥؛ الناقص كان قراءتها. والحضور **عددٌ** لا
+    حاضر/غائب — هكذا يصل من راصد فعلًا.
+    """
+    from pathlib import Path
+
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+    fixture = (
+        Path(__file__).parent
+        / "fixtures"
+        / "تقرير_الإنجاز_جميع_الحلقات_١٤٤٨-٠٣-٢٥.csv"
+    )
+    client.post(
+        "/api/admin/paste/commit",
+        data={
+            "file": (io.BytesIO(fixture.read_bytes()), "rasd.csv"),
+            "occurred_on": "2026-08-02",
+        },
+        content_type="multipart/form-data",
+        headers=ORIGIN,
+    )
+
+    r = client.get("/api/admin/attendance/rasd", headers=ORIGIN)
+    assert r.status_code == 200
+    assert r.json["imported_at"] is not None
+    assert len(r.json["rows"]) == 24, "صفوف الطلّاب وحدها — بلا صفّي التذييل"
+
+    row = next(x for x in r.json["rows"] if x["name"] == "سلمان الغفيص")
+    assert row["attendance"] == "2"
+    assert row["tasmi3_days"] == "2"
+
+
+def test_rasd_attendance_view_requires_admin(client, seeded):
+    """@covers ق-٢٥٢"""
+    _login(client)
+    assert client.get("/api/admin/attendance/rasd", headers=ORIGIN).status_code == 403

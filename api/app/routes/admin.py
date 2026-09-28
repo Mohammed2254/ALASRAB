@@ -45,6 +45,7 @@ from ..schemas import (
     PastePreviewSchema,
     QueueSchema,
     QuranEventsListSchema,
+    RasdLatestImportSchema,
     RecordAttendanceSchema,
     RecordedAttendanceSchema,
     RejectSchema,
@@ -649,12 +650,17 @@ class AdminWeekPilot(MethodView):
         """اختيار طيار الأسبوع — واحدٌ لكل أسبوع (ث-٩ · FR-062 · م-٦)."""
         try:
             row = engagement_service.choose_week_pilot(
-                _org(), g.user.id, data["user_id"], data["reason"]
+                _org(), g.user.id, data["user_id"], data["reason"], data["bonus_hours"]
             )
         except engagement_service.EngagementError as exc:
             abort(exc.status, message=str(exc))
         pilot = db.session.get(User, row.user_id)
-        return {"user_id": row.user_id, "full_name": pilot.full_name, "week_start": row.week_start}
+        return {
+            "user_id": row.user_id,
+            "full_name": pilot.full_name,
+            "week_start": row.week_start,
+            "bonus_hours": row.bonus_hours,
+        }
 
 
 @blp.route("/admin/attendance")
@@ -674,6 +680,20 @@ class Attendance(MethodView):
             return entry_service.record(_org(), g.user.id, data["absent_user_ids"])
         except entry_service.AttendanceError as exc:
             abort(exc.status, message=str(exc))
+
+
+@blp.route("/admin/attendance/rasd")
+class AttendanceFromRasd(MethodView):
+    @admin_required
+    @blp.response(200, RasdLatestImportSchema)
+    def get(self):
+        """
+        حضور آخر استيراد راصد — **للعرض فقط**، لا يُعدَّل هنا (النموذج).
+
+        والإدخال اليدويّ أعلاه يبقى **احتياطيًّا موثَّقًا** كما صُمّم
+        (FR-041/042): راصد المصدر الأساسيّ، لا المصدر الوحيد.
+        """
+        return paste_service.latest_import_view(_org())
 
 
 @blp.route("/admin/attendance/undo")

@@ -314,3 +314,61 @@ def test_week_routes_require_admin(client, seeded):
     _login(client)  # طالبٌ لا مشرف
     assert client.get(WEEK, headers=ORIGIN).status_code == 403
     assert client.post(f"{WEEK}/approve", headers=ORIGIN).status_code == 403
+
+
+# ═══ ق-٢٥٣ — ما يراه الطالب والمشرف من بنية الأسبوع ═══
+
+
+def test_station_shows_the_squad_task_before_approval(client, seeded):
+    """
+    @covers ق-٢٥٣
+
+    النموذج يُري الطالب «مسوّدة — بانتظار اعتماد المشرف». والسرب يعرف ما
+    يُقيَّم عليه **قبل** أن يُحتسب لا بعده.
+    """
+    activity_id, crits = _setup(client, seeded)
+    client.post(
+        f"{WEEK}/team",
+        json={"activity_id": activity_id, "team_id": seeded["team_id"]},
+        headers=ORIGIN,
+    )
+    client.post(
+        f"{WEEK}/scores",
+        json={
+            "activity_id": activity_id,
+            "scores": [
+                {"criterion_id": crits[0], "score_pct": "100"},
+                {"criterion_id": crits[1], "score_pct": "100"},
+            ],
+        },
+        headers=ORIGIN,
+    )
+
+    # الطالب نفسه (عضو السرب) يفتح محطة التزوّد.
+    client.post("/api/auth/logout", headers=ORIGIN)
+    _login(client, student_no="1002")
+    station = client.get("/api/station", headers=ORIGIN).json
+    assert station["week_task"] is not None
+    assert station["week_task"]["state"] == "draft"
+    assert station["week_task"]["litres"] == "50.00"
+
+
+def test_station_week_task_is_null_without_one(client, seeded):
+    """@covers ق-٢٥٣ — سربٌ بلا مهمّة هذا الأسبوع: حالةٌ مصمَّمة لا عطل."""
+    _setup(client, seeded)
+    client.post("/api/auth/logout", headers=ORIGIN)
+    r = _login(client, student_no="1002")
+    assert r.status_code == 200, r.data[:200]
+    station = client.get("/api/station", headers=ORIGIN)
+    assert station.status_code == 200, station.data[:300]
+    assert station.json["week_task"] is None
+
+
+def test_team_list_carries_member_names_not_only_a_count(client, seeded):
+    """@covers ق-٢٥٣ — «٩ عضو» بلا أسماء لا يُدار به سرب."""
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+    teams = client.get("/api/admin/teams", headers=ORIGIN).json["teams"]
+    team = next(t for t in teams if t["id"] == seeded["team_id"])
+    assert team["active_members"] == len(team["members"])
+    assert all(m["full_name"] for m in team["members"])

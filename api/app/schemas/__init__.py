@@ -40,6 +40,7 @@ from .paste import (
     PastePreviewSchema,
     PastePreviewTotalsSchema,
     PasteRowResultSchema,
+    RasdLatestImportSchema,
 )
 from .quran import (
     AddedQuranEntrySchema,
@@ -118,6 +119,7 @@ __all__ = [
     "PastePreviewRowSchema",
     "PastePreviewSchema",
     "PastePreviewTotalsSchema",
+    "RasdLatestImportSchema",
     "PasteRowResultSchema",
     "PilotsBoardSchema",
     "QueueSchema",
@@ -137,6 +139,7 @@ __all__ = [
     "WeekScoresSchema",
     "WeekTaskRefSchema",
     "StationSchema",
+    "StationTaskSchema",
     "StudentsListSchema",
     "SubmitNoteSchema",
     "SubmitReadingSchema",
