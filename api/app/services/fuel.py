@@ -31,7 +31,7 @@ class FuelError(Exception):
         super().__init__(message)
 
 
-def _local_start_of_day_utc(org, d: date) -> datetime:
+def local_start_of_day_utc(org, d: date) -> datetime:
     """
     `RULES.md` §٩ — نفس تحويل `reading.occurred_at_for` و`rules_admin`،
     مكرَّر عمدًا لا مستورَدًا (ثلاثة أسطر لا تبرّر اقتران و-٨ بوحدة أخرى).
@@ -39,7 +39,22 @@ def _local_start_of_day_utc(org, d: date) -> datetime:
     return datetime.combine(d, time.min, tzinfo=ZoneInfo(org.timezone)).astimezone(UTC)
 
 
-def _assert_weights_sum_100(weights: list[Decimal], label: str) -> None:
+def score_totals(
+    criteria: dict[int, FuelCriterion], scores: dict[int, Decimal], litres_full: Decimal
+) -> tuple[Decimal, Decimal]:
+    """
+    (نسبةٌ مئوية، لترات) من درجات البنود — **حسابٌ واحد** يستعمله التقييم
+    المباشر والاعتماد الأسبوعيّ معًا، فلا يفترقان في رقمٍ يراه السرب.
+    """
+    total_pct = sum(
+        (Decimal(score) * criteria[cid].weight_pct / 100 for cid, score in scores.items()),
+        Decimal(0),
+    ).quantize(CENT, rounding=ROUND_HALF_UP)
+    litres = (total_pct / 100 * litres_full).quantize(CENT, rounding=ROUND_HALF_UP)
+    return total_pct, litres
+
+
+def assert_weights_sum_100(weights: list[Decimal], label: str) -> None:
     total = sum(weights, Decimal(0))
     if total != 100:
         raise FuelError(f"أوزان {label} يجب أن تجمع ١٠٠٪ بالضبط — المجموع الحالي {total}.")
@@ -84,7 +99,7 @@ def create_activity(
     واضحة للمشرف) وفي القاعدة (`fuel_criteria_sum_100`، دفاعٌ حقيقي إن نُسي
     هذا الفحص التمهيدي يومًا — ADR-002).
     """
-    _assert_weights_sum_100([Decimal(c["weight_pct"]) for c in criteria], "النشاط")
+    assert_weights_sum_100([Decimal(c["weight_pct"]) for c in criteria], "النشاط")
 
     activity = FuelActivity(org_id=org.id, key=key, name=name, litres_full=litres_full)
     db.session.add(activity)
@@ -144,15 +159,11 @@ def assess(
     if unknown:
         raise FuelError(f"بنود لا تنتمي لهذا النشاط: {sorted(unknown)}")
 
-    _assert_weights_sum_100([criteria[cid].weight_pct for cid in scores], "البنود المُقيَّمة")
+    assert_weights_sum_100([criteria[cid].weight_pct for cid in scores], "البنود المُقيَّمة")
 
-    total_pct = sum(
-        (Decimal(score) * criteria[cid].weight_pct / 100 for cid, score in scores.items()),
-        Decimal(0),
-    ).quantize(CENT, rounding=ROUND_HALF_UP)
-    litres = (total_pct / 100 * activity.litres_full).quantize(CENT, rounding=ROUND_HALF_UP)
+    total_pct, litres = score_totals(criteria, scores, activity.litres_full)
 
-    occurred_at = _local_start_of_day_utc(org, occurred_on)
+    occurred_at = local_start_of_day_utc(org, occurred_on)
     # لا external_ref هنا عمدًا: منع التكرار مملوك بالكامل لقيد
     # `uq_fuel_assessment_per_day` أدناه. لو مُنح الحدث external_ref حتميًّا من
     # نفس المفتاح الطبيعي (سرب+نشاط+يوم)، لاصطدم تكرارٌ بقيد `point_events`
@@ -209,8 +220,7 @@ def assess(
 def team_fuel(org_id: int, team_id: int) -> dict:
     """وقود السرب **تراكميًّا لا الفرد** (ث-١) وآخر تقييماته — يشرح الرقم (FR-071)."""
     total = db.session.scalar(
-        select(db.func.coalesce(db.func.sum(PointEvent.delta), 0))
-        .where(
+        select(db.func.coalesce(db.func.sum(PointEvent.delta), 0)).where(
             PointEvent.org_id == org_id,
             PointEvent.team_id == team_id,
             PointEvent.scope == "team",

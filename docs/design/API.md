@@ -628,6 +628,11 @@ NFR-02 مباشرةً.
 | `/admin/attendance/undo` | POST | تراجع خلال ٥ دقائق | FR-042 |
 | `/admin/fuel/activities` | GET·POST | أنشطة الوقود وبنودها | FR-070 (بنية تحتية) |
 | `/admin/fuel/assess` | POST | تقييم نشاط ببنوده | FR-070 · FR-071 |
+| `/admin/fuel/week` | GET | حالة أسبوع الوقود (`?week_start=`) — **بلا كتابة** | FR-073 · FR-074 |
+| `/admin/fuel/week/team` | POST | تعيين سربٍ لمهمّة (مسوّدة) | FR-073 |
+| `/admin/fuel/week/tasks` | POST·DELETE | إضافة/إزالة مهمّة **لهذا الأسبوع وحده** | FR-075 |
+| `/admin/fuel/week/scores` | POST | درجاتٌ مسوّدة — لا حدث دفتر | FR-073 |
+| `/admin/fuel/week/approve` | POST | اعتمادٌ واحد، بأحداثٍ مؤرَّخة ببداية الأسبوع | FR-073 · FR-074 |
 | `/admin/notes` | GET | الملاحظات | م-٥ |
 | `/admin/notes/{id}` | PATCH | تعليم مقروءة | م-٥ |
 | `/admin/week/pilot` | POST | طيار الأسبوع | FR-062 |

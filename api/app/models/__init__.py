@@ -3,7 +3,15 @@
 from .audit import AuditEntry
 from .engagement import Answer, DailyQuestion, Note, PilotOfWeek
 from .event import PointEvent
-from .fuel import FuelActivity, FuelAssessment, FuelCriterion, FuelScore
+from .fuel import (
+    FuelActivity,
+    FuelAssessment,
+    FuelCriterion,
+    FuelScore,
+    FuelWeek,
+    FuelWeekScore,
+    FuelWeekTask,
+)
 from .ingest import EntryDefault, RawRow
 from .org import Org
 from .reading import ReadingSubmission
@@ -19,6 +27,9 @@ __all__ = [
     "EntryDefault",
     "FuelActivity",
     "FuelAssessment",
+    "FuelWeek",
+    "FuelWeekScore",
+    "FuelWeekTask",
     "FuelCriterion",
     "FuelScore",
     "LoginAttempt",

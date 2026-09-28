@@ -131,9 +131,7 @@ def create_weight_version(
             Weight(version_id=version.id, activity_type=activity, hours_per_unit=per_unit)
         )
     for grade, mult in multipliers.items():
-        db.session.add(
-            MasteryMultiplier(version_id=version.id, grade=grade, multiplier=mult)
-        )
+        db.session.add(MasteryMultiplier(version_id=version.id, grade=grade, multiplier=mult))
 
     audit.record(
         org_id=org.id,
@@ -180,9 +178,7 @@ def _validate_rows(org_id: int, rows: list[ThresholdRow]) -> None:
         if cur.at_hours <= prev.at_hours:
             # نفس رسالة مشغّل ث-١٣أ عمدًا — رسالة الخدمة أوضح للمشرف، والقاعدة
             # هي الضمانة الحقيقية إن نُسي هذا الفحص التمهيدي يومًا (ADR-002).
-            raise RulesAdminError(
-                "سُلّم الرتب غير متّسق: تدرّج tier يجب أن يوافقه تدرّج at_hours."
-            )
+            raise RulesAdminError("سُلّم الرتب غير متّسق: تدرّج tier يجب أن يوافقه تدرّج at_hours.")
 
 
 def _active_users_hours(org_id: int) -> dict[int, Decimal]:

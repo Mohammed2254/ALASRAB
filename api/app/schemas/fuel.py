@@ -83,3 +83,54 @@ class StationSchema(Schema):
     team = fields.Nested(StationTeamSchema, allow_none=True)
     tank_capacity_l = fields.Decimal(as_string=True, allow_none=True)
     recent = fields.List(fields.Nested(RecentAssessmentSchema))
+
+
+# ═══ أسبوع الوقود — و-٢٠ ═══
+
+
+class WeekCriterionSchema(Schema):
+    id = fields.Int()
+    name = fields.Str()
+    weight_pct = fields.Decimal(as_string=True)
+    # العدم = لم يُقيَّم بعد (مسوّدة فارغة) — لا صفر.
+    score_pct = fields.Decimal(as_string=True, allow_none=True)
+
+
+class WeekTaskSchema(Schema):
+    activity_id = fields.Int()
+    name = fields.Str()
+    litres_full = fields.Decimal(as_string=True)
+    team_id = fields.Int(allow_none=True)
+    team_name = fields.Str(allow_none=True)
+    assessed = fields.Bool()
+    total_pct = fields.Decimal(as_string=True)
+    litres = fields.Decimal(as_string=True)
+    criteria = fields.List(fields.Nested(WeekCriterionSchema))
+
+
+class WeekTeamSchema(Schema):
+    id = fields.Int()
+    name = fields.Str()
+
+
+class FuelWeekSchema(Schema):
+    week_start = fields.Str()
+    # 'unopened' | 'draft' | 'approved' — الوضوح التام: لا يُخمَّن من الفراغ.
+    state = fields.Str()
+    approved_at = fields.Str(allow_none=True)
+    tasks = fields.List(fields.Nested(WeekTaskSchema))
+    teams = fields.List(fields.Nested(WeekTeamSchema))
+
+
+class AssignTeamSchema(Schema):
+    activity_id = fields.Int(required=True)
+    team_id = fields.Int(required=True, allow_none=True)
+
+
+class WeekTaskRefSchema(Schema):
+    activity_id = fields.Int(required=True)
+
+
+class WeekScoresSchema(Schema):
+    activity_id = fields.Int(required=True)
+    scores = fields.List(fields.Nested(ScoreRowSchema), required=True)

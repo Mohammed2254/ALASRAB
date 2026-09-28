@@ -32,9 +32,7 @@ def list_teams(org_id: int) -> list[dict]:
             .group_by(Membership.team_id)
         ).all()
     )
-    teams = db.session.scalars(
-        select(Team).where(Team.org_id == org_id).order_by(Team.id)
-    ).all()
+    teams = db.session.scalars(select(Team).where(Team.org_id == org_id).order_by(Team.id)).all()
     return [
         {
             "id": t.id,

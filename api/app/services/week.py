@@ -35,6 +35,18 @@ def week_start_local(org: Org, now: datetime) -> date:
     return local_now.date() - timedelta(days=days_since_start)
 
 
+def week_start_of(org: Org, day: date) -> date:
+    """
+    بداية الأسبوع **الذي يقع فيه تاريخٌ بعينه** — لا أسبوع اليوم.
+
+    أضيفت في و-٢٠ لتصفّح أسابيع الوقود: التقييم قد يتأخّر، فيرجع المشرف إلى
+    أسبوعٍ مضى ويقيّمه **بتاريخه هو**. وهي هنا لا في `fuel.py` لأن معامل
+    السياسة `week_starts_on` مملوكٌ لهذه الوحدة وحدها — وحسابُه في مكانٍ ثانٍ
+    هو بعينه ما نقض «التكرار المقصود» أعلاه.
+    """
+    return day - timedelta(days=(day.weekday() - org.week_starts_on) % 7)
+
+
 def week_start_utc(org: Org, now: datetime) -> datetime:
     """
     بداية الأسبوع الحالي **كلحظة بـUTC**.

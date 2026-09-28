@@ -25,9 +25,13 @@ from .fuel import (
     ActivitiesListSchema,
     AssessedSchema,
     AssessSchema,
+    AssignTeamSchema,
     CreateActivitySchema,
     CreatedActivitySchema,
+    FuelWeekSchema,
     StationSchema,
+    WeekScoresSchema,
+    WeekTaskRefSchema,
 )
 from .me import DeckSchema, EventsSchema
 from .paste import (
@@ -128,6 +132,10 @@ __all__ = [
     "ReviewResultsSchema",
     "SaveThresholdsSchema",
     "SessionSchema",
+    "AssignTeamSchema",
+    "FuelWeekSchema",
+    "WeekScoresSchema",
+    "WeekTaskRefSchema",
     "StationSchema",
     "StudentsListSchema",
     "SubmitNoteSchema",

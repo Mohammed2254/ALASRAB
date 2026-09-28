@@ -6,7 +6,7 @@
 """
 
 import json
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 from flask import g, request
@@ -27,6 +27,7 @@ from ..schemas import (
     ArchiveTeamSchema,
     AssessedSchema,
     AssessSchema,
+    AssignTeamSchema,
     AttendanceStatusSchema,
     AuditLogSchema,
     ChooseWeekPilotSchema,
@@ -36,6 +37,7 @@ from ..schemas import (
     CreatedTeamSchema,
     CreateTeamSchema,
     CreateWeightVersionSchema,
+    FuelWeekSchema,
     MarkedNoteSchema,
     MarkNoteReadSchema,
     OrgTahdirReportSchema,
@@ -59,6 +61,8 @@ from ..schemas import (
     TransferMemberSchema,
     TransferredMemberSchema,
     UndoneAttendanceSchema,
+    WeekScoresSchema,
+    WeekTaskRefSchema,
     WeightsSchema,
     WeightVersionIdSchema,
 )
@@ -68,12 +72,14 @@ from ..services import auth as auth_service
 from ..services import engagement as engagement_service
 from ..services import entry as entry_service
 from ..services import fuel as fuel_service
+from ..services import fuel_week as fuel_week_service
 from ..services import paste as paste_service
 from ..services import quran as quran_service
 from ..services import reading as reading_service
 from ..services import reports as reports_service
 from ..services import rules_admin as rules_admin_service
 from ..services import teams as teams_service
+from ..services import week as week_service
 
 blp = Blueprint("admin", __name__, url_prefix="/api", description="شاشات المشرف")
 
@@ -153,6 +159,22 @@ def _parse_occurred_on() -> date:
         return date.fromisoformat(raw)
     except (TypeError, ValueError):
         abort(422, message="تاريخ الوقوع مطلوب بصيغة YYYY-MM-DD.")
+
+
+def _requested_week(org) -> date:
+    """
+    `?week_start=YYYY-MM-DD` ⇒ بداية الأسبوع الذي يقع فيه، وبدونه أسبوع اليوم.
+
+    **يُطبَّع دائمًا** عبر `week_service`: تاريخٌ وسط الأسبوع يعطي بدايته، فلا
+    يُنشأ «أسبوع» مفتاحه يوم ثلاثاء لأن المشرف أرسل ذلك التاريخ.
+    """
+    raw = request.args.get("week_start")
+    if not raw:
+        return week_service.week_start_local(org, datetime.now(UTC))
+    try:
+        return week_service.week_start_of(org, date.fromisoformat(raw))
+    except ValueError:
+        abort(422, message="تاريخ الأسبوع غير صالح — الصيغة YYYY-MM-DD.")
 
 
 def _read_uploaded_file() -> bytes:
@@ -504,6 +526,93 @@ class FuelAssess(MethodView):
                 scores,
                 data["note"],
                 g.user.id,
+            )
+        except fuel_service.FuelError as exc:
+            abort(exc.status, message=str(exc))
+
+
+@blp.route("/admin/fuel/week")
+class FuelWeekView(MethodView):
+    @admin_required
+    @blp.response(200, FuelWeekSchema)
+    def get(self):
+        """
+        حالة أسبوع الوقود — `?week_start=YYYY-MM-DD`، وبدونه أسبوع اليوم.
+
+        **بلا كتابة**: أسبوعٌ لم يُفتح يُعرَض بقائمته الافتراضية، فتصفّحُ
+        الماضي لا يترك صفوفًا فارغة خلفه.
+        """
+        return fuel_week_service.week_view(_org(), _requested_week(_org()))
+
+
+@blp.route("/admin/fuel/week/team")
+class FuelWeekTeam(MethodView):
+    @admin_required
+    @blp.arguments(AssignTeamSchema)
+    @blp.response(200, FuelWeekSchema)
+    def post(self, data):
+        """تعيين سربٍ لمهمّة — «لكل سرب مهمّة واحدة» إرشادٌ لا قيد."""
+        try:
+            return fuel_week_service.set_task_team(
+                _org(), _requested_week(_org()), data["activity_id"], data["team_id"]
+            )
+        except fuel_service.FuelError as exc:
+            abort(exc.status, message=str(exc))
+
+
+@blp.route("/admin/fuel/week/tasks")
+class FuelWeekTasks(MethodView):
+    @admin_required
+    @blp.arguments(WeekTaskRefSchema)
+    @blp.response(200, FuelWeekSchema)
+    def post(self, data):
+        """إضافة مهمّة **لهذا الأسبوع وحده**."""
+        try:
+            return fuel_week_service.add_task(_org(), _requested_week(_org()), data["activity_id"])
+        except fuel_service.FuelError as exc:
+            abort(exc.status, message=str(exc))
+
+    @admin_required
+    @blp.arguments(WeekTaskRefSchema)
+    @blp.response(200, FuelWeekSchema)
+    def delete(self, data):
+        """إزالة مهمّة **لهذا الأسبوع وحده** — لا تمسّ النشاط ولا أسبوعًا آخر."""
+        try:
+            return fuel_week_service.remove_task(
+                _org(), _requested_week(_org()), data["activity_id"]
+            )
+        except fuel_service.FuelError as exc:
+            abort(exc.status, message=str(exc))
+
+
+@blp.route("/admin/fuel/week/scores")
+class FuelWeekScores(MethodView):
+    @admin_required
+    @blp.arguments(WeekScoresSchema)
+    @blp.response(200, FuelWeekSchema)
+    def post(self, data):
+        """درجاتٌ **مسوّدة** — لا حدث دفتر، ولا فحص «تجمع ١٠٠٪» إلا عند الاعتماد."""
+        scores = {s["criterion_id"]: s["score_pct"] for s in data["scores"]}
+        try:
+            return fuel_week_service.save_scores(
+                _org(), _requested_week(_org()), data["activity_id"], scores
+            )
+        except fuel_service.FuelError as exc:
+            abort(exc.status, message=str(exc))
+
+
+@blp.route("/admin/fuel/week/approve")
+class FuelWeekApprove(MethodView):
+    @admin_required
+    @blp.response(200, FuelWeekSchema)
+    def post(self):
+        """
+        اعتماد الأسبوع — **مرّةً واحدة**، والأحداث مؤرَّخة ببداية الأسبوع لا
+        باليوم (فتقييمٌ متأخّر يقع في مكانه من الدفتر).
+        """
+        try:
+            return fuel_week_service.approve_week(
+                _org(), _requested_week(_org()), g.user.id, datetime.now(UTC)
             )
         except fuel_service.FuelError as exc:
             abort(exc.status, message=str(exc))
