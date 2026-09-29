@@ -22,6 +22,8 @@ from ..schemas import (
     AdminEntryResultSchema,
     AdminNotesListSchema,
     AdminTahdirEntrySchema,
+    AmendedEventSchema,
+    AmendEventSchema,
     ApproveSchema,
     ArchivedTeamSchema,
     ArchiveTeamSchema,
@@ -764,6 +766,34 @@ class ReverseEvent(MethodView):
         """
         try:
             return quran_service.reverse(_org(), event_id, data["reason"], g.user.id)
+        except quran_service.QuranError as exc:
+            abort(exc.status, message=str(exc))
+
+
+@blp.route("/admin/events/<int:event_id>/amend")
+class AmendEvent(MethodView):
+    @admin_required
+    @blp.arguments(AmendEventSchema)
+    @blp.response(201, AmendedEventSchema)
+    def post(self, data, event_id):
+        """
+        «تعديل» في النموذج المعتمد = **عكسٌ + بديل في معاملةٍ واحدة**.
+
+        ADR-004 يمنع `UPDATE`/`DELETE` على الدفتر، والمشرف يريد تصحيح رقمٍ لا
+        محوَ تاريخ — فالشكل مطابقٌ للنموذج والثابت محفوظ، ويبقى الأثر كاملًا:
+        أصلٌ وعكسٌ وبديل.
+        """
+        try:
+            return quran_service.amend(
+                _org(),
+                event_id,
+                data["reason"],
+                g.user.id,
+                occurred_on=data["occurred_on"],
+                activity_type=data["activity_type"],
+                quantity=data["quantity"],
+                mastery=data["mastery"],
+            )
         except quran_service.QuranError as exc:
             abort(exc.status, message=str(exc))
 

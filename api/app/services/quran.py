@@ -76,14 +76,7 @@ def reverse(org: Org, event_id: int, reason: str, actor_id: int) -> PointEvent:
     `docs/slices/و-٦.md` §٢.١أ) — `ledger.reverse_pending` لا يفحص `kind`
     الأصل إطلاقًا.
     """
-    event = db.session.get(PointEvent, event_id)
-    if event is None or event.org_id != org.id:
-        raise QuranError("لا حدث بهذا المعرّف.", status=404)
-
-    try:
-        correction = ledger.reverse_pending(event, reason, actor_id)
-    except ValueError as exc:
-        raise QuranError(str(exc)) from exc
+    event, correction = _reverse_pending(org, event_id, reason, actor_id)
 
     audit.record(
         org_id=org.id,
@@ -95,6 +88,19 @@ def reverse(org: Org, event_id: int, reason: str, actor_id: int) -> PointEvent:
     )
     db.session.commit()
     return correction
+
+
+def _reverse_pending(
+    org: Org, event_id: int, reason: str, actor_id: int
+) -> tuple[PointEvent, PointEvent]:
+    """(الأصل، العكس) بلا إيداع ولا تدقيق — كي يركّبها `amend` في معاملة واحدة."""
+    event = db.session.get(PointEvent, event_id)
+    if event is None or event.org_id != org.id:
+        raise QuranError("لا حدث بهذا المعرّف.", status=404)
+    try:
+        return event, ledger.reverse_pending(event, reason, actor_id)
+    except ValueError as exc:
+        raise QuranError(str(exc)) from exc
 
 
 def add_entry(
@@ -111,6 +117,44 @@ def add_entry(
     FR-036 — إضافة سجلّ قرآني ناقص يدويًّا. **الساعات محسوبة عبر `rules/engine`
     كأي إنجاز** (AGENTS ٥) — لا رقم يُكتب مباشرةً، ولا `raw_rows` وسيطة.
     """
+    target = _load_target(org.id, user_id)
+    event = _add_entry_pending(
+        org,
+        user_id=user_id,
+        occurred_on=occurred_on,
+        activity_type=activity_type,
+        quantity=quantity,
+        mastery=mastery,
+        reason=reason,
+        actor_id=actor_id,
+    )
+
+    summary = (
+        f"إضافة يدوية: {event.delta} ساعة لـ{target.full_name} ({activity_type}) — {reason.strip()}"
+    )
+    audit.record(
+        org_id=org.id,
+        kind=AUDIT_KIND,
+        summary=summary,
+        actor_id=actor_id,
+        after={"event_id": event.id, "kind": event.kind, "delta": str(event.delta)},
+    )
+    db.session.commit()
+    return event
+
+
+def _add_entry_pending(
+    org: Org,
+    *,
+    user_id: int,
+    occurred_on: date,
+    activity_type: str,
+    quantity: Decimal,
+    mastery: str | None,
+    reason: str,
+    actor_id: int,
+) -> PointEvent:
+    """حدثٌ مُلحَق بلا إيداع ولا تدقيق — كي يركّبه `amend` في معاملة واحدة."""
     if not reason or not reason.strip():
         raise QuranError("الإضافة اليدوية توجب سببًا مكتوبًا.")
     if occurred_on > _local_today(org):
@@ -147,16 +191,61 @@ def add_entry(
         ]
     )[0]
 
-    summary = f"إضافة يدوية: {delta} ساعة لـ{target.full_name} ({activity_type}) — {reason.strip()}"
+    return event
+
+
+def amend(
+    org: Org,
+    event_id: int,
+    reason: str,
+    actor_id: int,
+    *,
+    occurred_on: date,
+    activity_type: str,
+    quantity: Decimal,
+    mastery: str | None,
+) -> dict:
+    """
+    «تعديل» في النموذج المعتمد = **عكسٌ ثمّ إضافة، في معاملةٍ واحدة**.
+
+    ADR-004 يمنع `UPDATE`/`DELETE` على الدفتر، والنموذج يعرض زرَّي «تعديل»
+    و«حذف». والتعارض ظاهريّ لا جوهريّ: ما يريده المشرف هو **تصحيح الرقم**، لا
+    محوُ التاريخ. فالشكل مطابقٌ للنموذج والثابت محفوظ — ويبقى الأثر كاملًا في
+    الدفتر: حدثٌ أصل، وعكسُه، وبديلُه.
+
+    **والذرّيّة شرط:** عكسٌ ينجح وإضافةٌ تفشل يترك الطالب بساعاتٍ مسحوبة بلا
+    بديل. فالنواتان تُلحِقان بلا إيداع، والإيداع واحدٌ في آخر الدالّة.
+    """
+    original, correction = _reverse_pending(org, event_id, reason, actor_id)
+    replacement = _add_entry_pending(
+        org,
+        user_id=original.user_id,
+        occurred_on=occurred_on,
+        activity_type=activity_type,
+        quantity=quantity,
+        mastery=mastery,
+        reason=reason,
+        actor_id=actor_id,
+    )
+
+    # سطرُ تدقيقٍ **واحد** لعمليةٍ واحدة — لا سطران يوحيان بفعلين منفصلين.
     audit.record(
         org_id=org.id,
         kind=AUDIT_KIND,
-        summary=summary,
+        summary=(
+            f"تعديل الحدث #{original.id}: عُكس بمقدار {correction.delta} "
+            f"وأُضيف بديلٌ بمقدار {replacement.delta} — {reason.strip()}"
+        ),
         actor_id=actor_id,
-        after={"event_id": event.id, "kind": event.kind, "delta": str(event.delta)},
+        before={"event_id": original.id, "kind": original.kind, "delta": str(original.delta)},
+        after={
+            "correction_id": correction.id,
+            "replacement_id": replacement.id,
+            "delta": str(replacement.delta),
+        },
     )
     db.session.commit()
-    return event
+    return {"correction": correction, "replacement": replacement}
 
 
 def recent_events_for(org: Org, user_id: int) -> list[PointEvent]:

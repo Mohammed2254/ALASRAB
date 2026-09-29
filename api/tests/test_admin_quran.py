@@ -515,3 +515,112 @@ def test_add_entry_audit_failure_leaves_no_orphan_event(seeded, monkeypatch):
     db.session.rollback()
 
     assert db.session.scalars(select(PointEvent)).all() == []
+
+
+# ═══ ق-٢٥٨ — «تعديل» = عكسٌ + بديل، والثابت محفوظ (و-٢٠) ═══
+
+AMEND = "/api/admin/events/{}/amend"
+
+
+def _amend_body(**over):
+    body = {
+        "occurred_on": NEW_VERSION_DAY.isoformat(),
+        "activity_type": "memorize",
+        "quantity": "3",
+        "mastery": None,
+        "reason": "الرقم الأصليّ كان خطأً — هذا الصحيح.",
+    }
+    body.update(over)
+    return body
+
+
+def test_amend_reverses_then_adds_and_never_mutates_the_original(client, seeded):
+    """
+    @covers ق-٢٥٨
+
+    النموذج يعرض «تعديل»، وADR-004 يمنع `UPDATE`/`DELETE`. والتعارض ظاهريّ:
+    المشرف يريد تصحيح رقمٍ لا محوَ تاريخ — فالأثر يبقى كاملًا (أصل · عكس ·
+    بديل) والشكل مطابق.
+    """
+    admin = seeded["users"]["1001"]
+    original = _seed_event(seeded, delta="40")
+    original_id, original_delta = original.id, original.delta
+    _make_admin(admin)
+    _login(client)
+
+    r = client.post(AMEND.format(original_id), json=_amend_body(), headers=ORIGIN)
+    assert r.status_code == 201, r.data[:200]
+    assert r.json["correction"]["delta"] == "-40.00"
+    assert Decimal(r.json["replacement"]["delta"]) > 0
+
+    # الأصل لم يُمَسّ — لا قيمةً ولا وجودًا.
+    db.session.expire_all()
+    still = db.session.get(PointEvent, original_id)
+    assert still is not None and still.delta == original_delta
+
+    # والرصيد = الأصل + عكسه + البديل.
+    total = db.session.scalar(
+        select(db.func.coalesce(db.func.sum(PointEvent.delta), 0)).where(
+            PointEvent.user_id == seeded["users"]["1001"]
+        )
+    )
+    assert total == Decimal(r.json["replacement"]["delta"])
+
+
+def test_amend_writes_one_audit_line_not_two(client, seeded):
+    """@covers ق-٢٥٨ — عمليةٌ واحدة، فسطرٌ واحد يصفها لا فعلان منفصلان."""
+    _make_admin(seeded["users"]["1001"])
+    original = _seed_event(seeded, delta="40")
+    _login(client)
+
+    client.post(AMEND.format(original.id), json=_amend_body(), headers=ORIGIN)
+
+    entries = db.session.scalars(select(AuditEntry)).all()
+    assert len(entries) == 1
+    assert "تعديل الحدث" in entries[0].summary
+    assert entries[0].after["correction_id"] != entries[0].after["replacement_id"]
+
+
+def test_amend_is_atomic_when_the_replacement_fails(client, seeded):
+    """
+    @covers ق-٢٥٨
+
+    **الذرّيّة ليست تجميلًا:** عكسٌ ينجح وإضافةٌ تفشل يترك الطالب بساعاتٍ
+    مسحوبة بلا بديل — وهو أسوأ من رفض العملية كلّها.
+    """
+    _make_admin(seeded["users"]["1001"])
+    original = _seed_event(seeded, delta="40")
+    _login(client)
+    before = db.session.scalar(select(db.func.count(PointEvent.id)))
+
+    # نشاطٌ بلا وزن في الإصدار السارّي ⇒ الإضافة تفشل بعد نجاح العكس.
+    r = client.post(
+        AMEND.format(original.id),
+        json=_amend_body(activity_type="نشاطٌ لا وزن له"),
+        headers=ORIGIN,
+    )
+    assert r.status_code == 422
+
+    db.session.rollback()
+    after = db.session.scalar(select(db.func.count(PointEvent.id)))
+    assert after == before, "العكس كُتب رغم فشل البديل — العملية ليست ذرّيّة"
+    assert db.session.scalars(select(AuditEntry)).all() == []
+
+
+def test_amend_requires_a_reason(client, seeded):
+    """@covers ق-٢٥٨ — القيمة كلّها في «لماذا» (ط-١٠)."""
+    _make_admin(seeded["users"]["1001"])
+    original = _seed_event(seeded, delta="40")
+    _login(client)
+    r = client.post(AMEND.format(original.id), json=_amend_body(reason=""), headers=ORIGIN)
+    assert r.status_code == 422
+
+
+def test_amend_requires_admin(client, seeded):
+    """@covers ق-٢٥٨"""
+    original = _seed_event(seeded, delta="40")
+    _login(client)
+    assert (
+        client.post(AMEND.format(original.id), json=_amend_body(), headers=ORIGIN).status_code
+        == 403
+    )

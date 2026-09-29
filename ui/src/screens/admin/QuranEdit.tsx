@@ -2,13 +2,14 @@ import { useState } from 'react'
 
 import { api, ApiError } from '../../api'
 import { fmtDecimal } from '../../api/format'
-import type { QuranEventRow, StudentRef } from '../../api/types/quran'
+import type { StudentRef } from '../../api/types/quran'
 import { useAsync } from '../../state/useAsync'
 import { Async } from '../../ui/Async'
 import Button from '../../ui/Button'
 import EmptyState from '../../ui/EmptyState'
 import Field from '../../ui/Field'
 import Placard from '../../ui/Placard'
+import EventRow from './QuranEventRow'
 import Prow from '../../ui/Prow'
 
 /**
@@ -19,65 +20,6 @@ import Prow from '../../ui/Prow'
  * أبدًا. الساعات نصٌّ يأتي من الخادم فقط — تُعرض كما وصلت (`AGENTS.md` ٥).
  */
 const fieldClass = 'min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)'
-
-function EventRow({ event, onReversed }: { event: QuranEventRow; onReversed: () => void }) {
-  const [correcting, setCorrecting] = useState(false)
-  const [reason, setReason] = useState('')
-  const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
-
-  async function confirm() {
-    setBusy(true)
-    setError('')
-    try {
-      await api.admin.reverseEvent(event.id, reason)
-      setReason('')
-      setCorrecting(false)
-      onReversed()
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'حدث خطأ غير متوقّع.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <div className="mb-2 border-b border-(--color-border) pb-2 last:border-none">
-      <Prow label={event.kind} value={<bdi dir="ltr">{fmtDecimal(event.delta)}</bdi>} />
-      {event.reason ? <p className="text-[12px] text-(--color-text-dim)">{event.reason}</p> : null}
-
-      {correcting ? (
-        <div className="mt-2">
-          <label htmlFor={`qe_reason_${event.id}`} className="mb-1.5 block text-[13px] text-(--color-text-dim)">
-            سبب التصحيح — إلزاميّ
-          </label>
-          <input id={`qe_reason_${event.id}`} value={reason} onChange={(e) => setReason(e.target.value)} className={fieldClass} />
-          {error ? (
-            <p role="alert" className="mt-1 text-[13px] text-(--color-red-text)">
-              {error}
-            </p>
-          ) : null}
-          <div className="mt-2 flex gap-2">
-            <Button variant="danger" disabled={busy || !reason.trim()} onClick={confirm} className="flex-1">
-              تأكيد التصحيح
-            </Button>
-            <Button variant="outline" onClick={() => setCorrecting(false)} className="min-w-[80px]">
-              إلغاء
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setCorrecting(true)}
-          className="mt-1 min-h-[44px] w-full rounded-(--radius-sm) border border-(--color-border-strong) text-[13px] text-(--color-text-dim)"
-        >
-          تصحيح
-        </button>
-      )}
-    </div>
-  )
-}
 
 function StudentEvents({ userId }: { userId: string }) {
   const state = useAsync(() => api.admin.quranEvents(userId), [userId])
@@ -92,7 +34,7 @@ function StudentEvents({ userId }: { userId: string }) {
         ) : (
           <Placard title="أحداث الطالب — الأحدث أوّلًا">
             {data.events.map((e) => (
-              <EventRow key={e.id} event={e} onReversed={state.reload} />
+              <EventRow key={e.id} event={e} onChanged={state.reload} />
             ))}
           </Placard>
         )

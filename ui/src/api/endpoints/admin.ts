@@ -25,7 +25,7 @@ import type {
   ScoreRowForm,
 } from '../types/fuel'
 import type { PasteCommitResult, PastePreview } from '../types/paste'
-import type { AddedQuranEntry, AddQuranEntryForm, QuranEventsList, QuranRoster, ReversedEvent } from '../types/quran'
+import type { AddedQuranEntry, AddQuranEntryForm, AmendedEvent, AmendEventForm, QuranEventsList, QuranRoster, ReversedEvent } from '../types/quran'
 import type { Report, ResetPinResult } from '../types/report'
 import type {
   CreateWeightVersionForm,
@@ -199,6 +199,20 @@ export const adminApi = {
   undoAttendance: () => request<UndoneAttendance>('/admin/attendance/undo', { method: 'POST' }),
 
   quranEvents: (userId: string) => request<QuranEventsList>(`/admin/quran/events?user_id=${Number(userId)}`),
+  // `quantity` نصُّ نموذج ⇒ عشريٌّ سلكيّ، و`mastery` الفارغ يصير عدمًا —
+  // التحويل هنا لا في الشاشة.
+  amendEvent: (eventId: number, form: AmendEventForm) =>
+    request<AmendedEvent>(`/admin/events/${eventId}/amend`, {
+      method: 'POST',
+      body: {
+        occurred_on: form.occurred_on,
+        activity_type: form.activity_type,
+        quantity: form.quantity,
+        mastery: form.mastery.trim() || null,
+        reason: form.reason,
+      },
+    }),
+
   reverseEvent: (eventId: number, reason: string) =>
     request<ReversedEvent>(`/admin/events/${eventId}/reverse`, { method: 'POST', body: { reason } }),
   quranEntry: (form: AddQuranEntryForm) =>

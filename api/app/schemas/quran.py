@@ -51,3 +51,25 @@ class AddedQuranEntrySchema(Schema):
     id = fields.Int()
     delta = fields.Decimal(as_string=True)
     kind = fields.Str()
+
+
+class AmendEventSchema(Schema):
+    """
+    «تعديل» = عكسٌ + بديل. **بلا `user_id`**: البديل يخصّ صاحب الحدث الأصل
+    دائمًا — وتمريرُه لفتح بابًا لنقل ساعاتٍ من طالب إلى آخر باسم «تعديل».
+    """
+
+    occurred_on = fields.Date(required=True)
+    activity_type = fields.Str(required=True, validate=validate.Length(min=1, max=50))
+    quantity = fields.Decimal(
+        required=True, as_string=True, validate=validate.Range(min=Decimal("0.01"))
+    )
+    mastery = fields.Str(load_default=None, allow_none=True, validate=validate.Length(max=50))
+    reason = fields.Str(required=True, validate=validate.Length(min=1, max=500))
+
+
+class AmendedEventSchema(Schema):
+    """الأثر كاملًا: عكسُ الأصل وبديلُه — لا رقمٌ واحد يخفي العملية."""
+
+    correction = fields.Nested(AddedQuranEntrySchema)
+    replacement = fields.Nested(AddedQuranEntrySchema)

@@ -25,3 +25,19 @@ export type AddQuranEntryForm = {
   reason: string
 }
 export type AddedQuranEntry = { id: Count; delta: Decimal; kind: string }
+
+/**
+ * «تعديل» = عكسٌ + بديل في معاملةٍ واحدة (ADR-004 محفوظ). **بلا `user_id`**:
+ * البديل يخصّ صاحب الحدث الأصل دائمًا — وتمريرُه يفتح بابًا لنقل ساعاتٍ من
+ * طالبٍ إلى آخر باسم «تعديل».
+ */
+export type AmendEventForm = {
+  occurred_on: string
+  activity_type: string
+  quantity: string
+  mastery: string
+  reason: string
+}
+
+/** الأثر كاملًا — لا رقمٌ واحد يخفي العملية. */
+export type AmendedEvent = { correction: AddedQuranEntry; replacement: AddedQuranEntry }

@@ -45,6 +45,8 @@ from .paste import (
 from .quran import (
     AddedQuranEntrySchema,
     AddQuranEntrySchema,
+    AmendedEventSchema,
+    AmendEventSchema,
     QuranEventsListSchema,
     ReversedEventSchema,
     ReverseEventSchema,
@@ -88,6 +90,8 @@ __all__ = [
     "ActivitiesListSchema",
     "AddedQuranEntrySchema",
     "AddQuranEntrySchema",
+    "AmendedEventSchema",
+    "AmendEventSchema",
     "AdminEntryResultSchema",
     "AdminNotesListSchema",
     "AdminTahdirEntrySchema",

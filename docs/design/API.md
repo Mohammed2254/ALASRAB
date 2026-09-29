@@ -435,6 +435,7 @@
 | `/admin/quran/events` | GET | أحدث أحداث طالب — `?user_id=` | FR-035 (بنية تحتية) |
 | `/admin/quran/entry` | POST | إضافة سجلّ ناقص يدويًّا | FR-036 |
 | `/admin/events/{id}/reverse` | POST | تصحيح بحدث معاكس | FR-035 · FR-080 |
+| `/admin/events/{id}/amend` | POST | «تعديل» = عكسٌ + بديل في معاملةٍ واحدة (ADR-004 محفوظ) | FR-035 · FR-080 |
 
 > **`quran/students` و`quran/events` بلا قصّة FR مستقلّة** — نفس منطق
 > `fuel/activities` (و-٨): بلا قائمة طلاب لاختيار الهدف، وبلا قائمة أحداثه
