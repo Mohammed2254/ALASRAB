@@ -4,10 +4,11 @@
 
 import hashlib
 import secrets
+from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 
 from argon2 import PasswordHasher
-from argon2.exceptions import VerificationError, VerifyMismatchError
+from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
 from sqlalchemy import func, select, update
 
 from ..extensions import db
@@ -107,6 +108,23 @@ def login(org_id: int, student_no: str, pin: str) -> tuple[User, str]:
         _hasher.verify(user.pin_hash if user is not None else _DUMMY_HASH, pin)
         ok = user is not None
     except (VerifyMismatchError, VerificationError):
+        ok = False
+    except (InvalidHashError, UnicodeError):
+        # **هاشٌ تالف في الصفّ** (استيرادٌ ناقص · تعديلٌ يدويّ على القاعدة ·
+        # صفٌّ موروث). و`InvalidHashError` ترث `ValueError` **لا**
+        # `VerificationError`، فلم يكن يلتقطها ما فوقها — فكان الدخول يردّ
+        # **٥٠٠** على مسارٍ غير مصادَق عليه.
+        #
+        # و`UnicodeError` معها لا زيادةً: قيمةٌ غير ASCII في العمود تسقط عند
+        # ترميز argon2 لها قبل أن تصل إلى فحص الشكل — عطلٌ ثانٍ بنفس السبب
+        # ونفس الأثر، اكتُشف حين جُرّب هاشٌ تالف بحروف عربية.
+        #
+        # وردُّه خطأً ليس مجرّد قبح: يصير أوراكل يميّز ذلك الحساب عن غيره،
+        # وهو بعينه ما يمنعه §٧.١ («الرسالة واحدة والزمن واحد»). ولأن الهاش
+        # التالف يفشل **فورًا** بلا كلفة argon2، تُدفَع الكلفة هنا صراحةً
+        # بالهاش الوهمي كي يتساوى الزمن كما يتساوى الردّ.
+        with suppress(VerifyMismatchError, VerificationError):
+            _hasher.verify(_DUMMY_HASH, pin)
         ok = False
 
     db.session.add(LoginAttempt(org_id=org_id, student_no=student_no, ok=ok))

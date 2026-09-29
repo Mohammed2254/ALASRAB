@@ -10,7 +10,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select
 
 from app.extensions import db
-from app.models import LoginAttempt, Session
+from app.models import LoginAttempt, Session, User
 from app.security import COOKIE
 
 ORIGIN = {"Origin": "http://localhost:5173"}
@@ -269,3 +269,67 @@ def test_unknown_student_costs_the_same_time_as_wrong_pin(client, seeded):
         f"فارق زمني {ratio:.1f}× يكشف وجود الرقم: "
         f"مجهول {unknown * 1000:.0f}ms · معروف {known * 1000:.0f}ms"
     )
+
+
+# ═══ ق-٢٥٧ — هاشٌ تالف يردّ ٤٠١ لا ٥٠٠ (و-٢٠) ═══
+
+
+def test_corrupt_pin_hash_is_a_failed_login_not_a_server_error(client, seeded):
+    """
+    @covers ق-٢٥٧
+
+    صفٌّ بهاشٍ تالف (استيراد ناقص · تعديل يدويّ · صفّ موروث) كان يُسقط مسار
+    الدخول بـ**٥٠٠** لأن `InvalidHashError` ترث `ValueError` لا
+    `VerificationError`. ومسارُ الدخول **غير مصادَق عليه**، فردٌّ مختلف يصير
+    أوراكل يميّز الحساب — وهو ما يمنعه §٧.١.
+    """
+    # صورتان حقيقيّتان للتلف: قيمةٌ ASCII لا تطابق شكل argon2 (بذرةٌ ناقصة)،
+    # وقيمةٌ غير ASCII تسقط عند الترميز قبل فحص الشكل.
+    for corrupt in ("x", "ليس هاشًا"):
+        user = db.session.get(User, seeded["users"]["1002"])
+        user.pin_hash = corrupt
+        db.session.commit()
+        db.session.execute(db.text("DELETE FROM login_attempts"))
+        db.session.commit()
+
+        r = client.post(
+            "/api/auth/login", json={"student_no": "1002", "pin": "1234"}, headers=ORIGIN
+        )
+        assert r.status_code == 401, f"{corrupt!r} ⇒ {r.data[:160]!r}"
+        assert "غير صحيح" in r.json["message"]
+
+
+def test_corrupt_hash_costs_the_same_time_as_a_wrong_pin(client, seeded):
+    """
+    @covers ق-٢٥٧
+
+    الردّ الواحد لا يكفي: هاشٌ تالف يفشل **فورًا** بلا كلفة argon2، فيبقى
+    الزمن أوراكل. فتُدفَع الكلفة صراحةً بالهاش الوهمي.
+    """
+    user = db.session.get(User, seeded["users"]["1002"])
+    user.pin_hash = "x"
+    db.session.commit()
+
+    import statistics
+    import time
+
+    def median_login(student_no: str) -> float:
+        out = []
+        for _ in range(6):
+            db.session.execute(db.text("DELETE FROM login_attempts"))
+            db.session.commit()
+            start = time.perf_counter()
+            client.post(
+                "/api/auth/login",
+                json={"student_no": student_no, "pin": "9999"},
+                headers=ORIGIN,
+            )
+            out.append(time.perf_counter() - start)
+        return statistics.median(out)
+
+    corrupt = median_login("1002")
+    wrong = median_login("1001")
+
+    # نسبةٌ واسعة عمدًا: المقصود ألّا يكون الفرق **رتبةً** (فوريّ مقابل
+    # عشرات الميلي ثانية)، لا أن يتطابق الزمنان.
+    assert corrupt > wrong / 4, f"تالف={corrupt:.4f}s مقابل خاطئ={wrong:.4f}s"
