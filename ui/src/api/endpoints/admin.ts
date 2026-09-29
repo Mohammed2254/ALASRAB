@@ -6,7 +6,12 @@
  */
 import { request, requestForm } from '../client'
 import type { AdminEntryResult, AdminTahdirEntryForm, OrgTahdirReport, QueueItem, ReviewResult } from '../types/adminQueue'
-import type { AttendanceStatus, RecordedAttendance, UndoneAttendance } from '../types/attendance'
+import type {
+  AttendanceStatus,
+  RasdLatestImport,
+  RecordedAttendance,
+  UndoneAttendance,
+} from '../types/attendance'
 import type { AuditLog } from '../types/audit'
 import type { AdminDashboard } from '../types/dashboard'
 import type { AdminNotesList, ChooseWeekPilotForm, ChosenWeekPilot, MarkedNote } from '../types/engagement'
@@ -168,8 +173,16 @@ export const adminApi = {
   notes: () => request<AdminNotesList>('/admin/notes'),
   markNoteRead: (id: number) => request<MarkedNote>(`/admin/notes/${id}`, { method: 'PATCH', body: { read: true } }),
 
+  // `bonus_hours` نصُّ نموذج ⇒ عشريٌّ سلكيّ. التحويل هنا لا في الشاشة.
   chooseWeekPilot: (form: ChooseWeekPilotForm) =>
-    request<ChosenWeekPilot>('/admin/week/pilot', { method: 'POST', body: form }),
+    request<ChosenWeekPilot>('/admin/week/pilot', {
+      method: 'POST',
+      body: {
+        user_id: form.user_id,
+        reason: form.reason,
+        bonus_hours: form.bonus_hours.trim() || '0',
+      },
+    }),
 
   auditLog: () => request<AuditLog>('/admin/audit'),
 
@@ -179,6 +192,8 @@ export const adminApi = {
   assessFuel: (form: AssessForm) => request<Assessed>('/admin/fuel/assess', { method: 'POST', body: assessPayload(form) }),
 
   attendance: () => request<AttendanceStatus>('/admin/attendance'),
+  // الحضور من راصد — للعرض فقط، والإدخال اليدويّ أعلاه احتياطيٌّ موثَّق.
+  attendanceFromRasd: () => request<RasdLatestImport>('/admin/attendance/rasd'),
   recordAttendance: (absentUserIds: number[]) =>
     request<RecordedAttendance>('/admin/attendance', { method: 'POST', body: { absent_user_ids: absentUserIds } }),
   undoAttendance: () => request<UndoneAttendance>('/admin/attendance/undo', { method: 'POST' }),

@@ -37,6 +37,20 @@ function TeamRow({ team, onChanged }: { team: AdminTeamRow; onChanged: () => voi
   return (
     <div className="mb-2 border-b border-(--color-border) pb-2 last:border-none">
       <Prow label={`${team.name} (${team.code})`} value={`${team.active_members} عضو`} />
+
+      {/* الأسماء لا العدد وحده — «٩ عضو» بلا أسماء لا يُدار به سرب. */}
+      {team.members.length ? (
+        <ul className="mt-1 mb-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-(--color-text-dim)">
+          {team.members.map((m) => (
+            <li key={m.user_id}>
+              {m.full_name} <bdi dir="ltr">({m.student_no})</bdi>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-1 mb-2 text-[12px] text-(--color-text-dim)">لا أعضاء في هذا السرب.</p>
+      )}
+
       {team.archived_at ? (
         <p className="text-[12px] text-(--color-text-dim)">مؤرشَف</p>
       ) : (

@@ -6,6 +6,7 @@ import type { Mover } from '../../api/types/report'
 import { useAsync } from '../../state/useAsync'
 import { Async } from '../../ui/Async'
 import EmptyState from '../../ui/EmptyState'
+import Field from '../../ui/Field'
 import Placard from '../../ui/Placard'
 
 /**
@@ -17,6 +18,8 @@ import Placard from '../../ui/Placard'
 function ChooseForm({ candidates, onChosen }: { candidates: Mover[]; onChosen: () => void }) {
   const [userId, setUserId] = useState<number | null>(null)
   const [reason, setReason] = useState('')
+  // «وزن الاختيار» في النموذج المعتمد — افتراضه ١٠، وصفرٌ اختيارٌ مشروع.
+  const [bonusHours, setBonusHours] = useState('10')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -25,7 +28,11 @@ function ChooseForm({ candidates, onChosen }: { candidates: Mover[]; onChosen: (
     setBusy(true)
     setError('')
     try {
-      await api.admin.chooseWeekPilot({ user_id: userId, reason: reason.trim() })
+      await api.admin.chooseWeekPilot({
+        user_id: userId,
+        reason: reason.trim(),
+        bonus_hours: bonusHours,
+      })
       onChosen()
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'حدث خطأ غير متوقّع.')
@@ -43,7 +50,28 @@ function ChooseForm({ candidates, onChosen }: { candidates: Mover[]; onChosen: (
   }
 
   return (
-    <Placard title="المرشّحون">
+    <>
+      {/* «فترة الاختيار والوزن» — لوحُ النموذج المعتمد. الفترة تأتي من
+          الخادم (أسبوع المنظّمة)، والوزن وحده قرارُ المشرف. */}
+      <Placard title="فترة الاختيار والوزن">
+        <Field
+          label="وزن الاختيار — ساعات إضافية تُمنَح"
+          htmlFor="bonus_hours"
+          helper="تظهر في «سجلّ ساعاتي» الخاص بالطيّار المختار بتاريخ هذا الأسبوع بالضبط، لا بتاريخ اليوم. واتركها صفرًا لتكريمٍ بلا ساعات."
+        >
+          <input
+            id="bonus_hours"
+            type="number"
+            inputMode="decimal"
+            min="0"
+            value={bonusHours}
+            onChange={(e) => setBonusHours(e.target.value)}
+            className="min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)"
+          />
+        </Field>
+      </Placard>
+
+      <Placard title="المرشّحون">
       <div className="flex flex-col gap-3.5">
         <div className="flex flex-col gap-2">
           {candidates.map((c) => (
@@ -82,6 +110,7 @@ function ChooseForm({ candidates, onChosen }: { candidates: Mover[]; onChosen: (
         </button>
       </div>
     </Placard>
+    </>
   )
 }
 

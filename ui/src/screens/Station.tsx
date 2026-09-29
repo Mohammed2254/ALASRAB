@@ -4,6 +4,7 @@ import { useAsync } from '../state/useAsync'
 import { Async } from '../ui/Async'
 import EmptyState from '../ui/EmptyState'
 import FuelDial from '../ui/FuelDial'
+import Pill from '../ui/Pill'
 import Placard from '../ui/Placard'
 import Prow from '../ui/Prow'
 
@@ -42,6 +43,44 @@ export default function Station() {
 
         return (
           <div className="flex flex-col gap-3.5">
+            {/* مهمّة هذا الأسبوع — النموذج يُريها للطالب **قبل** الاعتماد.
+                واللترات هنا متوقَّعة لا محتسَبة حتى يُعتمد الأسبوع، فالشارة
+                هي ما يفصل بينهما. والأخضر على «مُعتمَد» مأذون: حالةٌ نشطة. */}
+            {data.week_task ? (
+              <Placard
+                title={`مهمّة هذا الأسبوع: ${data.week_task.name}`}
+                aside={
+                  data.week_task.state === 'approved' ? (
+                    <Pill tone="green">معتمَد</Pill>
+                  ) : (
+                    <Pill tone="accent">مسوّدة — بانتظار اعتماد المشرف</Pill>
+                  )
+                }
+              >
+                {data.week_task.assessed ? (
+                  <>
+                    <Prow
+                      label="النسبة"
+                      value={<bdi dir="ltr">{fmtDecimal(data.week_task.total_pct)}٪</bdi>}
+                      tone="accent"
+                    />
+                    <Prow
+                      label={
+                        data.week_task.state === 'approved'
+                          ? 'لترات هذه المهمّة'
+                          : 'لترات متوقَّعة — لم تُحتسب بعد'
+                      }
+                      value={<bdi dir="ltr">{fmtDecimal(data.week_task.litres)}</bdi>}
+                    />
+                  </>
+                ) : (
+                  <p className="py-2 text-[13px] text-(--color-text-dim)">
+                    لم تُقيَّم بعد — هذه مهمّة سربكم لهذا الأسبوع.
+                  </p>
+                )}
+              </Placard>
+            ) : null}
+
             <Placard title={data.team.name} aside="وقود السرب">
               <Prow label="اللترات" value={<bdi dir="ltr">{fmtDecimal(data.team.litres)}</bdi>} tone="accent" />
               {data.tank_capacity_l ? (

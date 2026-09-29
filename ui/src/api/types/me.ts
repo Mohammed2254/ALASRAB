@@ -67,8 +67,23 @@ export type RecentAssessment = {
   litres: Decimal
 }
 
+/**
+ * مهمّة السرب هذا الأسبوع — يراها الطالب **قبل** الاعتماد.
+ * لتراتُها **متوقَّعة** حتى يُعتمد الأسبوع، و`state` هو ما يفصل بين
+ * المتوقَّع والمحتسَب.
+ */
+export type StationWeekTask = {
+  name: string
+  state: 'draft' | 'approved'
+  assessed: boolean
+  total_pct: Decimal
+  litres: Decimal
+}
+
 export type Station = {
   team: StationTeam | null
+  /** `null` لسربٍ بلا مهمّة هذا الأسبوع — حالةٌ مصمَّمة لا عطل. */
+  week_task: StationWeekTask | null
   tank_capacity_l: Decimal | null
   recent: RecentAssessment[]
 }

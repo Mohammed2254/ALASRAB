@@ -37,5 +37,11 @@ export type AdminNoteRow = { id: Count; body: string; day: string; read_at: stri
 export type AdminNotesList = { notes: AdminNoteRow[] }
 export type MarkedNote = { id: Count; read_at: string }
 
-export type ChooseWeekPilotForm = { user_id: Count; reason: string }
-export type ChosenWeekPilot = { user_id: Count; full_name: string; week_start: string }
+/** `bonus_hours` نصُّ إدخال — يتحوّل عند حدّ الشبكة لا في الشاشة. */
+export type ChooseWeekPilotForm = { user_id: Count; reason: string; bonus_hours: string }
+export type ChosenWeekPilot = {
+  user_id: Count
+  full_name: string
+  week_start: string
+  bonus_hours: Decimal
+}
