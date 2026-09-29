@@ -132,45 +132,62 @@ def week_view(org: Org, week_start: date) -> dict:
     }
 
     if week is None:
-        tasks = [
-            {"activity_id": a.id, "team_id": None, "activity": a}
-            for a in _active_activities(org.id)
-        ]
+        rows: list[FuelWeekTask] = []
+        activities = _active_activities(org.id)
         state = "unopened"
         approved_at = None
     else:
-        rows = db.session.scalars(
-            select(FuelWeekTask).where(FuelWeekTask.week_id == week.id).order_by(FuelWeekTask.id)
-        ).all()
-        tasks = []
-        for t in rows:
-            activity = db.session.get(FuelActivity, t.activity_id)
-            if activity is not None:
-                tasks.append(
-                    {
-                        "activity_id": activity.id,
-                        "team_id": t.team_id,
-                        "activity": activity,
-                        "task": t,
-                    }
+        rows = list(
+            db.session.scalars(
+                select(FuelWeekTask)
+                .where(FuelWeekTask.week_id == week.id)
+                .order_by(FuelWeekTask.id)
+            )
+        )
+        activities = list(
+            db.session.scalars(
+                select(FuelActivity).where(
+                    FuelActivity.id.in_([t.activity_id for t in rows] or [-1])
                 )
+            )
+        )
         state = "approved" if week.approved_at is not None else "draft"
         approved_at = week.approved_at.isoformat() if week.approved_at else None
 
+    # ثلاث دفعات لا ثلاثة استعلامات لكل مهمّة: الأنشطة أعلاه، والبنود
+    # والدرجات هنا. شاشةٌ تُفتح كثيرًا ومهامُّها تنمو — فثمنُها يجب أن يبقى
+    # ثابتًا (نفس علاج `list_teams`، وتحرسه ق-٢٥٥).
+    by_activity = {a.id: a for a in activities}
+    criteria_of: dict[int, list[FuelCriterion]] = {}
+    if by_activity:
+        for criterion in db.session.scalars(
+            select(FuelCriterion)
+            .where(FuelCriterion.activity_id.in_(list(by_activity)))
+            .order_by(FuelCriterion.position)
+        ):
+            criteria_of.setdefault(criterion.activity_id, []).append(criterion)
+
+    scores_of: dict[int, dict[int, Decimal]] = {}
+    if rows:
+        for row in db.session.scalars(
+            select(FuelWeekScore).where(FuelWeekScore.task_id.in_([t.id for t in rows]))
+        ):
+            scores_of.setdefault(row.task_id, {})[row.criterion_id] = row.score_pct
+
+    ordered = (
+        [(t.activity_id, t.team_id, scores_of.get(t.id, {})) for t in rows]
+        if rows
+        else [(a.id, None, {}) for a in activities]
+    )
+
     out_tasks = []
-    for entry in tasks:
-        activity: FuelActivity = entry["activity"]
-        criteria = _criteria_of(activity.id)
-        task = entry.get("task")
-        saved: dict[int, Decimal] = {}
-        if task is not None:
-            saved = {
-                s.criterion_id: s.score_pct
-                for s in db.session.scalars(
-                    select(FuelWeekScore).where(FuelWeekScore.task_id == task.id)
-                )
-            }
-        scored = {cid: v for cid, v in saved.items() if cid in {c.id for c in criteria}}
+    for activity_id, team_id, saved in ordered:
+        activity = by_activity.get(activity_id)
+        if activity is None:
+            continue
+        criteria = criteria_of.get(activity.id, [])
+        valid = {c.id for c in criteria}
+        scored = {cid: v for cid, v in saved.items() if cid in valid}
         total_pct, litres = (
             score_totals({c.id: c for c in criteria}, scored, activity.litres_full)
             if scored
@@ -181,8 +198,8 @@ def week_view(org: Org, week_start: date) -> dict:
                 "activity_id": activity.id,
                 "name": activity.name,
                 "litres_full": activity.litres_full,
-                "team_id": entry["team_id"],
-                "team_name": teams.get(entry["team_id"]) if entry["team_id"] else None,
+                "team_id": team_id,
+                "team_name": teams.get(team_id) if team_id else None,
                 "assessed": bool(scored),
                 "total_pct": total_pct,
                 "litres": litres,

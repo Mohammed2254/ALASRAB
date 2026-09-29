@@ -221,7 +221,10 @@ def test_approved_week_refuses_further_edits(client, seeded):
 
     r = client.post(
         f"{WEEK}/scores",
-        json={"activity_id": activity_id, "scores": [{"criterion_id": crits[0], "score_pct": "10"}]},
+        json={
+            "activity_id": activity_id,
+            "scores": [{"criterion_id": crits[0], "score_pct": "10"}],
+        },
         headers=ORIGIN,
     )
     assert r.status_code == 409
@@ -245,9 +248,7 @@ def test_task_without_team_or_scores_is_skipped_and_counted(client, seeded):
     assert r.status_code == 200
     assert db.session.scalar(select(db.func.count(FuelAssessment.id))) == 0
 
-    entry = db.session.scalar(
-        select(AuditEntry).where(AuditEntry.kind == "fuel_week_approved")
-    )
+    entry = db.session.scalar(select(AuditEntry).where(AuditEntry.kind == "fuel_week_approved"))
     assert entry.after["skipped"] == 1
     assert entry.after["assessments"] == 0
 
@@ -372,3 +373,59 @@ def test_team_list_carries_member_names_not_only_a_count(client, seeded):
     team = next(t for t in teams if t["id"] == seeded["team_id"])
     assert team["active_members"] == len(team["members"])
     assert all(m["full_name"] for m in team["members"])
+
+
+# ═══ ق-٢٥٥ — عرض الأسبوع لا يتضخّم بعدد المهامّ ═══
+
+
+def test_week_view_query_count_does_not_grow_with_tasks(client, seeded):
+    """
+    @covers ق-٢٥٥
+
+    شاشةٌ يفتحها المشرف كثيرًا، وعددُ مهامّها ينمو بنمو الأنشطة. فإن كان
+    الاستعلام لكل مهمّة، صار ثمنُ الفتح بعدد المهامّ — وهو N+1 بعينه الذي
+    تُجنّبه `list_teams` عمدًا.
+
+    **يُقاس الفرق لا العدد المطلق:** العدد يتغيّر مع أي إعادة صياغة، والفرق
+    بين أربع مهامّ ومهمّة واحدة هو ما يكشف النمو.
+    """
+    from sqlalchemy import event
+
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+    _activity(client, key="a1")
+
+    counter = {"n": 0}
+
+    def count(conn, cursor, statement, params, context, executemany):
+        counter["n"] += 1
+
+    engine = db.engine
+    event.listen(engine, "before_cursor_execute", count)
+    try:
+        client.get(WEEK, headers=ORIGIN)  # يفتح الأسبوع بمهمّة واحدة
+        counter["n"] = 0
+        client.get(WEEK, headers=ORIGIN)
+        one_task = counter["n"]
+
+        for key in ("a2", "a3", "a4"):
+            _activity(client, key=key)
+            client.post(
+                f"{WEEK}/tasks",
+                json={"activity_id": _latest_activity_id(client)},
+                headers=ORIGIN,
+            )
+        counter["n"] = 0
+        client.get(WEEK, headers=ORIGIN)
+        four_tasks = counter["n"]
+    finally:
+        event.remove(engine, "before_cursor_execute", count)
+
+    assert four_tasks <= one_task + 1, (
+        f"عرضٌ بأربع مهامّ كلّف {four_tasks} استعلامًا مقابل {one_task} لمهمّة — "
+        "الثمن ينمو بعدد المهامّ (N+1)."
+    )
+
+
+def _latest_activity_id(client) -> int:
+    return client.get("/api/admin/fuel/activities", headers=ORIGIN).json["activities"][-1]["id"]
