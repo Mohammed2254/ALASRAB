@@ -191,6 +191,8 @@ def test_today_shows_answered_result_after_answering(client, seeded):
         "correct_id": 2,
         "note": "البقرة أطول سور القرآن.",
         "awarded_hours": "0.00",
+        # إجابةٌ خاطئة ⇒ لا سلسلة (و-٢٠).
+        "streak": 0,
     }
 
 
@@ -209,6 +211,8 @@ def test_correct_answer_writes_ledger_event_and_awards_reward(client, seeded):
         "correct_id": 2,
         "note": "البقرة أطول سور القرآن.",
         "awarded_hours": "2.50",
+        # أوّل إجابةٍ صحيحة ⇒ سلسلةٌ بيومٍ واحد (و-٢٠).
+        "streak": 1,
     }
     deck = client.get("/api/me/deck").json
     assert deck["hours"] == "2.50"
@@ -558,3 +562,90 @@ def test_negative_weight_is_rejected(client, seeded):
         headers=ORIGIN,
     )
     assert r.status_code == 422
+
+
+# ═══ ق-٢٦٠ — السلسلة المتتالية، مشتقّةً لا مخزَّنة (و-٢٠) ═══
+
+
+def _past(seeded, day, *, correct: bool | None):
+    """
+    سؤالٌ ليومٍ مضى وإجابةٌ عليه — `correct=None` يعني **طُرح ولم يُجَب**.
+
+    يُدرَج مباشرةً لا عبر المسار: المسار يقبل **سؤال اليوم وحده** عمدًا، وتاريخُ
+    السلسلة بطبيعته ماضٍ.
+    """
+    q = _question(seeded["org_id"], day=day)
+    if correct is None:
+        return q
+    row = Answer(
+        org_id=seeded["org_id"],
+        user_id=seeded["users"]["1001"],
+        question_id=q.id,
+        choice_id=q.correct_id if correct else q.correct_id + 1,
+        correct=correct,
+    )
+    if correct:
+        row.point_event_id = ledger.append(
+            [
+                ledger.EventSpec(
+                    org_id=seeded["org_id"],
+                    kind="daily_question",
+                    delta=Decimal("2.50"),
+                    user_id=seeded["users"]["1001"],
+                    occurred_at=datetime.now(UTC),
+                )
+            ]
+        )[0].id
+    db.session.add(row)
+    db.session.commit()
+    return q
+
+
+def _answer_today(client, seeded, *, correct=True):
+    q = _question(seeded["org_id"], day=TODAY_RIYADH)
+    return client.post(
+        _answer_url(q.id),
+        json={"choice_id": q.correct_id if correct else q.correct_id + 1},
+        headers=ORIGIN,
+    )
+
+
+def test_streak_counts_consecutive_correct_answers(client, seeded):
+    """@covers ق-٢٦٠"""
+    _login(client)
+    _past(seeded, TODAY_RIYADH - timedelta(days=2), correct=True)
+    _past(seeded, TODAY_RIYADH - timedelta(days=1), correct=True)
+    r = _answer_today(client, seeded)
+    assert r.status_code == 200, r.data[:160]
+    assert r.json["streak"] == 3
+
+
+def test_a_wrong_answer_breaks_the_streak(client, seeded):
+    """@covers ق-٢٦٠ — أوّل خطأٍ يقطعها، فلا تُحتسب أيّامٌ قبله."""
+    _login(client)
+    _past(seeded, TODAY_RIYADH - timedelta(days=2), correct=True)
+    _past(seeded, TODAY_RIYADH - timedelta(days=1), correct=False)
+    r = _answer_today(client, seeded)
+    assert r.json["streak"] == 1
+
+
+def test_a_day_without_a_question_does_not_break_the_streak(client, seeded):
+    """
+    @covers ق-٢٦٠
+
+    **تُعدّ أيّامُ الأسئلة لا أيّام التقويم.** يومٌ لم يُطرَح فيه سؤال أصلًا
+    ليس تقصيرًا من الطالب — وقطعُ سلسلته به يعاقبه على ما لا صنع له فيه.
+    """
+    _login(client)
+    _past(seeded, TODAY_RIYADH - timedelta(days=5), correct=True)
+    r = _answer_today(client, seeded)  # لا أسئلة في الأيام ٤..١
+    assert r.json["streak"] == 2
+
+
+def test_an_unanswered_question_day_breaks_the_streak(client, seeded):
+    """@covers ق-٢٦٠ — سؤالٌ طُرح ولم يُجَب تقصيرٌ، بخلاف يومٍ بلا سؤال."""
+    _login(client)
+    _past(seeded, TODAY_RIYADH - timedelta(days=2), correct=True)
+    _past(seeded, TODAY_RIYADH - timedelta(days=1), correct=None)
+    r = _answer_today(client, seeded)
+    assert r.json["streak"] == 1

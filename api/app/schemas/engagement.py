@@ -15,6 +15,9 @@ class AnsweredSchema(Schema):
     correct_id = fields.Int()
     note = fields.Str()
     awarded_hours = fields.Decimal(as_string=True)
+    # أيّامٌ متتالية من الإجابات الصحيحة — **مشتقّةٌ من `answers` لا مخزَّنة**،
+    # فلا عمود ولا هجرة، ولا حقلٌ يتباعد عن مصدره.
+    streak = fields.Int()
 
 
 class QuestionSchema(Schema):

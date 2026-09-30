@@ -44,6 +44,35 @@ class AnswerResult:
     correct_id: int
     note: str
     awarded_hours: Decimal
+    #: أيّامٌ متتالية من الإجابات الصحيحة، منتهيةً بسؤال اليوم.
+    streak: int
+
+
+def answer_streak(org: Org, user_id: int, now: datetime | None = None) -> int:
+    """
+    السلسلة المتتالية — **مشتقّةٌ من `answers` بلا هجرة ولا عمودٍ جديد.**
+
+    تُعدّ أيّامُ الأسئلة (لا أيّام التقويم) نزولًا من سؤال اليوم: كل يومٍ
+    أجاب فيه الطالب **صحيحًا** يزيد العدّاد، وأوّل يومٍ لم يُجب فيه أو أخطأ
+    يقطعها. فيومٌ لم يُطرَح فيه سؤالٌ أصلًا لا يكسر السلسلة — وإلّا عاقب
+    الطالبَ غيابُ سؤالٍ لا صنعَ له فيه.
+    """
+    rows = db.session.execute(
+        select(DailyQuestion.day, Answer.correct)
+        .outerjoin(
+            Answer,
+            (Answer.question_id == DailyQuestion.id) & (Answer.user_id == user_id),
+        )
+        .where(DailyQuestion.org_id == org.id, DailyQuestion.day <= _today(org, now))
+        .order_by(DailyQuestion.day.desc())
+    ).all()
+
+    streak = 0
+    for _day, correct in rows:
+        if not correct:
+            break
+        streak += 1
+    return streak
 
 
 def _today(org: Org, now: datetime | None = None) -> date:
@@ -51,13 +80,14 @@ def _today(org: Org, now: datetime | None = None) -> date:
     return (now or datetime.now(UTC)).astimezone(ZoneInfo(org.timezone)).date()
 
 
-def _result_of(question: DailyQuestion, answer_row: Answer) -> AnswerResult:
+def _result_of(question: DailyQuestion, answer_row: Answer, streak: int = 0) -> AnswerResult:
     return AnswerResult(
         choice_id=answer_row.choice_id,
         correct=answer_row.correct,
         correct_id=question.correct_id,
         note=question.note,
         awarded_hours=question.reward_hours if answer_row.correct else ZERO,
+        streak=streak,
     )
 
 
@@ -76,7 +106,9 @@ def today(
     answer_row = db.session.scalar(
         select(Answer).where(Answer.user_id == user_id, Answer.question_id == question.id)
     )
-    return question, None if answer_row is None else _result_of(question, answer_row)
+    if answer_row is None:
+        return question, None
+    return question, _result_of(question, answer_row, answer_streak(org, user_id, now))
 
 
 def answer(
@@ -133,7 +165,8 @@ def answer(
         row.point_event_id = event.id
     db.session.commit()
 
-    return _result_of(question, row)
+    # تُحسب **بعد** الإيداع: إجابةُ اليوم جزءٌ من السلسلة التي يراها الطالب.
+    return _result_of(question, row, answer_streak(org, user_id, now))
 
 
 def submit_note(org: Org, body: str, now: datetime | None = None) -> None:

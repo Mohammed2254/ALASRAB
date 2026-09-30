@@ -14,7 +14,7 @@
 """
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy import Select, func, select
@@ -26,11 +26,18 @@ from . import readiness, week
 CENT = Decimal("0.01")
 
 
-def _hours_subquery(org_id: int, since: datetime | None) -> Select:
-    """مجموع ساعات كل مستخدم — بنافذة إن مُرِّر `since`، أو تراكميًّا بلا شرط زمنيّ."""
+def _hours_subquery(org_id: int, since: datetime | None, until: datetime | None = None) -> Select:
+    """
+    مجموع ساعات كل مستخدم — بنافذة إن مُرِّر `since`، أو تراكميًّا بلا شرط.
+
+    و`until` **حدٌّ أعلى حصريّ** أُضيف في و-٢٠ لحساب ترتيب الأسبوع الماضي:
+    بدونه كانت النافذة مفتوحةً إلى الأبد فتخلط الأسبوعين.
+    """
     conditions = [PointEvent.org_id == org_id, PointEvent.scope == "individual"]
     if since is not None:
         conditions.append(PointEvent.occurred_at >= since)
+    if until is not None:
+        conditions.append(PointEvent.occurred_at < until)
     return (
         select(PointEvent.user_id, func.sum(PointEvent.delta).label("hours"))
         .where(*conditions)
@@ -39,11 +46,9 @@ def _hours_subquery(org_id: int, since: datetime | None) -> Select:
     )
 
 
-def pilots_board(org: Org, now: datetime | None = None) -> list[dict]:
-    """FR-050 — صدارة الأفراد بساعات الأسبوع الحالي، تنازليًّا."""
-    since = week.week_start_utc(org, now or datetime.now(UTC))
-    window = _hours_subquery(org.id, since)
-    rows = db.session.execute(
+def _pilot_rows(org: Org, since: datetime, until: datetime | None) -> list:
+    window = _hours_subquery(org.id, since, until)
+    return db.session.execute(
         select(User.id, User.full_name, func.coalesce(window.c.hours, 0).label("hours"))
         .join(Membership, Membership.user_id == User.id)
         .outerjoin(window, window.c.user_id == User.id)
@@ -51,17 +56,63 @@ def pilots_board(org: Org, now: datetime | None = None) -> list[dict]:
         # فكّ تعادل بـ`id` — استقرار تقنيّ بحت، لا معيار FR-052 (يخصّ الأسراب وحدها).
         .order_by(func.coalesce(window.c.hours, 0).desc(), User.id)
     ).all()
+
+
+def _ranks_of(ordered_keys: list) -> dict:
+    """مفتاحٌ ⇒ موضعه (١ = الأعلى) — في ترتيبٍ جاهز."""
+    return {key: position for position, key in enumerate(ordered_keys, start=1)}
+
+
+def pilots_board(org: Org, now: datetime | None = None) -> list[dict]:
+    """
+    FR-050 — صدارة الأفراد بساعات الأسبوع الحالي، تنازليًّا.
+
+    **و`chg` تغيّرُ الموضع عن الأسبوع الماضي** (و-٢٠): موجبٌ صعود، وسالبٌ
+    هبوط، وصفرٌ ثبات. ويُحسب **بإعادة الترتيب على نافذة الأسبوع الماضي** لا
+    بلقطةٍ مخزَّنة — فلا جدولَ يتباعد عن الدفتر، ولا هجرةَ، والدفترُ هو
+    المصدر الوحيد دائمًا.
+    """
+    now = now or datetime.now(UTC)
+    since = week.week_start_utc(org, now)
+    previous_since = since - timedelta(days=7)
+
+    rows = _pilot_rows(org, since, None)
+    before = _ranks_of([uid for uid, _n, _h in _pilot_rows(org, previous_since, since)])
+    current = _ranks_of([uid for uid, _n, _h in rows])
+
     return [
-        {"full_name": full_name, "hours": Decimal(hours).quantize(CENT)}
-        for _uid, full_name, hours in rows
+        {
+            "full_name": full_name,
+            "hours": Decimal(hours).quantize(CENT),
+            "chg": before[uid] - current[uid] if uid in before else 0,
+        }
+        for uid, full_name, hours in rows
     ]
 
 
 def teams_board(org: Org, now: datetime | None = None) -> list[dict]:
-    """FR-051/FR-052 — صدارة الأسراب بالمعدّل، فكّ التعادل بـ`code` تصاعديًّا."""
+    """
+    FR-051/FR-052 — صدارة الأسراب بالمعدّل، فكّ التعادل بـ`code` تصاعديًّا.
+
+    **و`chg` تغيّرُ الموضع عن الأسبوع الماضي** (و-٢٠) — بإعادة ترتيبٍ على
+    نافذةٍ سابقة لا بلقطةٍ مخزَّنة، كما في صدارة الأفراد.
+    """
     now = now or datetime.now(UTC)
     since = week.week_start_utc(org, now)
-    window = _hours_subquery(org.id, since)
+    board = _teams_board_window(org, since, None, now)
+    before = _ranks_of(
+        [t["id"] for t in _teams_board_window(org, since - timedelta(days=7), since, now)]
+    )
+    current = _ranks_of([t["id"] for t in board])
+    for row in board:
+        row["chg"] = before[row["id"]] - current[row["id"]] if row["id"] in before else 0
+    return board
+
+
+def _teams_board_window(
+    org: Org, since: datetime, until: datetime | None, now: datetime
+) -> list[dict]:
+    window = _hours_subquery(org.id, since, until)
     rows = db.session.execute(
         select(
             Team.id,

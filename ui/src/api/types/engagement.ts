@@ -16,6 +16,8 @@ export type Answered = {
   correct_id: Count
   note: string
   awarded_hours: Decimal
+  /** أيّامٌ متتالية من الإجابات الصحيحة — **مشتقّةٌ في الخادم** لا محسوبة هنا. */
+  streak: Count
 }
 
 export type Question = {

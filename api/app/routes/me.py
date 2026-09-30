@@ -119,20 +119,31 @@ class Formation(MethodView):
         return standings_service.formation(org, g.user.id, scope)
 
 
+def _answered_payload(answered):
+    """
+    شكلُ الإجابة — **مبنيٌّ في موضعٍ واحد**.
+
+    كان يُبنى يدويًّا مرّتين (سؤال اليوم وردُّ الإجابة)، فحقلٌ يُضاف إلى
+    أحدهما يغيب عن الآخر بصمت — وقد وقع فعلًا مع `streak` في و-٢٠.
+    """
+    if answered is None:
+        return None
+    return {
+        "choice_id": answered.choice_id,
+        "correct": answered.correct,
+        "correct_id": answered.correct_id,
+        "note": answered.note,
+        "awarded_hours": answered.awarded_hours,
+        "streak": answered.streak,
+    }
+
+
 def _question_payload(question, answered):
     return {
         "id": question.id,
         "prompt": question.prompt,
         "choices": question.choices,
-        "answered": None
-        if answered is None
-        else {
-            "choice_id": answered.choice_id,
-            "correct": answered.correct,
-            "correct_id": answered.correct_id,
-            "note": answered.note,
-            "awarded_hours": answered.awarded_hours,
-        },
+        "answered": _answered_payload(answered),
     }
 
 
@@ -159,13 +170,7 @@ class AnswerQuestion(MethodView):
             result = engagement_service.answer(org, g.user.id, question_id, data["choice_id"])
         except engagement_service.EngagementError as exc:
             abort(exc.status, message=str(exc))
-        return {
-            "choice_id": result.choice_id,
-            "correct": result.correct,
-            "correct_id": result.correct_id,
-            "note": result.note,
-            "awarded_hours": result.awarded_hours,
-        }
+        return _answered_payload(result)
 
 
 @blp.route("/notes")

@@ -4,6 +4,8 @@ from marshmallow import Schema, fields
 class PilotRowSchema(Schema):
     full_name = fields.Str()
     hours = fields.Decimal(as_string=True)
+    # تغيّرُ الموضع عن الأسبوع الماضي: موجبٌ صعود · سالبٌ هبوط · صفرٌ ثبات.
+    chg = fields.Int()
 
 
 class PilotsBoardSchema(Schema):
@@ -22,6 +24,11 @@ class TeamBoardRowSchema(Schema):
     avg_hours = fields.Decimal(as_string=True)
     members = fields.Int()
     readiness = fields.Nested(ReadinessCountSchema)
+    # تغيّرُ الموضع عن الأسبوع الماضي: موجبٌ صعود · سالبٌ هبوط · صفرٌ ثبات.
+    # **محسوبٌ بإعادة ترتيبٍ على نافذةٍ سابقة** لا بلقطةٍ مخزَّنة، فالدفتر
+    # يبقى المصدر الوحيد.
+    chg = fields.Int()
+
 
 
 class TeamsBoardSchema(Schema):

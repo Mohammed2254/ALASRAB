@@ -7,7 +7,8 @@
  */
 import type { Count, Decimal } from '../brand'
 
-export type PilotRow = { full_name: string; hours: Decimal }
+/** `chg`: تغيّرُ الموضع عن الأسبوع الماضي — موجبٌ صعود · سالبٌ هبوط · صفرٌ ثبات. */
+export type PilotRow = { full_name: string; hours: Decimal; chg: Count }
 
 export type Readiness = { flying: Count; grounded: Count }
 
@@ -17,6 +18,7 @@ export type TeamBoardRow = {
   avg_hours: Decimal
   members: Count
   readiness: Readiness
+  chg: Count
 }
 
 export type Aircraft = {

@@ -301,3 +301,74 @@ def test_formation_invalid_scope_is_422(client, seeded):
     _login(client)
     r = client.get(f"{FORMATION}?scope=bogus")
     assert r.status_code == 422
+
+
+# ═══ ق-٢٦١ — تغيّر الموضع عن الأسبوع الماضي (و-٢٠) ═══
+
+
+def test_rank_change_is_computed_against_last_week_not_stored(client, seeded):
+    """
+    @covers ق-٢٦١
+
+    يُحسب بإعادة ترتيبٍ على نافذة الأسبوع الماضي — فلا جدولَ لقطاتٍ يتباعد
+    عن الدفتر، ولا هجرة. والدفترُ يبقى المصدر الوحيد.
+    """
+    org = db.session.get(Org, seeded["org_id"])
+    now = datetime.now(UTC)
+    this_week = week.week_start_utc(org, now)
+    last_week = this_week - timedelta(days=7)
+
+    # الأسبوع الماضي: 1002 فوق 1001.
+    _event(org.id, seeded["users"]["1002"], "50.00", last_week + timedelta(hours=1))
+    _event(org.id, seeded["users"]["1001"], "10.00", last_week + timedelta(hours=1))
+    # هذا الأسبوع: انقلب الترتيب.
+    _event(org.id, seeded["users"]["1001"], "80.00", this_week + timedelta(hours=1))
+    _event(org.id, seeded["users"]["1002"], "5.00", this_week + timedelta(hours=1))
+    db.session.commit()
+
+    _login(client)
+    board = client.get("/api/boards/pilots").json["pilots"]
+    top = board[0]
+    assert top["full_name"] == "طالب أول"
+    assert top["chg"] > 0, "من صعد يجب أن يظهر صعوده"
+    dropped = next(p for p in board if p["full_name"] == "طالب ثانٍ")
+    assert dropped["chg"] < 0, "ومن هبط يظهر هبوطه"
+
+
+def test_rank_change_is_zero_when_order_is_unchanged(client, seeded):
+    """@covers ق-٢٦١ — ثباتٌ صفرٌ لا فراغ."""
+    org = db.session.get(Org, seeded["org_id"])
+    now = datetime.now(UTC)
+    this_week = week.week_start_utc(org, now)
+    last_week = this_week - timedelta(days=7)
+
+    for when in (last_week + timedelta(hours=1), this_week + timedelta(hours=1)):
+        _event(org.id, seeded["users"]["1001"], "50.00", when)
+        _event(org.id, seeded["users"]["1002"], "10.00", when)
+    db.session.commit()
+
+    _login(client)
+    board = client.get("/api/boards/pilots").json["pilots"]
+    assert all(p["chg"] == 0 for p in board)
+
+
+def test_last_week_window_is_bounded_and_does_not_leak_into_this_week(client, seeded):
+    """
+    @covers ق-٢٦١
+
+    نافذةُ الأسبوع الماضي **محدودةٌ بطرفيها**. بلا حدٍّ أعلى تبتلع ساعات هذا
+    الأسبوع فيصير كل تغيّرٍ صفرًا — عطلٌ يبدو «لا تغيير» لا خطأً.
+    """
+    org = db.session.get(Org, seeded["org_id"])
+    now = datetime.now(UTC)
+    this_week = week.week_start_utc(org, now)
+    last_week = this_week - timedelta(days=7)
+
+    _event(org.id, seeded["users"]["1002"], "50.00", last_week + timedelta(hours=1))
+    _event(org.id, seeded["users"]["1001"], "80.00", this_week + timedelta(hours=1))
+    db.session.commit()
+
+    _login(client)
+    board = client.get("/api/boards/pilots").json["pilots"]
+    assert board[0]["full_name"] == "طالب أول"
+    assert board[0]["chg"] == 1, "صعد من الثاني إلى الأوّل"

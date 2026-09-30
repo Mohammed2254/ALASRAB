@@ -11,7 +11,8 @@ import SegmentedControl from '../ui/SegmentedControl'
 /**
  * الصدارة — `GET /boards/{pilots,teams}` (FR-050..052)، **نافذة الأسبوع
  * الحالي** (تصحّ خلافًا للتشكيل التراكميّ — `و-١٥.md` §١.١). `chg` غائبة
- * عمدًا: لا سند لها في العقد (`Podium.chg` اختيارية منذ هذه الشريحة).
+ * و**`chg` صار لها سندٌ في العقد** (و-٢٠): `/boards/*` يُرجعانها محسوبةً
+ * بإعادة ترتيبٍ على نافذة الأسبوع الماضي، فلم تعد اختياريةً بلا مصدر.
  *
  * **قرار المنصّة مقابل قائمة عادية يعيش داخل `Podium` نفسها** (و-١٥) — قرارٌ
  * عرضيّ لا حسابيّ، فمكانه البدائية لا الشاشة الممنوعة من استيراد `motion/`.
@@ -28,7 +29,11 @@ function PilotsBoard() {
   return (
     <Async state={state} loadingTitle="صدارة الأفراد">
       {(data) => {
-        const entries: BoardEntry[] = data.pilots.map((p) => ({ name: p.full_name, value: p.hours }))
+        const entries: BoardEntry[] = data.pilots.map((p) => ({
+          name: p.full_name,
+          value: p.hours,
+          chg: p.chg,
+        }))
         return <Board entries={entries} label="طيّارًا هذا الأسبوع" />
       }}
     </Async>
@@ -40,7 +45,12 @@ function TeamsBoard() {
   return (
     <Async state={state} loadingTitle="صدارة الأسراب">
       {(data) => {
-        const entries: BoardEntry[] = data.teams.map((t) => ({ name: t.team, tag: t.code, value: t.avg_hours }))
+        const entries: BoardEntry[] = data.teams.map((t) => ({
+          name: t.team,
+          tag: t.code,
+          value: t.avg_hours,
+          chg: t.chg,
+        }))
         return <Board entries={entries} label="أسراب — بالمعدّل" />
       }}
     </Async>

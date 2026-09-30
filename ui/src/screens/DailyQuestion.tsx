@@ -7,6 +7,7 @@ import { go } from '../nav/history'
 import { useAsync } from '../state/useAsync'
 import { Async } from '../ui/Async'
 import EmptyState from '../ui/EmptyState'
+import Pill from '../ui/Pill'
 import Placard from '../ui/Placard'
 import Prow from '../ui/Prow'
 import Subback from '../ui/Subback'
@@ -77,6 +78,16 @@ function Result({ question, answered }: { question: Question; answered: Answered
       </div>
       <p className="mt-3 text-[13px] text-(--color-text-dim)">{answered.note}</p>
       <Prow label="المكافأة" value={<bdi dir="ltr">{fmtDecimal(answered.awarded_hours)}</bdi>} tone="accent" />
+
+      {/* «سلسلتك المتتالية» — كما في النموذج، وتظهر بعد الإجابة لا قبلها.
+          والعدد يصل محسوبًا من الخادم. */}
+      {answered.streak ? (
+        <div className="mt-3 text-center">
+          <Pill tone="accent">
+            سلسلتك المتتالية — <bdi dir="ltr">{answered.streak}</bdi> يوم
+          </Pill>
+        </div>
+      ) : null}
     </Placard>
   )
 }
