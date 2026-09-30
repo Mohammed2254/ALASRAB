@@ -102,7 +102,11 @@ export const adminApi = {
       method: 'POST',
       body: { ...form, user_id: Number(form.user_id), pages: Number(form.pages) },
     }),
-  tahdirReport: () => request<OrgTahdirReport>('/admin/tahdir/report'),
+  // بلا فترة ⇒ أسبوع اليوم. والخادم يرفض فترةً بطرفٍ واحد أو مقلوبة.
+  tahdirReport: (from?: string, to?: string) =>
+    request<OrgTahdirReport>(
+      from && to ? `/admin/tahdir/report?from=${from}&to=${to}` : '/admin/tahdir/report'
+    ),
   quranStudents: () => request<QuranRoster>('/admin/quran/students'),
 
   teams: () => request<Teams>('/admin/teams'),

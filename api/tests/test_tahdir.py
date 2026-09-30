@@ -477,3 +477,100 @@ def test_general_reading_queue_unaffected_by_tahdir(client, seeded):
     submissions = client.get(QUEUE).json["submissions"]
     assert len(submissions) == 1
     assert submissions[0]["book_title"] == "قراءة عادية"
+
+
+# ═══ ق-٢٥٩ — تقرير التحضير بفترة محدَّدة ودرجاتُ انتظام (و-٢٠) ═══
+
+
+def _approve_all(client, seeded):
+    """يعتمد كل ما في الطابور — الساعات والدرجات لا تُحتسب قبل الاعتماد."""
+    ids = [s["id"] for s in client.get(TAHDIR_QUEUE).json["submissions"]]
+    if ids:
+        client.post(APPROVE, json={"ids": ids}, headers=ORIGIN)
+    return ids
+
+
+def test_report_defaults_to_this_week_and_reports_its_window(client, seeded):
+    """@covers ق-٢٥٩ — الأسبوع حالةٌ خاصّة من الفترة لا مسارٌ ثانٍ."""
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+    r = client.get(REPORT).json
+    assert r["days_total"] == 4, "أيام التحضير أربعة في الأسبوع"
+    assert r["from_day"] < r["to_day"]
+    assert "totals" in r and "students" in r
+
+
+def test_explicit_range_spanning_two_weeks_counts_eight_days(client, seeded):
+    """
+    @covers ق-٢٥٩
+
+    الفترة تُؤخذ منها أيّامُ التحضير في **كل أسبوع** لا أيامها التقويمية —
+    أسبوعان ⇒ ثمانية أيام مؤهَّلة لا أربعة عشر.
+    """
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+    r = client.get(f"{REPORT}?from=2026-08-01&to=2026-08-14").json
+    assert r["days_total"] == 8
+
+
+def test_tiers_are_computed_on_the_server_by_the_mockup_thresholds(client, seeded):
+    """
+    @covers ق-٢٥٩
+
+    الدرجة **قاعدة عمل** لا عرض: ٤/٤ ⇒ ممتاز · ٢/٤ ⇒ منتظم · ٠/٤ ⇒ يحتاج
+    متابعة (عتبتا ٠٫٩ و٠٫٥ من النموذج المعتمد).
+    """
+    _add_tahdir_weight(seeded)
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+    for day in (SUNDAY, MONDAY, date(2026, 8, 4), date(2026, 8, 5)):
+        _submit_tahdir(client, read_on=day, pages=10)
+    _approve_all(client, seeded)
+
+    r = client.get(f"{REPORT}?from=2026-08-01&to=2026-08-05").json
+    mine = next(s for s in r["students"] if s["user_id"] == seeded["users"]["1001"])
+    silent = next(s for s in r["students"] if s["user_id"] == seeded["users"]["1002"])
+
+    assert mine["days_completed"] == 4 and mine["days_total"] == 4
+    assert mine["tier"] == "good"
+    assert silent["tier"] == "low"
+    assert mine["team_name"], "السرب عمودٌ في النموذج"
+
+
+def test_totals_count_participants_and_fully_regular(client, seeded):
+    """@covers ق-٢٥٩ — البطاقات الثلاث في النموذج."""
+    _add_tahdir_weight(seeded)
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+    for day in (SUNDAY, MONDAY, date(2026, 8, 4), date(2026, 8, 5)):
+        _submit_tahdir(client, read_on=day, pages=10)
+    _approve_all(client, seeded)
+
+    totals = client.get(f"{REPORT}?from=2026-08-01&to=2026-08-05").json["totals"]
+    assert totals["pages"] == 40
+    assert totals["participants"] == 1
+    assert totals["fully_regular"] == 1
+
+
+def test_half_range_gives_the_middle_tier(client, seeded):
+    """@covers ق-٢٥٩ — ٢/٤ = ٠٫٥ بالضبط ⇒ «منتظم» لا «يحتاج متابعة»."""
+    _add_tahdir_weight(seeded)
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+    for day in (SUNDAY, MONDAY):
+        _submit_tahdir(client, read_on=day, pages=10)
+    _approve_all(client, seeded)
+
+    r = client.get(f"{REPORT}?from=2026-08-01&to=2026-08-05").json
+    mine = next(s for s in r["students"] if s["user_id"] == seeded["users"]["1001"])
+    assert mine["days_completed"] == 2
+    assert mine["tier"] == "fair"
+
+
+def test_half_open_or_reversed_range_is_refused(client, seeded):
+    """@covers ق-٢٥٩ — فترةٌ بطرفٍ واحد أو مقلوبة خطأٌ معلَن لا تخمين."""
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+    assert client.get(f"{REPORT}?from=2026-08-01").status_code == 422
+    assert client.get(f"{REPORT}?from=2026-08-10&to=2026-08-01").status_code == 422
+    assert client.get(f"{REPORT}?from=غير-تاريخ&to=2026-08-01").status_code == 422

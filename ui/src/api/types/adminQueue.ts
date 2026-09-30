@@ -25,13 +25,27 @@ export type AdminTahdirEntryForm = {
 
 export type AdminEntryResult = { id: Count; status: string; hours: Decimal | null }
 
+/** درجةُ انتظام **محسوبة في الخادم** بعتبتَي النموذج — الواجهة تُلوّن وتُسمّي. */
+export type TahdirTier = 'good' | 'fair' | 'low'
+
 export type OrgTahdirRow = {
   user_id: Count
   full_name: string
+  team_name: string
   days_completed: Count
+  days_total: Count
   pages_total: Count
   percent: Pct
+  tier: TahdirTier
   struggling: boolean
 }
 
-export type OrgTahdirReport = { week_start: string; students: OrgTahdirRow[] }
+export type OrgTahdirTotals = { pages: Count; participants: Count; fully_regular: Count }
+
+export type OrgTahdirReport = {
+  from_day: string
+  to_day: string
+  days_total: Count
+  totals: OrgTahdirTotals
+  students: OrgTahdirRow[]
+}

@@ -122,12 +122,26 @@ class AdminEntryResultSchema(Schema):
 class OrgTahdirRowSchema(Schema):
     user_id = fields.Int()
     full_name = fields.Str()
+    team_name = fields.Str()
     days_completed = fields.Int()
+    days_total = fields.Int()
     pages_total = fields.Int()
     percent = fields.Float()
+    # 'good' | 'fair' | 'low' — **درجةٌ محسوبة في الخادم** بعتبتَي النموذج،
+    # والواجهة تُلوّن وتُسمّي فقط.
+    tier = fields.Str()
     struggling = fields.Bool()
 
 
+class OrgTahdirTotalsSchema(Schema):
+    pages = fields.Int()
+    participants = fields.Int()
+    fully_regular = fields.Int()
+
+
 class OrgTahdirReportSchema(Schema):
-    week_start = fields.Date()
+    from_day = fields.Date()
+    to_day = fields.Date()
+    days_total = fields.Int()
+    totals = fields.Nested(OrgTahdirTotalsSchema)
     students = fields.List(fields.Nested(OrgTahdirRowSchema))

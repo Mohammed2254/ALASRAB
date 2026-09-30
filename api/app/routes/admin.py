@@ -300,8 +300,23 @@ class TahdirReport(MethodView):
     @admin_required
     @blp.response(200, OrgTahdirReportSchema)
     def get(self):
-        """تقرير أسبوعيّ لكل طلاب الجمعية (FR-093) — **يشمل من لم يُرسل شيئًا**."""
-        return reading_service.org_weekly_report(_org())
+        """
+        تقرير التحضير (FR-093) — **يشمل من لم يُرسل شيئًا**.
+
+        `?from=&to=` لفترةٍ محدَّدة، وبدونهما أسبوع اليوم. والفترة تُؤخذ منها
+        أيّامُ التحضير في كل أسبوع، فالأسبوع حالةٌ خاصّة لا مسارٌ ثانٍ.
+        """
+        raw_from = request.args.get("from")
+        raw_to = request.args.get("to")
+        try:
+            from_day = date.fromisoformat(raw_from) if raw_from else None
+            to_day = date.fromisoformat(raw_to) if raw_to else None
+        except ValueError:
+            abort(422, message="تاريخ غير صالح — الصيغة YYYY-MM-DD.")
+        try:
+            return reading_service.org_tahdir_report(_org(), from_day, to_day)
+        except reading_service.ReadingError as exc:
+            abort(exc.status, message=str(exc))
 
 
 @blp.route("/admin/report")

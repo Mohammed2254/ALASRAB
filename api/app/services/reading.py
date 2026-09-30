@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from ..extensions import db
-from ..models import Membership, Org, PointEvent, ReadingSubmission, User
+from ..models import Membership, Org, PointEvent, ReadingSubmission, Team, User
 from ..rules.engine import Achievement, ruleset_at
 from . import audit, ledger, week
 
@@ -29,6 +29,17 @@ KIND = "reading"
 TAHDIR = "tahdir"
 TAHDIR_MIN_PAGES = 7
 TAHDIR_WEEK_TARGET_PAGES = 28
+# أيام التحضير في الأسبوع — السبت إلى الأربعاء (`و-١١`).
+TAHDIR_WEEK_DAYS = 4
+
+# عتبتا درجات الانتظام، **منقولتان حرفيًّا من النموذج المعتمد**
+# (`ratio >= 0.9 ? 'ممتاز' : ratio >= 0.5 ? 'منتظم' : 'يحتاج متابعة'`).
+#
+# وهي **قاعدة عمل لا عرض**، فمكانها هنا لا في الواجهة («الواجهة تعرض ولا
+# تحسب»). وكونها رقمين في سطرٍ واحد يجعل تغييرها قرارًا في مكانٍ واحد، لا
+# بحثًا في شاشات.
+TAHDIR_TIER_GOOD = Decimal("0.9")
+TAHDIR_TIER_FAIR = Decimal("0.5")
 # Python `date.weekday()`: الاثنين=٠..الأحد=٦. الأحد–الأربعاء المطلوبة = {٦,٠,١,٢}.
 TAHDIR_ALLOWED_WEEKDAYS = {6, 0, 1, 2}
 
@@ -395,6 +406,122 @@ def weekly_report(org: Org, user_id: int, now: datetime | None = None) -> dict:
             pages_by_day.get(submission.read_on, 0) + submission.pages
         )
     return _summarize_week(week_start, pages_by_day)
+
+
+def _tahdir_days_between(org: Org, from_day: date, to_day: date) -> list[date]:
+    """
+    أيام التحضير المؤهَّلة داخل فترة — **تعميمٌ للأسبوع لا استبدالٌ له.**
+
+    التحضير أربعة أيام من بداية كل أسبوع؛ ففترةٌ تمتدّ أسابيع تُؤخَذ منها
+    أيّامُ التحضير في كل أسبوع مقطوعةً بحدّي الفترة. وفترةٌ طولها أسبوعٌ واحد
+    تعطي الأيام الأربعة نفسها — فالتقرير الأسبوعيّ حالةٌ خاصّة من هذا لا
+    مسارٌ ثانٍ يتباعد عنه.
+    """
+    days: list[date] = []
+    cursor = week.week_start_of(org, from_day)
+    while cursor <= to_day:
+        for i in range(TAHDIR_WEEK_DAYS):
+            day = cursor + timedelta(days=i)
+            if from_day <= day <= to_day:
+                days.append(day)
+        cursor += timedelta(days=7)
+    return days
+
+
+def _tier_of(active: int, total: int) -> str:
+    """`'good' | 'fair' | 'low'` — القرار هنا، والواجهة تُلوّن وتُسمّي فقط."""
+    if total == 0:
+        return "low"
+    ratio = Decimal(active) / Decimal(total)
+    if ratio >= TAHDIR_TIER_GOOD:
+        return "good"
+    if ratio >= TAHDIR_TIER_FAIR:
+        return "fair"
+    return "low"
+
+
+def org_tahdir_report(
+    org: Org,
+    from_day: date | None = None,
+    to_day: date | None = None,
+    now: datetime | None = None,
+) -> dict:
+    """
+    تقرير التحضير لفترةٍ محدَّدة — وافتراضُها أسبوع اليوم (FR-093).
+
+    النموذج المعتمد يضيف «إصدار تقرير بفترة محدَّدة» وثلاث بطاقات إحصاء
+    ودرجاتِ انتظام. والدرجات **تُحسب هنا** لا في الشاشة.
+    """
+    if (from_day is None) != (to_day is None):
+        raise ReadingError("الفترة تُحدَّد بطرفيها معًا أو لا تُحدَّد.")
+    if from_day is None or to_day is None:
+        start = week.week_start_local(org, now or datetime.now(UTC))
+        from_day, to_day = start, start + timedelta(days=TAHDIR_WEEK_DAYS - 1)
+    if from_day > to_day:
+        raise ReadingError("تاريخ البداية بعد تاريخ النهاية.")
+
+    eligible = _tahdir_days_between(org, from_day, to_day)
+    eligible_set = set(eligible)
+
+    roster = db.session.execute(
+        select(User.id, User.full_name, Team.name)
+        .join(Membership, Membership.user_id == User.id)
+        .join(Team, Team.id == Membership.team_id)
+        .where(User.org_id == org.id, User.is_active.is_(True), Membership.left_at.is_(None))
+    ).all()
+
+    rows = db.session.execute(
+        select(ReadingSubmission).where(
+            ReadingSubmission.org_id == org.id,
+            ReadingSubmission.activity_type == TAHDIR,
+            ReadingSubmission.status == "approved",
+            ReadingSubmission.read_on >= from_day,
+            ReadingSubmission.read_on <= to_day,
+        )
+    ).scalars()
+
+    pages_by_user_day: dict[int, dict[date, int]] = {}
+    for submission in rows:
+        if submission.read_on in eligible_set:
+            by_day = pages_by_user_day.setdefault(submission.user_id, {})
+            by_day[submission.read_on] = by_day.get(submission.read_on, 0) + submission.pages
+
+    students = []
+    for user_id, full_name, team_name in roster:
+        by_day = pages_by_user_day.get(user_id, {})
+        active = sum(1 for pages in by_day.values() if pages >= TAHDIR_MIN_PAGES)
+        pages_total = sum(by_day.values())
+        students.append(
+            {
+                "user_id": user_id,
+                "full_name": full_name,
+                "team_name": team_name,
+                "days_completed": active,
+                "days_total": len(eligible),
+                "pages_total": pages_total,
+                "percent": round(pages_total / (TAHDIR_MIN_PAGES * len(eligible)) * 100, 1)
+                if eligible
+                else 0.0,
+                "tier": _tier_of(active, len(eligible)),
+                # يبقى للتوافق مع مستهلكٍ قائم — «متعثّر» دون الهدف بلا تسامح.
+                "struggling": active < len(eligible),
+            }
+        )
+
+    students.sort(key=lambda r: r["full_name"])
+    return {
+        "from_day": from_day,
+        "to_day": to_day,
+        "days_total": len(eligible),
+        "totals": {
+            "pages": sum(s["pages_total"] for s in students),
+            "participants": sum(1 for s in students if s["days_completed"]),
+            "fully_regular": sum(
+                1 for s in students if s["days_total"] and s["days_completed"] == s["days_total"]
+            ),
+        },
+        "students": students,
+    }
 
 
 def org_weekly_report(org: Org, now: datetime | None = None) -> dict:
