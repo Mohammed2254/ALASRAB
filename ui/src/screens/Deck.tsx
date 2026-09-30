@@ -16,6 +16,7 @@ import Placard from '../ui/Placard'
 import ProgressBar from '../ui/ProgressBar'
 import Prow from '../ui/Prow'
 import Tile from '../ui/Tile'
+import { preloadAdmin } from './admin/lazy'
 
 /**
  * بطاقة الطيّار — `GET /me/deck` + `GET /me/events`. **كل رقم يصل محسوبًا**
@@ -152,6 +153,8 @@ function QuickAccess({ isAdmin }: { isAdmin: boolean }) {
           glyph={GLYPHS.board}
           label="لوحة المشرف"
           onClick={() => go('adminDashboard')}
+          onPointerEnter={preloadAdmin}
+          onFocus={preloadAdmin}
         />
       ) : null}
     </>

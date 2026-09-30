@@ -9,12 +9,20 @@
  * وسجلَّي شاشات، فصارت السجلّات في `screens/registry.ts`
  * و`screens/admin/registry.ts` وبقي هنا سؤالُ «أيّ قشرة لأيّ شاشة» وحده.
  */
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 
 import { go, init, listen } from './nav/history'
 import { isAdminScreen } from './nav/adminNav'
 import { useScreen } from './nav/useNavigation'
-import AdminShell from './screens/admin/AdminShell'
+/**
+ * **حدّ التقسيم: سطحُ المشرف كلّه جزءًا واحدًا.**
+ *
+ * الطالب لا يحتاج كود المشرف إطلاقًا، وكان ينزّله كاملًا. و«جزءٌ لكل شاشة»
+ * كان سيعني ستّ عشرة رحلة شبكة متسلسلة على جوّال المشرف المتطوّع — وهو
+ * بعينه الاحتكاك الذي يغذّي تأجيل الإدخال (الخطر خ-١). فجزءٌ واحد، يُسخَّن
+ * على النيّة.
+ */
+const AdminShell = lazy(() => import('./screens/admin/AdminShell'))
 import Login from './screens/Login'
 import PilotShell from './screens/PilotShell'
 import { PILOT_SUB, PILOT_TABS } from './screens/registry'
@@ -66,6 +74,22 @@ function NotForYou() {
   )
 }
 
+/**
+ * بديلُ التعليق — **مؤثَّثٌ في الحزمة الأساسية** بنفس هندسة القشرة، فلا
+ * نقزةَ تخطيط حين يصل الجزء. ولأن `AdminShell` لا يُفكَّك بعد وصوله، يُرى
+ * هذا مرّةً واحدة في الجلسة لا عند كل تنقّلٍ إداريّ.
+ */
+function AdminFallback() {
+  return (
+    <div className="desk:grid desk:grid-cols-[250px_minmax(0,1fr)]">
+      <div className="hidden border-s border-(--color-border) bg-(--color-bg-2) desk:block desk:h-dvh" />
+      <div className="min-w-0 px-4 pt-8 desk:px-6">
+        <p className="text-[14px] text-(--color-text-dim)">جارٍ فتح لوحة المشرف…</p>
+      </div>
+    </div>
+  )
+}
+
 function Gate() {
   const { status, error, refresh, user } = useApp()
   const screen = useScreen()
@@ -104,7 +128,11 @@ function Gate() {
   // كل نداءٍ فيها ٤٠٣.
   if (isAdminScreen(screen)) {
     if (user?.role !== 'admin') return <NotForYou />
-    return <AdminShell screen={screen} />
+    return (
+      <Suspense fallback={<AdminFallback />}>
+        <AdminShell screen={screen} />
+      </Suspense>
+    )
   }
 
   return (

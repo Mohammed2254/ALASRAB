@@ -11,6 +11,16 @@
   §٠): JS ≤١٦٥KB · CSS ≤٢٢KB. دمجُهما في رقم واحد كان سيسمح لـCSS متضخّم
   أن يختبئ خلف فائضٍ في ميزانية JS، والعكس.
 
+  **وJS صار سقفين لا سقفًا** (و-٢٠): «حزمة الإقلاع» وهي ما ينزّله **كلّ**
+  مستخدم، و«الإجمالي» حرسًا من تضخّمٍ مؤجَّلٍ بلا حدّ. وبدون هذا التمييز كان
+  الفحص يجمع الأجزاء كلّها في رقمٍ واحد، **فيعاقب التقسيم بدل أن يكافئه**:
+  تأجيلُ كود المشرف لا يُنقص الرقم بل يزيده ببنية الأجزاء. وحزمةُ الإقلاع
+  تُحسب من بيان Vite بمشي `imports` **الساكنة** من المدخل — و`dynamicImports`
+  مُستبعَدة عمدًا، فهي بالضبط ما لا يُنزَّل عند الإقلاع.
+
+  **وCSS يبقى سقفًا واحدًا بصدق:** Tailwind يُصدِر ورقةً واحدة للتطبيق كلّه
+  أيًّا كان تقسيم JS، فادّعاءُ تقسيمها يكون وصفًا كاذبًا.
+
   **يُشغَّل بعد `npx vite build` لا بدلًا منه** — نفس ترتيب `visual-qa.mjs`
   بعد الخادمين: هذا السكربت يقرأ `dist/` القائم، ولا يبنيه.
 
@@ -47,9 +57,12 @@ if (files.length === 0) {
 
 const KB = 1024
 const BUDGETS = {
-  '.js': { label: 'JS', capBytes: 165 * KB },
+  '.js': { label: 'JS — الإجمالي', capBytes: 165 * KB },
   '.css': { label: 'CSS', capBytes: 22 * KB },
 }
+// ١١٥KB: المقيس بعد التقسيم ١٠٨.١٨KB وهامشٌ ~٧KB. وضُبط **من قياسٍ فعليّ
+// بعد التقسيم** لا قبله — سقفٌ واسع يجعل الميزانية اسمًا بلا فرض.
+const ENTRY_CAP_BYTES = 115 * KB
 
 const totals = { '.js': 0, '.css': 0 }
 for (const file of files) {
@@ -59,7 +72,57 @@ for (const file of files) {
   totals[ext] += gzipSync(bytes).length
 }
 
+// ═══ حزمة الإقلاع — من البيان، بمشي الاستيراد الساكن وحده ═══
+const MANIFEST = resolve(UI, 'dist/.vite/manifest.json')
+if (!existsSync(MANIFEST)) {
+  console.error(
+    `  ❌ ${MANIFEST} غير موجود — فعِّل \`build.manifest\` في \`vite.config.ts\`. ` +
+      'عطلٌ في الفحص لا نجاحٌ له: بدونه لا يُعرَف ما يُنزَّل عند الإقلاع.'
+  )
+  process.exit(2)
+}
+const manifest = JSON.parse(readFileSync(MANIFEST, 'utf8'))
+const entry = Object.values(manifest).find((chunk) => chunk.isEntry)
+if (!entry) {
+  console.error('  ❌ لا مدخل (`isEntry`) في البيان — عطلٌ في الفحص لا نجاحٌ له.')
+  process.exit(2)
+}
+
+const seen = new Set()
+const walkStatic = (key) => {
+  if (!key || seen.has(key)) return
+  seen.add(key)
+  const chunk = manifest[key]
+  if (!chunk) return
+  // `dynamicImports` مُستبعَدة عمدًا — هي ما لا يُنزَّل عند الإقلاع.
+  for (const next of chunk.imports ?? []) walkStatic(next)
+}
+walkStatic(Object.keys(manifest).find((key) => manifest[key] === entry))
+
+let entryBytes = 0
+for (const key of seen) {
+  const chunk = manifest[key]
+  if (!chunk?.file?.endsWith('.js')) continue
+  entryBytes += gzipSync(readFileSync(resolve(UI, 'dist', chunk.file))).length
+}
+
 let failed = 0
+
+const entryKB = (entryBytes / KB).toFixed(2)
+const entryCapKB = (ENTRY_CAP_BYTES / KB).toFixed(0)
+if (entryBytes > ENTRY_CAP_BYTES) {
+  console.error(
+    `  ❌ JS — حزمة الإقلاع: ${entryKB}KB مضغوطة > السقف ${entryCapKB}KB ` +
+      `(${seen.size} جزءًا ساكنًا) — هذا ما ينزّله **كلّ** مستخدم.`
+  )
+  failed++
+} else {
+  console.log(
+    `  ✅ JS — حزمة الإقلاع: ${entryKB}KB مضغوطة / السقف ${entryCapKB}KB ` +
+      `(${seen.size} جزءًا ساكنًا)`
+  )
+}
+
 for (const [ext, { label, capBytes }] of Object.entries(BUDGETS)) {
   const used = totals[ext]
   const usedKB = (used / KB).toFixed(2)

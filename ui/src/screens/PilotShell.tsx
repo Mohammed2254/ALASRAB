@@ -1,8 +1,10 @@
+import { useEffect } from 'react'
 import type { ReactNode } from 'react'
 
 import { go } from '../nav/history'
 import type { ScreenKey } from '../nav/routes'
 import { useApp } from '../state/AppState'
+import { preloadAdminWhenIdle } from './admin/lazy'
 import BottomTabs, { type Tab } from '../ui/BottomTabs'
 import { GLYPHS } from '../ui/glyphs'
 
@@ -23,6 +25,12 @@ const TABS: Tab[] = [
 
 export default function PilotShell({ active, children }: { active: ScreenKey; children: ReactNode }) {
   const { user, logout } = useApp()
+
+  // تسخينُ جزء المشرف على السكون **لمن دورُه مشرف وحده** — الطالب لا ينزّله
+  // أبدًا. ويقع بعد أوّل رسم فلا يزاحمه.
+  useEffect(() => {
+    if (user?.role === 'admin') preloadAdminWhenIdle()
+  }, [user?.role])
 
   return (
     <div className="mx-auto w-full max-w-[520px] px-4 pt-6 pb-24">
