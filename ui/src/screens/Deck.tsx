@@ -84,7 +84,7 @@ function NextRankCard({ deck }: { deck: DeckData }) {
           بقي <bdi dir="ltr">{fmtDecimal(next.remaining)}</bdi>
         </span>
       </div>
-      <ProgressBar pct={next.progress_pct} />
+      <ProgressBar pct={next.progress_pct} rider />
       <p className="mt-1.5 text-[12px] text-(--color-text-dim)">
         <bdi dir="ltr">{next.progress_pct}%</bdi> من هذه الشريحة
       </p>

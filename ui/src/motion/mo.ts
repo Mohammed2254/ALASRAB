@@ -68,3 +68,28 @@ export function countUp(
   const obj = { v: 0 }
   gsap.to(obj, { v: numericTarget, duration, ease: 'power2.out', onUpdate: () => write(obj.v) })
 }
+
+/**
+ * طائرةٌ ورقية تنطلق من الزرّ — لحظةٌ توقيعية من النموذج (و-٢٠).
+ *
+ * **تُرجع وعدًا** لا `onComplete` مكشوفًا: الشاشة تنتظرها بـ`await` قبل قلب
+ * الحالة، فيبقى المؤقّت هنا ولا تحمل الشاشةُ توقيتًا. وتحت تقليل الحركة
+ * يُحلّ الوعد **فورًا** فلا انتظار ولا حركة.
+ */
+export function flyAway(el: HTMLElement | null): Promise<void> {
+  if (!el || reducedMotion()) return Promise.resolve()
+  return new Promise((resolve) => {
+    gsap.to(el, {
+      x: -120,
+      y: -60,
+      rotate: -18,
+      opacity: 0,
+      duration: 0.55,
+      ease: 'power2.in',
+      onComplete: () => {
+        gsap.set(el, { clearProps: 'all' })
+        resolve()
+      },
+    })
+  })
+}
