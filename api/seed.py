@@ -21,6 +21,8 @@ TRUNCATE ... RESTART IDENTITY: المعرّفات تبدأ من ١ في كل ت�
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
+from flask import current_app
+
 from app import create_app
 from app.extensions import db
 from app.models import (
@@ -287,9 +289,41 @@ def _seed_correction(user) -> None:
         ledger.reverse(event, "خطأ في تصدير راصد — صفحات مضاعفة", actor_id=1)
 
 
-def run():
+class SeedRefused(RuntimeError):
+    """رفضٌ معلَن — لا بذرة على قاعدةٍ ليست فارغةً أو تبدو إنتاجًا."""
+
+
+def _guard(force: bool) -> None:
+    """
+    **البذرة تبدأ بـ`TRUNCATE` لكل الجداول.** تشغيلها على قاعدةٍ حيّة يمحو
+    كل شيء — والرمز `1234` للجميع يجعل ما يبقى بعدها مفتوحًا للجميع.
+    و`docs/DEPLOY.md` يقول إنها للتطوير وحده، **لكن وثيقةً لا توقف يدًا**.
+
+    حارسان لخطأين مختلفين:
+    · بيئةٌ تبدو إنتاجًا (`SESSION_COOKIE_SECURE`، ولا تُضبط إلا خلف HTTPS).
+    · قاعدةٌ فيها مستخدمون أصلًا — أيًّا كانت البيئة.
+
+    و`--force` مخرجٌ صريح لمن يعرف ما يفعل، لا افتراضٌ صامت.
+    """
+    if force:
+        return
+    if current_app.config.get("SESSION_COOKIE_SECURE"):
+        raise SeedRefused(
+            "البيئة تبدو إنتاجًا (SESSION_COOKIE_SECURE=true) — البذرة تمحو كل "
+            "الجداول وتضع الرمز 1234 للجميع. استعمل `--force` إن كنت متأكّدًا."
+        )
+    existing = db.session.scalar(db.select(db.func.count(User.id)))
+    if existing:
+        raise SeedRefused(
+            f"القاعدة فيها {existing} مستخدمًا — البذرة تمحوهم جميعًا. "
+            "استعمل `--force` إن كنت متأكّدًا."
+        )
+
+
+def run(force: bool = False):
     app = create_app()
     with app.app_context():
+        _guard(force)
         db.session.execute(db.text(f"TRUNCATE {', '.join(TABLES)} RESTART IDENTITY CASCADE"))
         db.session.commit()
 
@@ -366,4 +400,10 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    import sys
+
+    try:
+        run(force="--force" in sys.argv)
+    except SeedRefused as exc:
+        print(f"⛔ البذرة مرفوضة: {exc}")
+        raise SystemExit(2) from exc

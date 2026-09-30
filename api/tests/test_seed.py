@@ -20,6 +20,8 @@
 from decimal import Decimal
 from pathlib import Path
 
+import pytest
+
 import seed
 
 SEED_SOURCE = Path(seed.__file__).read_text()
@@ -105,3 +107,35 @@ def test_seed_never_writes_a_delta_it_did_not_derive():
     ]
     assert assignments, "لم يُعثر على أي `delta=` — الفحص معطوب لا ناجح (حارس الدرس ٥)."
     assert all(value == "hours" for value in assignments), assignments
+
+
+# ═══ ق-٢٦٣ — البذرة لا تمحو قاعدةً حيّة (و-٢٠) ═══
+
+
+def test_seed_refuses_a_populated_database(app, seeded):
+    """
+    @covers ق-٢٦٣
+
+    `run()` يبدأ بـ`TRUNCATE` لكل الجداول، والرمز `1234` للجميع. فتشغيلها
+    على قاعدةٍ حيّة يمحو كل شيء ويفتح ما يبقى. و`docs/DEPLOY.md` يقول إنها
+    للتطوير وحده — **لكن وثيقةً لا توقف يدًا**.
+    """
+    with app.app_context(), pytest.raises(seed.SeedRefused, match="مستخدمًا"):
+        seed._guard(force=False)
+
+
+def test_seed_refuses_a_production_looking_environment(app):
+    """@covers ق-٢٦٣ — `SESSION_COOKIE_SECURE` لا تُضبط إلا خلف HTTPS."""
+    with app.app_context():
+        app.config["SESSION_COOKIE_SECURE"] = True
+        with pytest.raises(seed.SeedRefused, match="إنتاج"):
+            seed._guard(force=False)
+        app.config["SESSION_COOKIE_SECURE"] = False
+
+
+def test_force_is_an_explicit_way_out(app, seeded):
+    """@covers ق-٢٦٣ — مخرجٌ صريح لمن يعرف، لا افتراضٌ صامت."""
+    with app.app_context():
+        app.config["SESSION_COOKIE_SECURE"] = True
+        seed._guard(force=True)  # لا يرفع
+        app.config["SESSION_COOKIE_SECURE"] = False
