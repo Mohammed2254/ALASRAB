@@ -8,6 +8,7 @@ import Button from '../../ui/Button'
 import Field from '../../ui/Field'
 import Placard from '../../ui/Placard'
 import Prow from '../../ui/Prow'
+import AddMemberForm from './AddMemberForm'
 
 /**
  * الأسراب والعضويات — `GET/POST /admin/teams*` (FR-083). **أرشفة لا حذف،
@@ -113,55 +114,6 @@ function CreateTeamForm({ onCreated }: { onCreated: () => void }) {
   )
 }
 
-function TransferForm({ teams, onTransferred }: { teams: AdminTeamRow[]; onTransferred: () => void }) {
-  const [userId, setUserId] = useState('')
-  const [teamId, setTeamId] = useState('')
-  const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
-
-  const active = teams.filter((t) => !t.archived_at)
-
-  async function submit() {
-    setBusy(true)
-    setError('')
-    try {
-      await api.admin.transferMember(teamId, userId)
-      setUserId('')
-      onTransferred()
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'حدث خطأ غير متوقّع.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <Placard title="نقل طالب">
-      <Field label="معرّف الطالب" htmlFor="transfer_user">
-        <input id="transfer_user" inputMode="numeric" value={userId} onChange={(e) => setUserId(e.target.value)} className={fieldClass} />
-      </Field>
-      <Field label="السرب الهدف" htmlFor="transfer_team">
-        <select id="transfer_team" value={teamId} onChange={(e) => setTeamId(e.target.value)} className={fieldClass}>
-          <option value="">اختر سربًا</option>
-          {active.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
-      </Field>
-      {error ? (
-        <p role="alert" className="mb-3 text-[13px] text-(--color-red-text)">
-          {error}
-        </p>
-      ) : null}
-      <Button disabled={busy || !userId.trim() || !teamId} onClick={submit} className="w-full">
-        {busy ? 'جارٍ النقل…' : 'نقل'}
-      </Button>
-    </Placard>
-  )
-}
-
 export default function Teams() {
   const state = useAsync(() => api.admin.teams(), [])
 
@@ -176,7 +128,7 @@ export default function Teams() {
               ))}
             </Placard>
             <CreateTeamForm onCreated={state.reload} />
-            <TransferForm teams={data.teams} onTransferred={state.reload} />
+            <AddMemberForm teams={data.teams} onTransferred={state.reload} />
           </div>
         )}
       </Async>

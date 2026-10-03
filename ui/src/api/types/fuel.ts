@@ -56,4 +56,10 @@ export type FuelWeek = {
   approved_at: string | null
   tasks: WeekTask[]
   teams: WeekTeamRef[]
+  /**
+   * نشاطٌ قائم ليس مهمّةً في هذا الأسبوع — «+ إضافة مهمة لهذا الأسبوع».
+   * **يحسبه الخادم**: الفرقُ بين كلّ الأنشطة ومهامِّ الأسبوع قاعدةٌ لا عرض.
+   * وفارغةٌ حين `unopened` لأن كل الأنشطة معروضةٌ مهامَّ افتراضية أصلًا.
+   */
+  available: WeekTeamRef[]
 }

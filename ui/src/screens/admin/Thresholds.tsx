@@ -7,6 +7,7 @@ import { Async } from '../../ui/Async'
 import Button from '../../ui/Button'
 import EmptyState from '../../ui/EmptyState'
 import Placard from '../../ui/Placard'
+import AppendRankForm from './AppendRankForm'
 import Prow from '../../ui/Prow'
 
 /**
@@ -113,10 +114,16 @@ export default function Thresholds() {
     <div className="flex flex-col gap-3.5">
       <Async state={state} loadingTitle="العتبات">
         {(data) => (
-          <Editor
-            initial={data.thresholds.map((r) => ({ key: r.key, name: r.name, tier: String(r.tier), at_hours: r.at_hours }))}
-            onSaved={state.reload}
-          />
+          <div className="flex flex-col gap-3.5">
+            <Editor
+              // المفتاح يُعيد تركيب المحرّر بعد الإلحاق، فتُقرأ الرتبة
+              // الجديدة في الحقول بدل أن تبقى `useState` على السُّلّم القديم.
+              key={data.thresholds.map((r) => r.key).join(':')}
+              initial={data.thresholds.map((r) => ({ key: r.key, name: r.name, tier: String(r.tier), at_hours: r.at_hours }))}
+              onSaved={state.reload}
+            />
+            <AppendRankForm onAppended={state.reload} />
+          </div>
         )}
       </Async>
     </div>

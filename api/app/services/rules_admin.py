@@ -11,6 +11,7 @@
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
 from decimal import Decimal
+from itertools import count
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
@@ -245,6 +246,56 @@ def preview_thresholds(org, rows: list[ThresholdRow]) -> dict:
 
     return {"promoted": promoted, "demoted": demoted, "warning": None}
 
+
+def append_threshold(org, name: str, at_hours: Decimal, actor_id: int) -> dict:
+    """
+    رتبةٌ جديدة **في قمّة السُّلّم وحدها** — «+ إضافة رتبة» في النموذج (و-٢١).
+
+    **ولماذا القمّة لا أيّ موضع:** `users.highest_achieved_tier` مِسنَنٌ يحفظ
+    *رقم* الرتبة لا هويّتها. فإدخالُ رتبةٍ في الوسط يُعيد ترقيم ما بعدها:
+    طالبٌ مِسنَنُه ٣ («رائد سرب» عند ٩٠٠) يصير ٣ رتبةً جديدة عند ٦٠٠ — **تنزيلٌ
+    صامت في المعنى** بلا أن ينقص الرقم، فلا يُطلقه مشغّل ث-١٣ب ولا يراه أحد.
+    وإصلاحُه هجرةٌ تحوّل المِسنَن إلى مفتاح، وهو قرارُ منتج لا زرّ.
+
+    والإلحاق في القمّة **بلا هذا الأثر بالبناء**: ما قبله لا يتغيّر رقمه ولا
+    عتبته، ولا طالب كان قد بلغ ما لم يكن موجودًا.
+
+    **ويُحسَب `tier` في الخادم لا في الواجهة:** موضعُ الرتبة في السُّلّم قاعدةٌ
+    لا عرض («الواجهة تعرض ولا تحسب»)، وحسابُه في العميل يعني رقمًا يصل
+    القاعدة بلا أن يحرسه أحد.
+    """
+    ladder = list_thresholds(org.id)
+    if not ladder:
+        raise RulesAdminError("لا سُلّم رتب في هذه الجمعية — التأسيس ينشئه.")
+
+    top = max(ladder, key=lambda r: r.tier)
+    if at_hours <= top.at_hours:
+        raise RulesAdminError(
+            f"الرتبة الجديدة في قمّة السُّلّم، فعتبتها يجب أن تتجاوز "
+            f"{top.at_hours} ساعة (عتبة «{top.name}»)."
+        )
+
+    key = _free_key({r.key for r in ladder})
+    rows = [
+        ThresholdRow(key=r.key, name=r.name, tier=r.tier, at_hours=r.at_hours) for r in ladder
+    ]
+    rows.append(ThresholdRow(key=key, name=name.strip(), tier=top.tier + 1, at_hours=at_hours))
+
+    # **يمرّ بـ`save_thresholds` لا بإدراجٍ مباشر:** هناك يقع قفل الأرضيات
+    # وفحص تدرّج السُّلّم وسطر التدقيق. وإدراجٌ يتخطّاه يتخطّى ت-٢ كلّه.
+    return save_thresholds(org, rows, actor_id)
+
+
+def _free_key(taken: set[str]) -> str:
+    """
+    مفتاحٌ غير مستعمل. **لا يُشتقّ من الاسم العربيّ:** `key` معرّفٌ تقنيّ
+    مستقرّ تُبنى عليه الأيقونات، وتعريبُه يجعل تغييرَ الاسم تغييرَ هويّة.
+    """
+    for index in count(start=len(taken) + 1):
+        candidate = f"rank{index}"
+        if candidate not in taken:
+            return candidate
+    raise AssertionError("unreachable")  # pragma: no cover
 
 def save_thresholds(org, rows: list[ThresholdRow], actor_id: int) -> dict:
     """

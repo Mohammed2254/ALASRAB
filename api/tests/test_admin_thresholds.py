@@ -181,3 +181,97 @@ def test_threshold_save_is_audited(client, seeded):
     entry = db.session.scalar(select(AuditEntry))
     assert entry.kind == "thresholds_update"
     assert entry.actor_id == admin
+
+
+# ═══ و-٢١ — إلحاق رتبة في قمّة السُّلّم (ق-٢٧٦) ═══
+
+
+def test_append_adds_a_rank_at_the_top(client, seeded):
+    """
+    «+ إضافة رتبة» في النموذج. و`tier` **يحسبه الخادم** — لا يصل من العميل.
+
+    @covers ق-٢٧٦
+    """
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+
+    r = client.post(
+        "/api/admin/thresholds/append",
+        json={"name": "قائد لواء", "at_hours": "2500"},
+        headers=ORIGIN,
+    )
+    assert r.status_code == 200, r.get_json()
+
+    ladder = client.get("/api/admin/thresholds", headers=ORIGIN).get_json()["thresholds"]
+    top = max(ladder, key=lambda row: row["tier"])
+    assert top["name"] == "قائد لواء"
+    assert top["tier"] == 5
+    assert top["at_hours"] == "2500.00"
+
+
+def test_append_below_the_current_top_is_refused(client, seeded):
+    """
+    **الحرس الذي يمنع تنزيلًا صامتًا في المعنى:** `highest_achieved_tier`
+    مِسنَنٌ يحفظ *رقم* الرتبة لا هويّتها، فإدخالُ رتبةٍ في الوسط يُعيد ترقيم
+    ما بعدها — طالبٌ مِسنَنُه ٣ يصير ٣ رتبةً أدنى، بلا أن ينقص الرقم فلا
+    يُطلقه مشغّل ث-١٣ب ولا يراه أحد.
+
+    @covers ق-٢٧٦
+    """
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+
+    r = client.post(
+        "/api/admin/thresholds/append",
+        json={"name": "رتبة وسطى", "at_hours": "600"},
+        headers=ORIGIN,
+    )
+    assert r.status_code == 422
+    assert "قمّة" in r.get_json()["message"]
+
+    ladder = client.get("/api/admin/thresholds", headers=ORIGIN).get_json()["thresholds"]
+    assert len(ladder) == 4  # لا شيء أُلحِق
+
+
+def test_append_keeps_existing_tiers_untouched(client, seeded):
+    """
+    الإلحاق في القمّة **بلا أثرٍ على ما قبله بالبناء** — لا رقم يتغيّر ولا
+    عتبة، فلا يفقد أحدٌ ما بلغه.
+
+    @covers ق-٢٧٦
+    """
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+    before = client.get("/api/admin/thresholds", headers=ORIGIN).get_json()["thresholds"]
+
+    client.post(
+        "/api/admin/thresholds/append",
+        json={"name": "قائد لواء", "at_hours": "2500"},
+        headers=ORIGIN,
+    )
+    after = client.get("/api/admin/thresholds", headers=ORIGIN).get_json()["thresholds"]
+
+    kept = [row for row in after if row["key"] in {r["key"] for r in before}]
+    assert sorted(kept, key=lambda r: r["tier"]) == sorted(before, key=lambda r: r["tier"])
+
+
+def test_append_writes_one_audit_line(client, seeded):
+    """يمرّ بـ`save_thresholds`، فسطر التدقيق وقفل الأرضيات يقعان كما في الحفظ."""
+    _make_admin(seeded["users"]["1001"])
+    _login(client)
+    client.post(
+        "/api/admin/thresholds/append",
+        json={"name": "قائد لواء", "at_hours": "2500"},
+        headers=ORIGIN,
+    )
+    entries = client.get("/api/admin/audit", headers=ORIGIN).get_json()["entries"]
+    assert [e["kind"] for e in entries].count("thresholds_update") == 1
+
+
+def test_append_is_closed_to_pilots(client, seeded):
+    """@covers ق-٢٧٦"""
+    _login(client, "1002")
+    r = client.post(
+        "/api/admin/thresholds/append", json={"name": "x", "at_hours": "9999"}, headers=ORIGIN
+    )
+    assert r.status_code == 403

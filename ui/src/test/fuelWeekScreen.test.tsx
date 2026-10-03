@@ -27,6 +27,7 @@ const week = (weekStart: string, scorePct: string | null): FuelWeek => ({
     state: scorePct ? 'draft' : 'unopened',
     approved_at: null,
     teams: [{ id: 1, name: 'سرب الفرقان' }],
+    available: [],
     tasks: [
       {
         activity_id: 7,

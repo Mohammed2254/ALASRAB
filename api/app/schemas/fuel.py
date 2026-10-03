@@ -132,6 +132,9 @@ class FuelWeekSchema(Schema):
     approved_at = fields.Str(allow_none=True)
     tasks = fields.List(fields.Nested(WeekTaskSchema))
     teams = fields.List(fields.Nested(WeekTeamSchema))
+    # نشاطٌ قائم ليس مهمّةً في هذا الأسبوع — «+ إضافة مهمة لهذا الأسبوع».
+    # **فارغة حين `unopened`**: كل الأنشطة معروضة مهامَّ افتراضية أصلًا.
+    available = fields.List(fields.Nested(WeekTeamSchema))
 
 
 class AssignTeamSchema(Schema):

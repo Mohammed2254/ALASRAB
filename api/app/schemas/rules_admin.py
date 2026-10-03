@@ -66,6 +66,16 @@ class SaveThresholdsSchema(Schema):
     )
 
 
+class AppendThresholdSchema(Schema):
+    """
+    **بلا `key` وبلا `tier`** (و-٢١): موضعُ الرتبة في السُّلّم قاعدةٌ يحسبها
+    الخادم، ومعرّفُها التقنيّ يولّده — فلا يصل أيٌّ منهما من العميل بلا حارس.
+    """
+
+    name = fields.Str(required=True, validate=validate.Length(min=1, max=100))
+    at_hours = fields.Decimal(required=True, as_string=True, validate=validate.Range(min=0))
+
+
 class RankShiftSchema(Schema):
     user_id = fields.Int()
     from_tier = fields.Int()

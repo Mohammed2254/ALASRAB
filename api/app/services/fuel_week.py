@@ -215,12 +215,27 @@ def week_view(org: Org, week_start: date) -> dict:
             }
         )
 
+    # **ما يصلح أن يُضاف لهذا الأسبوع** — «+ إضافة مهمة لهذا الأسبوع» في
+    # النموذج (و-٢١). يُحسَب في الخادم لا في الواجهة: الفرقُ بين كلّ الأنشطة
+    # ومهامِّ الأسبوع قاعدةٌ لا عرض، وجلبُه بنداءٍ ثانٍ من الشاشة يُدخل شلّالًا
+    # في شاشةٍ تُفتح كثيرًا.
+    #
+    # وفارغةٌ حين `unopened` بالبناء لا بالشرط: الأسبوع الذي لم يُلمَس يعرض
+    # **كل** الأنشطة مهامَّ افتراضية، فلا شيء خارجها يُضاف.
+    assigned = {t.activity_id for t in rows}
+    available = [
+        {"id": a.id, "name": a.name}
+        for a in (_active_activities(org.id) if week is not None else [])
+        if a.id not in assigned
+    ]
+
     return {
         "week_start": week_start.isoformat(),
         "state": state,
         "approved_at": approved_at,
         "tasks": out_tasks,
         "teams": [{"id": i, "name": n} for i, n in sorted(teams.items())],
+        "available": available,
     }
 
 

@@ -8,6 +8,7 @@ import Button from '../../ui/Button'
 import EmptyState from '../../ui/EmptyState'
 import Field from '../../ui/Field'
 import Placard from '../../ui/Placard'
+import AddWeekTaskForm from './AddWeekTaskForm'
 import FuelTaskCard from './FuelTaskCard'
 import NewActivityForm from './NewActivityForm'
 import Pill from '../../ui/Pill'
@@ -130,6 +131,11 @@ export default function FuelActivities() {
                   {busy ? 'جارٍ الاعتماد…' : 'اعتماد أسبوع الوقود — يصبّ في وقود كل سرب'}
                 </Button>
               )}
+
+              {/* الإضافة والإزالة **لهذا الأسبوع وحده** — ومخفيّتان بعد
+                  الاعتماد كبقيّة التعديل، فلا يُعرَض زرٌّ يردّ الخادمُ عليه
+                  بـ٤٢٢. */}
+              {locked ? null : <AddWeekTaskForm week={data} onChanged={setWeek} />}
 
               <NewActivityForm onCreated={() => setWeekStart(data.week_start)} />
             </div>
