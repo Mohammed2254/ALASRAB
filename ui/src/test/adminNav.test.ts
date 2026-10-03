@@ -45,6 +45,19 @@ describe('اتّفاق جداول تنقّل المشرف', () => {
     for (const key of navKeys) expect(keyOf(pathOf(key))).toBe(key)
   })
 
+  /**
+   * **خطأُ تسميةٍ عاش من و-١٨ إلى و-٢١:** كان `adminAudit` (سجلّ التدقيق)
+   * مسمًّى «الصندوق الأسود»، و`SCOPE.md` يقول غيره في موضعين — `§٨` بند ١٣
+   * «الصندوق الأسود (**ملاحظة مجهولة**)»، و`§٩` يعدّه من صفحات الطيّار،
+   * أمّا «سجلّ التغييرات» فبند ١٥. والوثيقة تعلو الكود (`AGENTS.md`).
+   *
+   * ويُحرَس بالفحص لا بالتعليق: تسميةٌ تُعاد إلى الخطأ لا يُسقطها شيء آخر.
+   */
+  it('«الصندوق الأسود» هو الملاحظة المجهولة لا سجلّ التدقيق — `SCOPE.md §٨`', () => {
+    expect(LABEL_OF.adminNotes).toBe('الصندوق الأسود')
+    expect(LABEL_OF.adminAudit).toBe('سجلّ التغييرات')
+  })
+
   it('`isAdminScreen` يميّز الإداريّ من شاشات الطيّار', () => {
     for (const key of navKeys) expect(isAdminScreen(key)).toBe(true)
     for (const key of ['deck', 'readings', 'station', 'formation', 'board', 'note']) {

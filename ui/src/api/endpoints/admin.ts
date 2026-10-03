@@ -28,6 +28,15 @@ import type { PasteCommitResult, PastePreview } from '../types/paste'
 import type { AddedQuranEntry, AddQuranEntryForm, AmendedEvent, AmendEventForm, QuranEventsList, QuranRoster, ReversedEvent } from '../types/quran'
 import type { Report, ResetPinResult } from '../types/report'
 import type {
+  ActiveSet,
+  BulkCreated,
+  BulkStudentRow,
+  CreateStudentForm,
+  IssuedStudent,
+  RoleSet,
+  RosterList,
+} from '../types/roster'
+import type {
   CreateWeightVersionForm,
   SaveThresholdsForm,
   ThresholdRowForm,
@@ -129,6 +138,14 @@ export const adminApi = {
       method: 'POST',
       body: { thresholds: thresholdsPayload(form.thresholds) },
     }),
+  // رتبةٌ جديدة **في قمّة السُّلّم** — بلا `key` وبلا `tier`: الخادم يولّد
+  // الأوّل ويحسب الثاني. موضعُ الرتبة قاعدةٌ لا عرض، فلا تحسبه الواجهة.
+  appendThreshold: (name: string, atHours: string) =>
+    request<ThresholdsPreview>('/admin/thresholds/append', {
+      method: 'POST',
+      body: { name, at_hours: atHours },
+    }),
+
   previewThresholds: (form: SaveThresholdsForm) =>
     request<ThresholdsPreview>('/admin/thresholds/preview', {
       method: 'POST',
@@ -150,10 +167,14 @@ export const adminApi = {
       body: { activity_id: activityId, team_id: teamId ? Number(teamId) : null },
     }),
 
-  addFuelTask: (activityId: number, weekStart?: string) =>
+  // `activityId` نصٌّ خام من `<select>` كـ`assignFuelTeam` — التحويل هنا لا
+  // في الشاشة (قرار و-١٧ ٥: `Number()` ممنوعة في `src/screens`).
+  // و`removeFuelTask` أدناه يأخذ رقمًا لأن مصدره `task.activity_id` لا حقلَ
+  // إدخال — فالنوعان مختلفان بسبب لا بسهو.
+  addFuelTask: (activityId: string, weekStart?: string) =>
     request<FuelWeek>(`/admin/fuel/week/tasks${weekQuery(weekStart)}`, {
       method: 'POST',
-      body: { activity_id: activityId },
+      body: { activity_id: Number(activityId) },
     }),
 
   removeFuelTask: (activityId: number, weekStart?: string) =>
@@ -173,6 +194,34 @@ export const adminApi = {
 
   approveFuelWeek: (weekStart?: string) =>
     request<FuelWeek>(`/admin/fuel/week/approve${weekQuery(weekStart)}`, { method: 'POST' }),
+
+  // ═══ سجلّ الطلاب — و-٢١ ═══
+  //
+  // `teamId` نصٌّ خام من `<select>`، و`Number()` ممنوعة في `src/screens`
+  // (بوابة AST) — فالتحويل هنا كما في `assignFuelTeam`.
+  roster: () => request<RosterList>('/admin/users'),
+
+  createStudent: (form: CreateStudentForm) =>
+    request<IssuedStudent>('/admin/users', {
+      method: 'POST',
+      body: {
+        full_name: form.full_name,
+        student_no: form.student_no,
+        team_id: Number(form.team_id),
+      },
+    }),
+
+  createStudentsBulk: (teamId: string, rows: BulkStudentRow[]) =>
+    request<BulkCreated>('/admin/users/bulk', {
+      method: 'POST',
+      body: { team_id: Number(teamId), rows },
+    }),
+
+  setStudentRole: (userId: number, role: string) =>
+    request<RoleSet>(`/admin/users/${userId}/role`, { method: 'PATCH', body: { role } }),
+
+  setStudentActive: (userId: number, active: boolean) =>
+    request<ActiveSet>(`/admin/users/${userId}/active`, { method: 'PATCH', body: { active } }),
 
   notes: () => request<AdminNotesList>('/admin/notes'),
   markNoteRead: (id: number) => request<MarkedNote>(`/admin/notes/${id}`, { method: 'PATCH', body: { read: true } }),

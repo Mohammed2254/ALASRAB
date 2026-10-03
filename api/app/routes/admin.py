@@ -16,6 +16,7 @@ from flask_smorest import Blueprint, abort
 from ..extensions import db
 from ..models import Org, User
 from ..schemas import (
+    ActiveSetSchema,
     ActivitiesListSchema,
     AddedQuranEntrySchema,
     AddQuranEntrySchema,
@@ -24,6 +25,7 @@ from ..schemas import (
     AdminTahdirEntrySchema,
     AmendedEventSchema,
     AmendEventSchema,
+    AppendThresholdSchema,
     ApproveSchema,
     ArchivedTeamSchema,
     ArchiveTeamSchema,
@@ -32,14 +34,18 @@ from ..schemas import (
     AssignTeamSchema,
     AttendanceStatusSchema,
     AuditLogSchema,
+    BulkCreatedSchema,
+    BulkCreateStudentsSchema,
     ChooseWeekPilotSchema,
     ChosenWeekPilotSchema,
     CreateActivitySchema,
     CreatedActivitySchema,
     CreatedTeamSchema,
+    CreateStudentSchema,
     CreateTeamSchema,
     CreateWeightVersionSchema,
     FuelWeekSchema,
+    IssuedStudentSchema,
     MarkedNoteSchema,
     MarkNoteReadSchema,
     OrgTahdirReportSchema,
@@ -56,7 +62,11 @@ from ..schemas import (
     ReversedEventSchema,
     ReverseEventSchema,
     ReviewResultsSchema,
+    RoleSetSchema,
+    RosterListSchema,
     SaveThresholdsSchema,
+    SetActiveSchema,
+    SetRoleSchema,
     StudentsListSchema,
     TeamsListSchema,
     ThresholdsPreviewSchema,
@@ -80,6 +90,7 @@ from ..services import paste as paste_service
 from ..services import quran as quran_service
 from ..services import reading as reading_service
 from ..services import reports as reports_service
+from ..services import roster as roster_service
 from ..services import rules_admin as rules_admin_service
 from ..services import teams as teams_service
 from ..services import week as week_service
@@ -346,6 +357,85 @@ class Report(MethodView):
         }
 
 
+# ═══ و-٢١ — سجلّ الطلاب ═══
+#
+# **لا بند `SCOPE.md` لإنشاء طالب** — فُرض أنهم موجودون، وكان الكاتب الوحيد
+# لـ`User` في المشروع كلّه هو `seed.py` (وهو يرفض الإنتاج). فقاعدةٌ منشورة
+# جديدة كانت بلا أيّ طريق إلى طالب. التفصيل في `docs/slices/و-٢١.md` §١.
+
+
+@blp.route("/admin/users")
+class AdminUsers(MethodView):
+    @admin_required
+    @blp.response(200, RosterListSchema)
+    def get(self):
+        """السجلّ كاملًا — **بما فيه المعطَّلون**، مُعلَّمين لا مخفيّين."""
+        return {"students": roster_service.roster(g.user.org_id)}
+
+    @admin_required
+    @blp.arguments(CreateStudentSchema)
+    @blp.response(201, IssuedStudentSchema)
+    def post(self, data):
+        """
+        طالبٌ واحد. الرمز **يُولَّد في الخادم ويُعرض مرّة** — لا يُقبَل من
+        العميل أصلًا: مشرفٌ يملأ مئتَي رمز بيده سيكتب `1234` للجميع، وهو
+        بعينه ما يُسقط `NFR-03`.
+        """
+        try:
+            return roster_service.create_student(
+                _org(), data["full_name"], data["student_no"], data["team_id"], g.user.id
+            )
+        except roster_service.RosterError as exc:
+            abort(exc.status, message=str(exc))
+
+
+@blp.route("/admin/users/bulk")
+class AdminUsersBulk(MethodView):
+    @admin_required
+    @blp.arguments(BulkCreateStudentsSchema)
+    @blp.response(201, BulkCreatedSchema)
+    def post(self, data):
+        """
+        لصقةٌ واحدة لمئتَي طالب — **لأن الإفراديّ وحده شاشةٌ لا تُستعمل**.
+        السطر الفاشل يُبلَّغ ولا يُسقط الناجح (سابقة استيراد راصد).
+        """
+        try:
+            return roster_service.create_students_bulk(
+                _org(), data["rows"], data["team_id"], g.user.id
+            )
+        except roster_service.RosterError as exc:
+            abort(exc.status, message=str(exc))
+
+
+@blp.route("/admin/users/<int:user_id>/role")
+class AdminUserRole(MethodView):
+    @admin_required
+    @blp.arguments(SetRoleSchema)
+    @blp.response(200, RoleSetSchema)
+    def patch(self, data, user_id):
+        """ترقيةٌ أو تنزيل — **ولا يُنزَّل آخر مشرف**، فلا تُقفَل الجمعية."""
+        try:
+            return roster_service.set_role(_org(), user_id, data["role"], g.user.id)
+        except roster_service.RosterError as exc:
+            abort(exc.status, message=str(exc))
+
+
+@blp.route("/admin/users/<int:user_id>/active")
+class AdminUserActive(MethodView):
+    @admin_required
+    @blp.arguments(SetActiveSchema)
+    @blp.response(200, ActiveSetSchema)
+    def patch(self, data, user_id):
+        """
+        تعطيلٌ أو إعادة تفعيل — **لا حذف**: حذف الطالب يتيّم أحداثه (ADR-004).
+        والتعطيل يُبطل الجلسات، فكوكي عمرُه تسعون يومًا لا يبقى حيًّا بعده.
+        """
+        try:
+            return roster_service.set_active(_org(), user_id, data["active"], g.user.id)
+        except roster_service.RosterError as exc:
+            abort(exc.status, message=str(exc))
+
+
 @blp.route("/admin/users/<int:user_id>/reset-pin")
 class ResetPin(MethodView):
     @admin_required
@@ -435,6 +525,27 @@ class ThresholdsPreview(MethodView):
 
 
 # ═══ و-٧ — الأسراب (FR-083) ═══
+
+
+@blp.route("/admin/thresholds/append")
+class AppendThreshold(MethodView):
+    @admin_required
+    @blp.arguments(AppendThresholdSchema)
+    @blp.response(200, ThresholdsPreviewSchema)
+    def post(self, data):
+        """
+        رتبةٌ جديدة **في قمّة السُّلّم وحدها** — «+ إضافة رتبة» (و-٢١).
+
+        ومسارٌ مستقلّ لا حقلٌ في `POST /admin/thresholds`: ذاك يستبدل السُّلّم
+        كاملًا بما يُرسله العميل، وهذا يُلحق بقاعدةٍ يحرسها الخادم. ودمجُهما
+        يعني أن الواجهة تحسب `tier` — وهي لا تحسب (`AGENTS.md`).
+        """
+        try:
+            return rules_admin_service.append_threshold(
+                _org(), data["name"], data["at_hours"], g.user.id
+            )
+        except rules_admin_service.RulesAdminError as exc:
+            abort(422, message=str(exc))
 
 
 @blp.route("/admin/teams")

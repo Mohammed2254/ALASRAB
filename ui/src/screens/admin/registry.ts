@@ -20,6 +20,7 @@ import QuranEdit from './QuranEdit'
 import RasdImport from './RasdImport'
 import ReadingQueue from './ReadingQueue'
 import Report from './Report'
+import Students from './Students'
 import TahdirQueue from './TahdirQueue'
 import TahdirReport from './TahdirReport'
 import Teams from './Teams'
@@ -35,6 +36,7 @@ export const ADMIN_SCREENS: Record<AdminKey, () => React.JSX.Element> = {
   adminReport: Report,
   adminTahdirReport: TahdirReport,
   adminAudit: AuditLog,
+  adminStudents: Students,
   adminTeams: Teams,
   adminWeights: Weights,
   adminThresholds: Thresholds,

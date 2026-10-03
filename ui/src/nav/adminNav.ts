@@ -28,6 +28,7 @@ export const ADMIN_PATHS = {
   adminReport: '/admin/report',
   adminTahdirReport: '/admin/tahdir/report',
   adminAudit: '/admin/audit',
+  adminStudents: '/admin/students',
   adminTeams: '/admin/teams',
   adminWeights: '/admin/weights',
   adminThresholds: '/admin/thresholds',
@@ -60,7 +61,7 @@ export const ADMIN_NAV: readonly AdminNavGroup[] = [
     items: [
       { key: 'adminQueue', label: 'طابور القراءات' },
       { key: 'adminTahdirQueue', label: 'طابور تحضير القراءة' },
-      { key: 'adminNotes', label: 'الملاحظات' },
+      { key: 'adminNotes', label: 'الصندوق الأسود' },
     ],
   },
   {
@@ -68,12 +69,13 @@ export const ADMIN_NAV: readonly AdminNavGroup[] = [
     items: [
       { key: 'adminReport', label: 'التقرير الدوري' },
       { key: 'adminTahdirReport', label: 'تقرير تحضير القراءة' },
-      { key: 'adminAudit', label: 'الصندوق الأسود' },
+      { key: 'adminAudit', label: 'سجلّ التغييرات' },
     ],
   },
   {
     label: 'الإدارة',
     items: [
+      { key: 'adminStudents', label: 'الطلاب' },
       { key: 'adminTeams', label: 'الأسراب' },
       { key: 'adminWeights', label: 'الأوزان' },
       { key: 'adminThresholds', label: 'العتبات' },
