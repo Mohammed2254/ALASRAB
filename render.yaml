@@ -1,0 +1,45 @@
+# نشرٌ مجانيّ بلا خادم — Render Blueprint (و-٢١).
+#
+# **المقايضة معلَنة لا مُخفاة:** الخدمة المجانية **تنام بعد ١٥ دقيقة خمول**
+# (إقلاعٌ بارد ~٥٠ ثانية للزائر الأول)، وقاعدة البيانات المجانية لها مدّة
+# محدودة ثم تُحذف. فهذا مسارٌ **للتجربة الأولى على طالبَين-ثلاثة**، لا
+# للتشغيل الحقيقيّ — ذاك في `docs/DEPLOY.md §٢` (خادم مجانيّ دائم).
+#
+# والصورة هي `Dockerfile` نفسه الذي يعمل محليًّا وعلى أيّ خادم — فالانتقال
+# من هنا إلى خادم دائم لا يغيّر سطرًا في الكود.
+#
+# الاستعمال: من لوحة Render ⇒ New ⇒ Blueprint ⇒ اختر هذا المستودع.
+
+databases:
+  - name: asrab-db
+    databaseName: asrab_v2
+    user: asrab
+    plan: free
+
+services:
+  - type: web
+    name: asrab
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    # يفحص القاعدة فعلًا — خادمٌ يردّ ٢٠٠ وقاعدته ساقطة يخدع المراقبة.
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        # Render يعطي `postgresql://`، وSQLAlchemy هنا يحتاج `+psycopg`.
+        # ولا تحويل في الكود: `config.py` يقرأ المتغيّر كما هو عن قصد، فلا
+        # يُخفي اختلاف المنصّات داخل التطبيق.
+        fromDatabase:
+          name: asrab-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true # لا سرّ في المستودع (NFR-09)
+      - key: SESSION_COOKIE_SECURE
+        value: 'true' # Render يخدم https دائمًا
+      - key: EXPOSE_API_DOCS
+        value: 'false'
+      - key: CORS_ALLOWED_ORIGINS
+        # يُضبَط يدويًّا بعد أوّل نشر: العنوان لا يُعرف قبله. وتركُه فارغًا
+        # **يمنع الإقلاع** (حرس `assert_production_safe`) لا يكسر الكتابة
+        # صامتًا — وهذا مقصود.
+        sync: false

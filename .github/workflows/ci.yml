@@ -1,8 +1,8 @@
 # نفس بوابات "البوابات الستّ" في docs/HANDOFF.md — آليًّا عند كل دفعة.
 #
-# **مكتوبٌ جاهزًا بلا `push` فعليّ بعد** (و-١٩.md §١): لا remote للمستودع
-# اليوم، فهذا الملفّ لن "يعمل" حتى يُربَط GitHub — قرارٌ صريح من المستخدم
-# لا سهوًا. حين يُربَط، يعمل من أوّل دفعة بلا تعديل.
+# **يعمل فعلًا منذ و-٢١:** المستودع مربوطٌ بـGitHub، فهذا الملفّ لم يبقَ
+# نائمًا كما كان من و-١٩ إلى و-٢٠. (بوّابةٌ مكتوبةٌ لا تعمل هي بعينها
+# الدرسان ٣٣ و٣٥: بوّابتان تمرّان وهما عمياوان.)
 
 name: CI
 
@@ -60,6 +60,10 @@ jobs:
       - run: node scripts/check-opaque-floor.mjs
         working-directory: ui
       - run: node scripts/check-contract.mjs
+        working-directory: ui
+      # نقطة الكسر الواحدة (و-٢٠): بادئةٌ مجهولة في Tailwind 4 تُصدِر لا
+      # شيء **صامتًا**، فهذا الفحص هو ما يمنع تسلّل `md:`/`lg:`.
+      - run: node scripts/check-responsive.mjs
         working-directory: ui
       - run: npx oxlint src
         working-directory: ui
