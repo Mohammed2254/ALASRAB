@@ -11,7 +11,7 @@ from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 
 from ..extensions import db
@@ -42,6 +42,9 @@ TAHDIR_TIER_GOOD = Decimal("0.9")
 TAHDIR_TIER_FAIR = Decimal("0.5")
 # Python `date.weekday()`: الاثنين=٠..الأحد=٦. الأحد–الأربعاء المطلوبة = {٦,٠,١,٢}.
 TAHDIR_ALLOWED_WEEKDAYS = {6, 0, 1, 2}
+
+# `API.md §١` — «`/me/readings` ٢٠/يوم». الرقم من الوثيقة لا من اجتهادٍ هنا.
+MAX_SUBMISSIONS_PER_DAY = 20
 
 
 class ReadingError(Exception):
@@ -87,6 +90,32 @@ def _check_tahdir_day(read_on: date) -> None:
         raise ReadingError("تحضير القراءة يكون من الأحد إلى الأربعاء فقط.")
 
 
+def _check_daily_quota(org: Org, user_id: int) -> None:
+    """
+    `API.md §١`: «`/me/readings` ٢٠/يوم». **كان موثَّقًا وغير منفَّذ** حتى
+    و-٢١ — وحدٌ في وثيقةٍ لا يحدّ شيئًا.
+
+    و`uq_reading_per_day` لا يكفي: يمنع تكرار **نفس العنوان** في نفس اليوم،
+    فطالبٌ يكتب مئة عنوان مختلف يُغرق طابور المشرف بلا أن يلمس القيد. وإغراقُ
+    الطابور يعني أن الاعتماد يتأخّر على الجميع (خ-١).
+
+    **والعدّ على يوم الإرسال لا على `read_on`:** التسجيل بأثرٍ رجعيّ مشروع
+    (`read_on` ماضٍ)، والمقصود حدُّ الإرسال لا حدُّ المواضيع.
+    """
+    since = datetime.combine(local_today(org), time.min, tzinfo=ZoneInfo(org.timezone))
+    sent_today = db.session.scalar(
+        select(func.count(ReadingSubmission.id)).where(
+            ReadingSubmission.user_id == user_id,
+            ReadingSubmission.created_at >= since.astimezone(UTC),
+        )
+    )
+    if sent_today >= MAX_SUBMISSIONS_PER_DAY:
+        raise ReadingError(
+            f"بلغتَ حدّ {MAX_SUBMISSIONS_PER_DAY} طلبًا في اليوم — أعِد المحاولة غدًا.",
+            status=429,
+        )
+
+
 def submit(
     org: Org,
     user_id: int,
@@ -103,6 +132,7 @@ def submit(
         raise ReadingError("لا يمكن تسجيل قراءة بتاريخ لم يأتِ بعد.")
     if activity_type == TAHDIR:
         _check_tahdir_day(read_on)
+    _check_daily_quota(org, user_id)
 
     submission = ReadingSubmission(
         org_id=org.id,

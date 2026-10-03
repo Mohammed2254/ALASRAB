@@ -12,6 +12,7 @@ from sqlalchemy import select
 
 from app.extensions import db
 from app.models import Membership, PointEvent, ReadingSubmission, Team, User
+from app.services import reading
 from app.services.auth import hash_pin
 
 ORIGIN = {"Origin": "http://localhost:5173"}
@@ -352,3 +353,85 @@ def test_unauthenticated_access_is_refused(client, seeded):
         == 401
     )
     assert client.get(QUEUE).status_code == 401
+
+
+# ═══ و-٢١ — حدّ الإرسال اليوميّ (ق-٢٧٨) ═══
+
+
+def test_daily_submission_quota_is_enforced(client, seeded):
+    """
+    `API.md §١` يوثّق «٢٠/يوم» منذ و-٤، و**لم يكن منفَّذًا** حتى و-٢١ — وحدٌّ
+    في وثيقةٍ لا يحدّ شيئًا.
+
+    و`uq_reading_per_day` لا يكفي: يمنع تكرار **نفس العنوان** في نفس اليوم،
+    فمئةُ عنوانٍ مختلف تُغرق طابور المشرف بلا أن تلمس القيد — فيتأخّر الاعتماد
+    على الجميع (خ-١).
+
+    @covers ق-٢٧٨
+    """
+    _login(client)
+    for index in range(reading.MAX_SUBMISSIONS_PER_DAY):
+        r = client.post(
+            "/api/me/readings",
+            json={"read_on": "2026-08-01", "pages": 3, "book_title": f"كتاب {index}"},
+            headers=ORIGIN,
+        )
+        assert r.status_code == 201, (index, r.get_json())
+
+    blocked = client.post(
+        "/api/me/readings",
+        json={"read_on": "2026-08-01", "pages": 3, "book_title": "الحادي والعشرون"},
+        headers=ORIGIN,
+    )
+    assert blocked.status_code == 429
+    assert "غدًا" in blocked.get_json()["message"]
+
+
+def test_quota_counts_the_sending_day_not_the_reading_day(client, seeded):
+    """
+    التسجيل بأثرٍ رجعيّ مشروع، فالعدّ على **يوم الإرسال**: عشرون طلبًا موزّعةً
+    على عشرين تاريخَ قراءةٍ ماضٍ تبلغ الحدّ كما تبلغه عشرون على تاريخٍ واحد.
+
+    @covers ق-٢٧٨
+    """
+    _login(client)
+    for index in range(reading.MAX_SUBMISSIONS_PER_DAY):
+        day = date(2026, 8, 1) + timedelta(days=index)
+        r = client.post(
+            "/api/me/readings",
+            json={"read_on": day.isoformat(), "pages": 2, "book_title": "كتاب"},
+            headers=ORIGIN,
+        )
+        assert r.status_code == 201, (index, r.get_json())
+
+    blocked = client.post(
+        "/api/me/readings",
+        json={"read_on": "2026-09-01", "pages": 2, "book_title": "كتاب"},
+        headers=ORIGIN,
+    )
+    assert blocked.status_code == 429
+
+
+def test_quota_is_per_student_not_per_org(client, seeded):
+    """
+    حدٌّ على مستوى الجمعية يجعل طالبًا واحدًا يُسكت البقيّة — وهو ما نمنعه
+    هنا: الحدّ صفةُ مُرسِلٍ لا صفةُ قناة.
+
+    @covers ق-٢٧٨
+    """
+    _login(client)
+    for index in range(reading.MAX_SUBMISSIONS_PER_DAY):
+        client.post(
+            "/api/me/readings",
+            json={"read_on": "2026-08-01", "pages": 3, "book_title": f"كتاب {index}"},
+            headers=ORIGIN,
+        )
+    client.post("/api/auth/logout", headers=ORIGIN)
+
+    _login(client, "1002")
+    r = client.post(
+        "/api/me/readings",
+        json={"read_on": "2026-08-01", "pages": 3, "book_title": "كتاب الثاني"},
+        headers=ORIGIN,
+    )
+    assert r.status_code == 201, r.get_json()
