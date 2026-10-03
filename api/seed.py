@@ -27,20 +27,13 @@ from app import create_app
 from app.extensions import db
 from app.models import (
     DailyQuestion,
-    EntryDefault,
     FuelCriterion,
-    MasteryMultiplier,
     Membership,
-    Org,
     PointEvent,
-    RankThreshold,
-    Team,
     User,
-    Weight,
-    WeightVersion,
 )
 from app.rules.engine import Achievement, ruleset_at
-from app.services import engagement, fuel, ledger, reading, week
+from app.services import engagement, fuel, ledger, provision, reading, week
 from app.services.auth import hash_pin
 
 TABLES = [
@@ -68,30 +61,9 @@ TABLES = [
     "orgs",
 ]
 
-# سُلّم `SCOPE.md` §٤ — أربع رتب اليوم، وإضافة رتبة صفٌّ لا هجرة.
-RANKS = [
-    ("trainee", "طيار", 1, 0),
-    ("pilot1", "طيار أول", 2, 400),
-    ("squadron", "رائد سرب", 3, 900),
-    ("commander", "قائد", 4, 1500),
-]
+# ← `RANKS` انتقلت إلى `services/provision.py` — السقالة واحدة (و-٢١).
 
-# و-١٢: الأوزان الأربعة الأولى كانت وحدها مبذورة، والأربعة الباقية «مؤجَّلة
-# عمدًا» — فكان أثرُ التأجيل أن **اعتماد أي تحضير يسقط بـ٤٢٢** («لا وزن سارٍ»)
-# وأن استيراد راصد يتخطّى فئات القرآن الثلاث بصمت، على كل قاعدة تطوير نظيفة.
-# التأجيل كان لانتظار معايرة حقيقية، والمعايرة لا تمنع وجود قيمة أوّلية تُعاد
-# (ف-٨) — فغيابُها عطّل شاشات مبنيّة، ووجودُها لا يقرّر شيئًا نهائيًّا.
-WEIGHTS = [
-    ("memorize", "2.5"),
-    ("review", "0.6"),
-    ("reading", "0.15"),
-    ("attendance", "3.0"),
-    ("tahdir", "2.0"),
-    ("quran_hifz", "0.2"),
-    ("quran_thabat", "0.15"),
-    ("quran_muraja3a", "0.1"),
-]
-MULTIPLIERS = [("mastered", "1.5"), ("accepted", "1.0"), ("repeat", "0.5")]
+# ← `WEIGHTS` و`MULTIPLIERS` انتقلت إلى `services/provision.py` — السقالة واحدة (و-٢١).
 
 # نشاط وقود واحد ببنوده — أوزانه تجمع ١٠٠٪ بالضبط (ث-١٠أ، وتُفحص في الخدمة
 # وفي القاعدة). بدونه تُفتح «محطة التزوّد» وشاشتا الوقود على فراغ، فلا يقيس
@@ -125,20 +97,7 @@ QUESTION = {
     "reward_hours": Decimal("1.00"),
 }
 
-# و-٥ — مرادفات ترويسة استيراد راصد (نسخة اليوم بلا مرادفات بديلة بعد؛ صفٌّ
-# جديد في `aliases` يكفي عند تغيّر تسمية عمود مستقبلًا، بلا كود جديد).
-# أوزان الفئات الثلاث مبذورةٌ أعلاه بقيمٍ أوّلية (٠.٢٠ · ٠.١٥ · ٠.١٠)، ويضبطها
-# المشرف عبر `/admin/weights` — لم تعد TBD (و-٢٠، `RULES.md` §٤).
-ENTRY_DEFAULTS = [
-    ("quran_hifz_target", "مستهدف الحفظ"),
-    ("quran_hifz_achieved", "منجز الحفظ"),
-    ("quran_thabat_target", "المستهدف تثبيت"),
-    ("quran_thabat_achieved", "المنجز تثبيت"),
-    ("quran_muraja3a_target", "المستهدف مراجعة"),
-    ("quran_muraja3a_achieved", "المنجز مراجعة"),
-    ("attendance", "الحضور"),
-    ("tasmi3_days", "أيام التسميع"),
-]
+# ← `ENTRY_DEFAULTS` انتقلت إلى `services/provision.py` — السقالة واحدة (و-٢١).
 
 # أربعة طلاب يغطّون الحالات التي تكسر بطاقة الطيار عادةً.
 # الكمّيات تُختار لتقع على العتبات المقصودة **بعد** الحساب لا قبله:
@@ -214,12 +173,28 @@ def _seed_tahdir(org, user) -> None:
     if user is None:
         return
     week_start = week.week_start_local(org, datetime.now(UTC))
-    first = reading.submit(org, user.id, week_start, 9, "قصص الأنبياء", activity_type="tahdir")
-    reading.approve(org, [first.id], reviewer_id=1)
-    # الثاني يبقى معلَّقًا — فيُفتح طابور المشرف على بندٍ حقيقيّ لا على فراغ.
-    reading.submit(
-        org, user.id, week_start + timedelta(days=1), 8, "رياض الصالحين", activity_type="tahdir"
-    )
+    today = reading.local_today(org)
+
+    # **الأيام المتاحة فعلًا لا المفترَضة:** نافذة التحضير أربعة أيام
+    # (الأحد–الأربعاء)، فمنها ما مضى وحده صالح — و`reading.submit` يرفض
+    # المستقبل صراحةً. البذرة كانت تكتب `week_start + 1` دائمًا، **فتنكسر كل
+    # أحدٍ** (أوّل يوم النافذة، وما بعده لم يأتِ بعد). عطلٌ يظهر يومًا في
+    # الأسبوع ويختفي ستّة — وهو أسوأ أنواع هشاشة البذرة.
+    days = [
+        week_start + timedelta(days=offset)
+        for offset in range(4)
+        if (week_start + timedelta(days=offset)) <= today
+    ]
+
+    # الأخير يبقى معلَّقًا دائمًا — فيُفتح طابور المشرف على بندٍ حقيقيّ لا على
+    # فراغ، وهو الغرض المعلَن من هذه البذرة. والاعتماد يقع على ما قبله إن وُجد:
+    # يوم الأحد لا تملك النافذة إلا يومًا واحدًا، فالطابور أولى به من الاعتماد.
+    for index, day in enumerate(days):
+        submission = reading.submit(
+            org, user.id, day, 9 - index, "قصص الأنبياء", activity_type="tahdir"
+        )
+        if index < len(days) - 1:
+            reading.approve(org, [submission.id], reviewer_id=1)
 
 
 def _seed_fuel(org, team, actor_id: int) -> None:
@@ -327,39 +302,16 @@ def run(force: bool = False):
         db.session.execute(db.text(f"TRUNCATE {', '.join(TABLES)} RESTART IDENTITY CASCADE"))
         db.session.commit()
 
-        org = Org(name="جمعية الأسراب", timezone="Asia/Riyadh")
-        db.session.add(org)
-        db.session.flush()
-        for key, name, tier, hours in RANKS:
-            db.session.add(
-                RankThreshold(org_id=org.id, key=key, name=name, tier=tier, at_hours=Decimal(hours))
-            )
-
-        team = Team(org_id=org.id, name="سرب الفرقان", code="FRQ")
-        db.session.add(team)
-        db.session.flush()
-
-        # سارٍ من الماضي البعيد: حدثٌ بلا إصدار سارٍ وقت وقوعه يُرفض صراحةً
-        # (ث-١١)، فالبذرة يجب أن تسبق كل حدث تنشئه.
-        version = WeightVersion(
-            org_id=org.id,
-            effective_from=datetime(2020, 1, 1, tzinfo=UTC),
-            note="أوزان أوّلية مؤلَّفة — تُعاد بعد بيانات حقيقية",
+        # **السقالة من `services/provision.py` لا مكرَّرةً هنا** (و-٢١):
+        # سقالةُ الإنتاج التي لا تمرّ عليها عينٌ كل يوم تفترق عن سقالة
+        # التطوير بأوّل صفّ يُضاف لإحداهما — فيُختبَر المشروع على أوزان
+        # وعتبات ليست التي ستُنشَر.
+        org, team = provision.provision_org(
+            name="جمعية الأسراب",
+            timezone="Asia/Riyadh",
+            team_name="سرب الفرقان",
+            team_code="FRQ",
         )
-        db.session.add(version)
-        db.session.flush()
-        for activity, per_unit in WEIGHTS:
-            db.session.add(
-                Weight(
-                    version_id=version.id, activity_type=activity, hours_per_unit=Decimal(per_unit)
-                )
-            )
-        for grade, mult in MULTIPLIERS:
-            db.session.add(
-                MasteryMultiplier(version_id=version.id, grade=grade, multiplier=Decimal(mult))
-            )
-        for activity_type, label in ENTRY_DEFAULTS:
-            db.session.add(EntryDefault(org_id=org.id, activity_type=activity_type, label=label))
         db.session.commit()
 
         for full_name, student_no, role, entries in PEOPLE:

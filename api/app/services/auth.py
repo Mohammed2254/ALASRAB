@@ -185,6 +185,18 @@ def revoke_all_sessions(user_id: int) -> int:
     ).rowcount
 
 
+def generate_pin() -> str:
+    """
+    رمزٌ عشوائيّ من أربعة أرقام — **المولِّد الوحيد في المشروع**.
+
+    `secrets` لا `random`: مولِّد ميرسين تُوِستر يُستنتَج من مخرجاته، فرمزٌ
+    «عشوائيّ» منه يُتوقَّع. و`randbelow(10_000)` ثمّ `04d` توزيعٌ متساوٍ على
+    العشرة آلاف — بخلاف تركيب أربعة أرقام مستقلّة الذي يُغري بـ`randint`
+    الشامل للطرفين.
+    """
+    return f"{secrets.randbelow(10_000):04d}"
+
+
 def reset_pin(org_id: int, target: User, actor_id: int) -> str:
     """
     رمزٌ جديد **يُعرض مرّة واحدة** ولا يُخزَّن نصًّا صريحًا أبدًا.
@@ -195,7 +207,7 @@ def reset_pin(org_id: int, target: User, actor_id: int) -> str:
     و`before`/`after` **فارغان عمدًا**: «يُسجَّل منسوبًا — **بلا قيمة الـPIN**»
     (§٧.٥). سطرُ تدقيقٍ يحمل الرمز يحوّل السجلّ نفسه إلى تسريب.
     """
-    new_pin = f"{secrets.randbelow(10_000):04d}"
+    new_pin = generate_pin()
     target.pin_hash = hash_pin(new_pin)
     revoke_all_sessions(target.id)
     audit.record(

@@ -23,8 +23,18 @@ from pathlib import Path
 import pytest
 
 import seed
+from app.services import provision
 
 SEED_SOURCE = Path(seed.__file__).read_text()
+
+# **السقالة انتقلت إلى `services/provision.py` في و-٢١**، وتشاركها البذرةُ
+# والتأسيسُ الإنتاجيّ. فهذه الفحوص تتبع مالكها الجديد — ودلالتها تقوّت لا
+# تضعف: صارت تحرس **ما يُنشَر فعلًا** لا ما تُعلنه البذرة وحدها.
+#
+# والفجوة التي أوجدت هذه الوحدة (`tahdir` غائب عن الأوزان ⇒ كل اعتماد تحضير
+# يسقط بـ٤٢٢) كانت ستقع على خادم الإنتاج نفسه لو بقي الإعلانان منفصلين.
+WEIGHTS = provision.INITIAL_WEIGHTS
+ENTRY_DEFAULTS = provision.RASD_ENTRY_DEFAULTS
 
 
 def test_seed_declares_the_tahdir_weight():
@@ -34,7 +44,7 @@ def test_seed_declares_the_tahdir_weight():
     بدونه: `hours_for()` ترفض بـ«لا وزن سارٍ» فيسقط اعتماد أي تحضير بـ٤٢٢ —
     شاشتا و-١١ مبنيّتان ومعطَّلتان معًا على كل قاعدة تطوير جديدة.
     """
-    assert "tahdir" in dict(seed.WEIGHTS)
+    assert "tahdir" in dict(WEIGHTS)
 
 
 def test_seed_declares_the_three_rasd_quran_categories():
@@ -45,7 +55,7 @@ def test_seed_declares_the_three_rasd_quran_categories():
     ثم **يتخطّاها بصمت** إن لم يكن لها وزن — مفاتيحٌ بلا أوزان أسوأ من غيابهما
     لأنها تُوهم بالاكتمال.
     """
-    declared = dict(seed.WEIGHTS)
+    declared = dict(WEIGHTS)
     assert {"quran_hifz", "quran_thabat", "quran_muraja3a"} <= set(declared)
 
 
@@ -56,10 +66,10 @@ def test_every_entry_default_category_has_a_weight():
     الضلع الآخر، ومقاوم للتوسيع: أي فئة قرآنية تُضاف إلى `ENTRY_DEFAULTS` غدًا
     بلا وزن يُسقط هذا الاختبار — بدل أن تتخطّاها عملية الاستيراد صامتةً.
     """
-    weights = set(dict(seed.WEIGHTS))
+    weights = set(dict(WEIGHTS))
     quran_categories = {
         activity
-        for activity, _label in seed.ENTRY_DEFAULTS
+        for activity, _label in ENTRY_DEFAULTS
         if activity.startswith("quran_") and activity.endswith("_achieved")
     }
     missing = {c.removesuffix("_achieved") for c in quran_categories} - weights
