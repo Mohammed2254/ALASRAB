@@ -13,6 +13,7 @@ import type {
   UndoneAttendance,
 } from '../types/attendance'
 import type { AuditLog } from '../types/audit'
+import type { QuestionForm, QuestionRef, QuestionsList } from '../types/dailyQuestion'
 import type { AdminDashboard } from '../types/dashboard'
 import type { AdminNotesList, ChooseWeekPilotForm, ChosenWeekPilot, MarkedNote } from '../types/engagement'
 import type {
@@ -49,6 +50,25 @@ import type { ArchivedTeam, CreatedTeam, CreateTeamForm, Teams, TransferredMembe
 
 const weekQuery = (weekStart?: string) =>
   weekStart ? `?week_start=${weekStart}` : ''
+
+/**
+ * جسم السؤال. **يُرشَّح الخيارات الفارغة هنا لا في الشاشة**: النموذج يعرض
+ * أربع خانات ثابتة (فلا حساب فهارس في الواجهة)، والمشرف يملأ اثنتين أو
+ * أربعًا — والفارغة ليست خيارًا.
+ *
+ * و`day` يُحذَف في التعديل: نقلُ سؤالٍ إلى يومٍ آخر مساوٍ لحذفه وإنشائه،
+ * والخادم لا يقبله أصلًا (`UpdateQuestionSchema` بلا `day`).
+ */
+const questionPayload = (form: QuestionForm, withDay: boolean) => ({
+  ...(withDay ? { day: form.day } : {}),
+  prompt: form.prompt,
+  choices: form.choices
+    .filter((c) => c.text.trim())
+    .map((c) => ({ id: c.id, text: c.text.trim() })),
+  correct_id: Number(form.correct_id),
+  note: form.note,
+  reward_hours: form.reward_hours,
+})
 
 const thresholdsPayload = (rows: ThresholdRowForm[]) =>
   rows.map((r) => ({ key: r.key, name: r.name, tier: Number(r.tier), at_hours: r.at_hours }))
@@ -222,6 +242,24 @@ export const adminApi = {
 
   setStudentActive: (userId: number, active: boolean) =>
     request<ActiveSet>(`/admin/users/${userId}/active`, { method: 'PATCH', body: { active } }),
+
+  // ═══ سؤال اليوم — و-٢١ ═══
+  //
+  // `correct_id` و`id` الخيارات نصوصٌ خام من النموذج، والتحويل هنا لا في
+  // الشاشة (قرار و-١٧ ٥: `Number()` ممنوعة في `src/screens`).
+  questions: () => request<QuestionsList>('/admin/questions'),
+
+  createQuestion: (form: QuestionForm) =>
+    request<QuestionRef>('/admin/questions', { method: 'POST', body: questionPayload(form, true) }),
+
+  updateQuestion: (id: number, form: QuestionForm) =>
+    request<QuestionRef>(`/admin/questions/${id}`, {
+      method: 'PATCH',
+      body: questionPayload(form, false),
+    }),
+
+  deleteQuestion: (id: number) =>
+    request<void>(`/admin/questions/${id}`, { method: 'DELETE' }),
 
   notes: () => request<AdminNotesList>('/admin/notes'),
   markNoteRead: (id: number) => request<MarkedNote>(`/admin/notes/${id}`, { method: 'PATCH', body: { read: true } }),

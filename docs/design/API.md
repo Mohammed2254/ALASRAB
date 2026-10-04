@@ -730,6 +730,8 @@ NFR-02 مباشرةً.
   `external_ref` حتميّ خاصّ به (`attendance-undo:{week_start}:{user_id}`)
   يمنع تراجعًا مزدوجًا يمنح تصحيحًا سالبًا مرّتين ⇒ محاولة ثانية **`409`**.
 | `/admin/teams/{id}/members` | POST | نقل طالب إلى السرب | FR-083 |
+| `/admin/questions` | GET·POST | **سؤال اليوم: القائمة والإنشاء** 🆕 | FR-097 |
+| `/admin/questions/{id}` | PATCH·DELETE | **تعديل/حذف — قبل أوّل إجابة وحدها** 🆕 | FR-097 |
 | `/admin/users` | GET·POST | **سجلّ الطلاب وإنشاء طالب** 🆕 | و-٢١ |
 | `/admin/users/bulk` | POST | **إنشاء قائمة لصقًا** 🆕 | و-٢١ |
 | `/admin/users/{id}/role` | PATCH | **ترقية/تنزيل** 🆕 | و-٢١ |

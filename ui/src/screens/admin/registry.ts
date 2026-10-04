@@ -11,6 +11,7 @@
 import type { AdminKey } from '../../nav/adminNav'
 
 import Attendance from './Attendance'
+import DailyQuestions from './DailyQuestions'
 import Dashboard from './Dashboard'
 import AuditLog from './AuditLog'
 import FuelActivities from './FuelActivities'
@@ -42,6 +43,7 @@ export const ADMIN_SCREENS: Record<AdminKey, () => React.JSX.Element> = {
   adminThresholds: Thresholds,
   adminWeekPilot: WeekPilot,
   adminAttendance: Attendance,
+  adminQuestions: DailyQuestions,
   adminFuelActivities: FuelActivities,
   adminFuelAssess: FuelAssess,
   adminQuranEdit: QuranEdit,

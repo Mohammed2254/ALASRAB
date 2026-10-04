@@ -34,6 +34,7 @@ export const ADMIN_PATHS = {
   adminThresholds: '/admin/thresholds',
   adminWeekPilot: '/admin/week-pilot',
   adminAttendance: '/admin/attendance',
+  adminQuestions: '/admin/questions',
   adminFuelActivities: '/admin/fuel/activities',
   adminFuelAssess: '/admin/fuel/assess',
   adminQuranEdit: '/admin/quran',
@@ -81,6 +82,7 @@ export const ADMIN_NAV: readonly AdminNavGroup[] = [
       { key: 'adminThresholds', label: 'العتبات' },
       { key: 'adminWeekPilot', label: 'اختيار طيّار الأسبوع' },
       { key: 'adminAttendance', label: 'الحضور' },
+      { key: 'adminQuestions', label: 'سؤال اليوم' },
     ],
   },
   {

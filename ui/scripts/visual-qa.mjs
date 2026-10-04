@@ -61,6 +61,7 @@ const SCREENS = [
   { path: '/admin/fuel/activities', slug: 'admin-fuel-activities', label: 'أنشطة الوقود' },
   { path: '/admin/fuel/assess', slug: 'admin-fuel-assess', label: 'تقييم نشاط' },
   { path: '/admin/attendance', slug: 'admin-attendance', label: 'الحضور' },
+  { path: '/admin/questions', slug: 'admin-questions', label: 'سؤال اليوم (إدارة)' },
   { path: '/admin/quran', slug: 'admin-quran-edit', label: 'التصحيح والتعديل القرآني' },
   { path: '/admin/rasd', slug: 'admin-rasd-import', label: 'استيراد راصد' },
 ]

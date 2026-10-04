@@ -3,6 +3,12 @@
 from .audit import ResetPinSchema
 from .audit_log import AuditLogSchema
 from .auth import LoginSchema, SessionSchema
+from .daily_question import (
+    CreateQuestionSchema,
+    QuestionRefSchema,
+    QuestionsListSchema,
+    UpdateQuestionSchema,
+)
 from .engagement import (
     AdminNotesListSchema,
     AnsweredSchema,
@@ -125,6 +131,7 @@ __all__ = [
     "ChooseWeekPilotSchema",
     "ChosenWeekPilotSchema",
     "CreateActivitySchema",
+    "CreateQuestionSchema",
     "CreateStudentSchema",
     "CreateTeamSchema",
     "CreateWeightVersionSchema",
@@ -147,6 +154,8 @@ __all__ = [
     "PastePreviewTotalsSchema",
     "PasteRowResultSchema",
     "PilotsBoardSchema",
+    "QuestionRefSchema",
+    "QuestionsListSchema",
     "QueueSchema",
     "QuranEventsListSchema",
     "RasdLatestImportSchema",
@@ -180,6 +189,7 @@ __all__ = [
     "TransferMemberSchema",
     "TransferredMemberSchema",
     "UndoneAttendanceSchema",
+    "UpdateQuestionSchema",
     "WeekPilotSchema",
     "WeekScoresSchema",
     "WeekTaskRefSchema",
