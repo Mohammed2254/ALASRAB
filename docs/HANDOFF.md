@@ -110,7 +110,7 @@
 | `ui/` | ⭐ **الواجهة مكتملة — ٢٥/٢٥ شاشة** — TypeScript · ٩٠ ملفّ مصدر (٢٣ بدائية بصرية + طبقة حركة + ٩ شاشات طيّار + ١٥ شاشة مشرف) · ٦ سكربتات بوابات · ١٢ خطًّا |
 | `web/` | 🔒 **مرجع مجمَّد** (٤٠ ملفّ JSX) — بواباته تبقى تعمل شبكةَ انحدار، ولا يُطوَّر |
 | `scripts/` | بوابة التتبّع للمستودع كلّه (رُقّيت من `web/scripts/` في و-١٣) |
-| جذر المستودع | `Dockerfile` · `docker-compose.yml` (تحقّق محليّ) · `docker-compose.prod.yml` (نشر فعليّ) · `.github/workflows/ci.yml` · `deploy/Caddyfile` (و-١٩) |
+| جذر المستودع | `Dockerfile` (**مستخدمٌ غير جذر · HEALTHCHECK · gunicorn مُصلَّب**) · `docker-compose.yml` (تحقّق محليّ) · `docker-compose.prod.yml` (**تدوير سجلّات · بوّابة صحّة**) · `render.yaml` · `.github/workflows/{ci,deploy}.yml` · `deploy/{Caddyfile,bootstrap.sh,backup.sh}` |
 
 ### القرارات الستّة التي تحكم `ui/`
 
@@ -158,7 +158,7 @@
 ### البوابات الستّ — شغّلها كلّها
 
 ```bash
-bash scripts/check-slice-gate.sh              # ٢٧٤/٢٧٤ — للمستودع كلّه
+bash scripts/check-slice-gate.sh              # ٢٧٥/٢٧٥ — للمستودع كلّه
 cd ui && npx tsc --noEmit                     # أنواع
         npx vitest --typecheck.only run       # ٦ اختبارات نوع (الوسم العشريّ)
         npx vitest run                        # ٦٨ حتميّ (nav · geometry · بدائيات · شاشات)
@@ -170,7 +170,7 @@ cd ui && npx tsc --noEmit                     # أنواع
         node scripts/perf-budget.mjs           # ثلاثة سقوف: إقلاع ١٠٨٫٨٢/١١٥ · إجمالي ١٢٦٫٢٣/١٦٥ · CSS ٦٫٠٨/٢٢
         LD_LIBRARY_PATH=~/.local/lib/poppler \
           node scripts/visual-qa.mjs /tmp/uiqa # ٢٨ شاشة · ٣٢٠ · ٣٧٥ · ١٢٨٠ · ١٤٤٠px
-cd ../api && .venv/bin/python -m pytest -q     # ٤٨٥ اختبارًا خلفيًّا
+cd ../api && .venv/bin/python -m pytest -q     # ٤٨٨ اختبارًا خلفيًّا
 cd ../web && npm run check:arch && npx vitest run  # شبكة الانحدار (٥١/٥١)
 ```
 

@@ -18,6 +18,44 @@ COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env.prod"
 say() { printf '\n\033[1m›\033[0m %s\n' "$*"; }
 die() { printf '\n\033[31m⛔ %s\033[0m\n' "$*" >&2; exit 1; }
 
+# ٠ — تصليب الخادم: ثلاثة أشياء تقرّر هل يصمد خادمٌ صغير بلا رقيب
+#
+# · **تحديثاتٌ أمنية تلقائية** — خادمٌ لا يُحدَّث يصير مكشوفًا بثغرةٍ معلَنة
+#   بعد أسابيع، وأحدٌ لن يدخل شهريًّا ليُحدِّث يدويًّا.
+# · **جدارٌ** — Docker يكتب في `iptables` مباشرةً ويتجاوز UFW للمنافذ
+#   المنشورة، فالجدار هنا يحرس **ما عدا** الحاويات: SSH وما قد يُفتح سهوًا.
+# · **تدوير سجلّات Docker** — في `docker-compose.prod.yml`، وهنا افتراضٌ
+#   على مستوى العفريت ليشمل أيّ حاويةٍ تُشغَّل يدويًّا.
+harden_host() {
+  say "تصليب الخادم (تحديثات · جدار · سجلّات)"
+
+  if command -v apt-get >/dev/null 2>&1; then
+    sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq || true
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+      unattended-upgrades ufw ca-certificates curl || true
+    # التفعيل غير التفاعليّ — `dpkg-reconfigure` يسأل، وcURL لا يجيب.
+    printf 'APT::Periodic::Update-Package-Lists "1";\nAPT::Periodic::Unattended-Upgrade "1";\n' \
+      | sudo tee /etc/apt/apt.conf.d/20auto-upgrades >/dev/null
+  fi
+
+  if command -v ufw >/dev/null 2>&1 && ! sudo ufw status | grep -q '^Status: active'; then
+    sudo ufw default deny incoming
+    sudo ufw default allow outgoing
+    sudo ufw allow 22/tcp    comment 'SSH'
+    sudo ufw allow 80/tcp    comment 'HTTP — تحويل Caddy وتحدّي الشهادة'
+    sudo ufw allow 443/tcp   comment 'HTTPS'
+    sudo ufw --force enable
+  fi
+
+  # افتراضُ العفريت: سقفٌ لأيّ حاوية لا يشملها `x-logging`.
+  if [ ! -f /etc/docker/daemon.json ]; then
+    sudo mkdir -p /etc/docker
+    printf '{\n  "log-driver": "json-file",\n  "log-opts": { "max-size": "10m", "max-file": "3" }\n}\n' \
+      | sudo tee /etc/docker/daemon.json >/dev/null
+    sudo systemctl restart docker 2>/dev/null || true
+  fi
+}
+
 # ١ — دوكر
 if ! command -v docker >/dev/null 2>&1; then
   say "تثبيت دوكر"
@@ -27,6 +65,8 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 0
 fi
 docker info >/dev/null 2>&1 || die "دوكر مثبَّت ولا يعمل بلا sudo — أعد تسجيل الدخول أوّلًا."
+
+harden_host
 
 # ٢ — الكود
 if [ -d "$DIR/.git" ]; then
@@ -78,6 +118,15 @@ else
   say "قاعدة فارغة — أسِّس الجمعية وأوّل مشرف الآن:"
   printf '\n  cd %s && %s run --rm app flask bootstrap-org\n\n' "$DIR" "$COMPOSE"
   say "الرمز يُعرض **مرّةً واحدة** — اقرأه واحتفظ به."
+fi
+
+# ٧ — النسخ الاحتياطيّ **يُجدوَل** لا يُترك لتذكّر أحد: نسخةٌ يدويّة يتذكّرها
+# المرء أسبوعين ثم ينساها، وتُكتشَف الكارثة يوم الحاجة.
+if ! crontab -l 2>/dev/null | grep -q 'deploy/backup.sh'; then
+  say "جدولة نسخةٍ احتياطية يومية (٣:١٥ فجرًا بتوقيت الخادم)"
+  (crontab -l 2>/dev/null; echo "15 3 * * * cd $DIR && ./deploy/backup.sh >> \$HOME/asrab-backup.log 2>&1") | crontab -
+  say "⚠️ وهي **على القرص نفسه** — انقلها خارج الخادم (rclone/scp)، وإلّا"
+  say "   فقدانُ القرص يفقد النسخَ معه."
 fi
 
 say "فحص الصحّة"

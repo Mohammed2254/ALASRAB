@@ -29,7 +29,45 @@ COPY --from=ui-build /ui/dist/ ./app/static/
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+# **مستخدمٌ غير جذر** (و-٢١): ثغرةُ تنفيذٍ في التطبيق تصير جذرًا داخل
+# الحاوية افتراضًا، ومنها الهروب أقرب. والملفّات تبقى للجذر ملكًا —
+# التطبيق يقرؤها ولا يحتاج كتابتها، وهذا مقصود.
+RUN useradd --system --no-create-home --uid 10001 asrab
+USER asrab
+
 EXPOSE 8000
-# `$PORT` لا ٥٠٥٥ مثبَّتة — أغلب منصّات الاستضافة تُملي المنفذ (المرحلة ب).
-# محليًّا (`docker-compose.yml`) تُضبَط PORT=8000 صراحةً.
-CMD ["sh", "-c", "gunicorn 'app:create_app()' --bind 0.0.0.0:${PORT:-8000} --workers 2"]
+
+# **فحصُ صحّةٍ في الصورة نفسها** لا في `compose` وحده: منصّةٌ تشغّل الصورة
+# بلا `compose` (Render · Cloud Run) تحتاجه معها. ويلمس القاعدة فعلًا، فخادمٌ
+# يردّ ٢٠٠ وقاعدته ساقطة لا يُعَدّ سليمًا.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:'+__import__('os').environ.get('PORT','8000')+'/health',timeout=4).status==200 else 1)"
+
+# `$PORT` لا ٥٠٥٥ مثبَّتة — أغلب منصّات الاستضافة تُملي المنفذ.
+#
+# وكل معامل أدناه يمنع عطلًا بعينه، لا تزيينًا:
+#
+# · `--timeout 60` — عاملٌ معلَّق على استعلامٍ لا ينتهي يُقتَل ويُستبدَل.
+#   بلا هذا يبتلع العاملان الطلباتَ ويصمت الخادم بلا أن يسقط.
+# · `--graceful-timeout 30` — يُنهي الطلب الجاري قبل القتل عند إعادة النشر،
+#   فلا تُقطَع كتابةٌ في منتصفها.
+# · `--max-requests 1000` + `jitter` — إعادةُ تدوير العامل تمنع تسرّبًا
+#   بطيئًا للذاكرة من التراكم أسابيع. والـ`jitter` يمنع تدوير العاملين معًا.
+# · `--worker-tmp-dir /dev/shm` — دليل gunicorn المؤقّت يُكتَب في كل نبضة
+#   عامل؛ على قرصٍ شبكيّ يُنتج مهلاتٍ كاذبة. والذاكرة هي مكانه الصحيح.
+# · `--forwarded-allow-ips` — خلف Caddy وحده، فيُصدَّق `X-Forwarded-*`.
+# · السجلّات إلى `stdout` — تلتقطها المنصّة (ARCHITECTURE §٨)، وتدويرُها في
+#   `docker-compose.prod.yml`.
+# · `WEB_CONCURRENCY` من البيئة بافتراض ٢: كافٍ لمئتَي مستخدم، ويُرفَع بلا بناء.
+CMD ["sh", "-c", "exec gunicorn 'app:create_app()' \
+    --bind 0.0.0.0:${PORT:-8000} \
+    --workers ${WEB_CONCURRENCY:-2} \
+    --timeout 60 \
+    --graceful-timeout 30 \
+    --max-requests 1000 \
+    --max-requests-jitter 100 \
+    --worker-tmp-dir /dev/shm \
+    --forwarded-allow-ips '*' \
+    --access-logfile - \
+    --error-logfile - \
+    --capture-output"]

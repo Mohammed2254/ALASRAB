@@ -9,10 +9,24 @@
 
 name: asrab-v2-prod
 
+# **تدوير السجلّات ليس تحسينًا بل منعُ عطل** (و-٢١): سجلّ Docker الافتراضيّ
+# (`json-file`) **ينمو بلا حدّ**، وامتلاءُ القرص أشهر أسباب سقوط الخوادم
+# الصغيرة — ويسقط معه Postgres فلا يقبل كتابةً، ويبدو العطل عطلَ تطبيق.
+# ثلاثون ميغابايتًا × ٣ لكل خدمة سقفٌ أعلاه لا يُتجاوَز.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
+
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    logging: *logging
+    # `pg_dump` و`pg_restore` يحتاجان مساحةً مشتركة أوسع من ٦٤MB الافتراضية
+    # على بعض الاستعلامات — والنسخ الاحتياطيّ اليوميّ هو أوّل من يصطدم بها.
+    shm_size: '256mb'
     environment:
       POSTGRES_DB: asrab_v2
       POSTGRES_USER: asrab
@@ -31,6 +45,15 @@ services:
       db:
         condition: service_healthy
     expose: ['8000'] # لا `ports:` — لا يصل إليه أحد إلا عبر caddy/cloudflared
+    logging: *logging
+    # الفحص في الصورة نفسها (`Dockerfile`)، ويُعلَن هنا ليُعرَف للـ`depends_on`
+    # أدناه: Caddy تنتظر **صحّةً** لا إقلاعًا، فلا تردّ ٥٠٢ على أوّل زائر.
+    healthcheck:
+      test: ['CMD-SHELL', 'python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen(\"http://127.0.0.1:8000/health\",timeout=4).status==200 else 1)"']
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
     environment:
       PORT: '8000'
       FLASK_APP: 'app:create_app'
@@ -44,7 +67,10 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
-    depends_on: [app]
+    logging: *logging
+    depends_on:
+      app:
+        condition: service_healthy
     ports: ['80:80', '443:443']
     environment:
       DOMAIN: ${DOMAIN}
@@ -57,7 +83,10 @@ services:
   # cloudflared:
   #   image: cloudflare/cloudflared:latest
   #   restart: unless-stopped
-  #   depends_on: [app]
+  #   logging: *logging
+  #   depends_on:
+  #     app:
+  #       condition: service_healthy
   #   command: tunnel --no-autoupdate --url http://app:8000
 
 volumes:

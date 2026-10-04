@@ -246,3 +246,57 @@ def test_guard_is_silent_in_development():
     # بلا العلامة: المفتاح التطويريّ وحده لا يكفي لاستدعاء الحرس.
     dev_only = {"SECRET_KEY": config_module.DEV_SECRET_KEY}
     assert config_module.assert_production_safe(dev_only) is None
+
+
+# ═══ ق-٢٨٣ — عقد الخطأ على مسارٍ لا وجود له ═══
+
+
+def test_unknown_api_path_returns_the_documented_json_shape(client):
+    """
+    `API.md §١`: «كل ردّ خطأ بالشكل نفسه — **حتى غير المتوقَّع منه**».
+
+    **وكان التعليق في `spa_fallback` يزعم هذا والكود يفعل غيره**: `return exc`
+    يُسلّم الاستثناء لفلاسك فيُصيِّره صفحة HTML **إنجليزية** — أوّلُ ردٍّ يراه
+    عميلٌ أخطأ في المسار يكسر العقد الذي يوثّقه ذلك السطر نفسه. اكتُشف
+    بـ`curl` على صورة الإنتاج لا باختبار، فهذا الاختبار يسدّ الثغرة.
+
+    @covers ق-٢٨٣
+    """
+    r = client.get("/api/this-route-does-not-exist")
+
+    assert r.status_code == 404
+    assert r.headers["Content-Type"].startswith("application/json")
+    assert r.get_json()["message"]
+    # ولا أثرَ للصفحة الإنجليزية الافتراضية.
+    assert b"<!doctype html>" not in r.get_data().lower()
+
+
+def test_unknown_api_path_still_carries_the_security_headers(client):
+    """ردُّ الخطأ أوّل ما يصل متصفّحًا مخترقًا — فالترويسات عليه أوجب.
+
+    @covers ق-٢٨٣
+    """
+    r = client.get("/api/this-route-does-not-exist")
+    assert r.headers["X-Frame-Options"] == "DENY"
+    assert "Content-Security-Policy" in r.headers
+
+
+def test_deliberate_abort_keeps_its_own_arabic_message(client, seeded):
+    """
+    **والإصلاح لا يطمس الرسائل المقصودة:** `abort(404, message=…)` يقع داخل
+    مخطّط `flask-smorest`، ومعالجُ المخطّط أخصُّ من معالج التطبيق فيسبقه.
+    فلو طمسه الإصلاح لصارت كل رسائل «لا طالب بهذا المعرّف» رسالةً واحدة
+    عامّة — خسارةٌ صامتة في وضوح الأخطاء.
+
+    @covers ق-٢٨٣
+    """
+    membership = db.session.scalar(
+        select(Membership).where(Membership.user_id == seeded["users"]["1001"])
+    )
+    membership.role = "admin"
+    db.session.commit()
+    client.post("/api/auth/login", json={"student_no": "1001", "pin": "1234"}, headers=ORIGIN)
+
+    r = client.post(f"/api/admin/users/{10**9}/reset-pin", headers=ORIGIN)
+    assert r.status_code == 404
+    assert r.get_json()["message"] == "لا طالب بهذا المعرّف."

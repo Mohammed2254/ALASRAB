@@ -1,0 +1,97 @@
+# النشر على الخادم — و-٢١.
+#
+# **يشتعل بنجاح CI لا بالدفع**: `workflow_run` يعني أن ما يُنشَر مرّ على
+# البوابات كلّها، بخلاف الدفع المباشر الذي ينشر بناءً أحمر.
+#
+# **ولا يُشغّل الهجرات** — قرارٌ لا سهو (`ARCHITECTURE.md §٨`: «الهجرات
+# يدويًّا قبل التشغيل، لا هجرة تلقائية عند الإقلاع»). وبدل أن يتجاهل القرار
+# أو ينشر كودًا جديدًا على مخطّطٍ قديم، **يرفض النشر ويقول ما يجب فعله**:
+# الكود القديم يبقى يعمل على مخطّطه الصحيح، وهو أسلم من جديدٍ يصطدم بعمودٍ
+# غير موجود.
+#
+# والمقياس `current` مقابل `heads` لا `flask db check`: الأخيرة تكشف **انحراف
+# النماذج عن المخطّط** (وهو سؤالٌ آخر نافع)، لا «ملفُّ هجرةٍ لم يُطبَّق».
+#
+# ثلاثة أسرار في Settings ⇒ Secrets and variables ⇒ Actions:
+#   DEPLOY_HOST · DEPLOY_USER · DEPLOY_SSH_KEY
+# والمفتاح **للنشر وحده** لا مفتاحك الشخصيّ — فسحبُه لا يُفقدك شيئًا آخر.
+
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  # مدخلٌ يدويّ: بعد تشغيل هجرةٍ على الخادم، يُعاد النشر بلا دفعةٍ صورية.
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # `workflow_run` يشتعل على الفشل أيضًا — فالشرط ليس تزيينًا.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: مفتاح النشر وبصمة الخادم
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy
+          chmod 600 ~/.ssh/deploy
+          # بلا البصمة يسأل ssh ويتوقّف الإجراء بلا رسالةٍ مفهومة.
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: النشر — ويتوقّف إن كانت ثمّة هجرة معلَّقة
+        run: |
+          ssh -i ~/.ssh/deploy -o BatchMode=yes \
+            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" bash -se << 'REMOTE'
+          set -euo pipefail
+          cd ~/asrab-v2
+          COMPOSE="docker compose -f docker-compose.prod.yml --env-file .env.prod"
+
+          git fetch --quiet origin main
+          git reset --hard origin/main
+
+          rev() { $COMPOSE run --rm -T app flask db "$1" 2>/dev/null \
+                  | grep -oE '[0-9a-f]{12}' | sort -u | tr '\n' ' ' | xargs; }
+          APPLIED=$(rev current || true)
+          AVAILABLE=$(rev heads || true)
+
+          if [ "$APPLIED" != "$AVAILABLE" ]; then
+            echo "::error::هجرةٌ معلَّقة — النشر متوقّف، والكود القديم ما زال يعمل."
+            echo "  المطبَّق على القاعدة : ${APPLIED:-لا شيء}"
+            echo "  المتاح في الكود     : ${AVAILABLE:-لا شيء}"
+            echo "شغّل على الخادم ثم أعِد تشغيل هذا الإجراء يدويًّا (Run workflow):"
+            echo "  cd ~/asrab-v2 && docker compose -f docker-compose.prod.yml --env-file .env.prod run --rm app flask db upgrade"
+            exit 1
+          fi
+
+          $COMPOSE up -d --build
+
+          # الانتظار حتى **الصحّة** لا حتى الإقلاع: حاويةٌ تعمل وقاعدتُها
+          # ساقطة تُعَدّ نشرًا ناجحًا كذبًا (`/health` يلمس القاعدة).
+          for i in $(seq 1 45); do
+            cid=$($COMPOSE ps -q app)
+            state=$(docker inspect --format '{{.State.Health.Status}}' "$cid" 2>/dev/null || echo starting)
+            case "$state" in
+              healthy)   echo "✅ سليمة بعد $((i * 2)) ثانية"; exit 0 ;;
+              unhealthy) echo "::error::الحاوية غير سليمة."; $COMPOSE logs --tail=80 app; exit 1 ;;
+            esac
+            sleep 2
+          done
+          echo "::error::مهلةُ انتظار الصحّة انقضت."
+          $COMPOSE logs --tail=80 app
+          exit 1
+          REMOTE
+
+      - name: تنظيف الصُوَر القديمة
+        if: always()
+        run: |
+          ssh -i ~/.ssh/deploy -o BatchMode=yes \
+            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
+            'docker image prune -af --filter "until=168h"' || true
