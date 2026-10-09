@@ -14,3 +14,18 @@ select = ["E", "F", "I", "B", "UP", "SIM", "ARG"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+# **`pythonpath` ليس تزيينًا — بدونه CI لا يستطيع تشغيل اختبارٍ واحد.**
+#
+# الأمر `pytest` (السكربت) لا يضيف المجلّد الحاليّ إلى `sys.path`، و
+# `python -m pytest` يضيفه. فـ`conftest.py:25` (`from app import create_app`)
+# ينجح بالثاني ويفشل بالأوّل بـ`ModuleNotFoundError` ⇒ **exit 4** (خطأُ
+# استعمالٍ لا فشلَ اختبار، فلا يُقرأ كفشلٍ في الاختبارات).
+#
+# ووقع هذا فعلًا: `docs/HANDOFF.md` يوثّق `python -m pytest` و
+# `.github/workflows/ci.yml` يكتب `pytest` — فمرّت ٤٨٨ اختبارًا محليًّا
+# **وصفرٌ منها في CI**، وأوّلُ تشغيلٍ حقيقيّ للبوّابة سقط.
+#
+# والحلّ هنا لا في تعديل CI: يجعل الاستدعاءَين متكافئَين، فتختفي الفخّ
+# بدل أن يُرقَّع موضعٌ واحدٌ منه.
+pythonpath = ["."]

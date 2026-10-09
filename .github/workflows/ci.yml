@@ -40,6 +40,17 @@ jobs:
         with: { python-version: '3.12' }
       - run: pip install -r requirements.txt
         working-directory: api
+      # **اللنت والتهيئة لم يكونا في CI إطلاقًا** (و-٢٢): `ruff` مثبَّتٌ في
+      # `requirements.txt` منذ و-١ ويُشغَّل بيدٍ وحدها — فعاش خطأُ ترتيبِ
+      # استيرادٍ في `tests/` و١٥ ملفًّا غير مُهيَّأة بلا أن يُنبّه شيء.
+      - run: ruff check app tests seed.py
+        working-directory: api
+      - run: ruff format --check app tests seed.py
+        working-directory: api
+      # `pytest` السكربت لا يضيف المجلّد الحاليّ إلى `sys.path` — يضيفه
+      # `pythonpath = ["."]` في `pyproject.toml`. وبدونه يفشل تحميل
+      # `conftest.py` بـexit 4 (خطأُ استعمالٍ لا فشلَ اختبار)، وهو ما سقط
+      # فيه أوّل تشغيلٍ حقيقيّ لهذه البوّابة.
       - run: pytest -q
         working-directory: api
 
