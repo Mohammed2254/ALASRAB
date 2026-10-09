@@ -11,9 +11,11 @@
 بسطرٍ يُحذف سهوًا، ويعود العمى. فهذه الفحوص تحرس **شكل البوّابة نفسها** —
 وهي الطبقة التي لم يكن أحدٌ يحرسها.
 
-@covers ق-٢٨٥, ق-٢٨٩, ق-٢٩٠, ق-٢٩٣, ق-٢٩٥, ق-٢٩٦
+@covers ق-٢٨٥, ق-٢٨٩, ق-٢٩٠, ق-٢٩٣, ق-٢٩٥, ق-٢٩٦, ق-٢٩٧
 """
 
+import ast
+import re
 import tomllib
 from pathlib import Path
 
@@ -236,3 +238,67 @@ def test_schemas_package_has_no_re_export_barrel():
     assert not hasattr(pkg, "__all__"), "عاد `__all__` إلى حزمة المخططات"
     leaked = [n for n in dir(pkg) if n.endswith("Schema") and not n.startswith("_")]
     assert not leaked, "أسماءٌ مُسطَّحة في `app.schemas` — الـbarrel يعود:\n  " + "\n  ".join(leaked)
+
+
+ROUTE_CODE_CAP = 300
+
+
+def _code_lines(path: Path) -> int:
+    """أسطرُ كودٍ فعليّة: بلا فراغٍ ولا تعليقٍ ولا نصِّ توثيق."""
+    src = path.read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    docs: set[int] = set()
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Expr)
+            and isinstance(node.value, ast.Constant)
+            and isinstance(node.value.value, str)
+            and node.end_lineno
+        ):
+            docs.update(range(node.lineno, node.end_lineno + 1))
+    return sum(
+        1
+        for i, line in enumerate(src.splitlines(), 1)
+        if line.strip() and not line.strip().startswith("#") and i not in docs
+    )
+
+
+def test_no_route_module_becomes_a_monolith():
+    """
+    **وُجد هذا الفحص لأن القياس هو ما كشف العطل، فالقياس يبقى.**
+
+    كان `routes/admin.py` ٨٠٧ أسطرِ كودٍ و٤٢ مسارًا — **١٤.٩٪ من التطبيق في
+    ملفٍّ واحد**، وترويستُه خمسةَ عشرَ استيرادَ خدمةٍ وستّةً وستّين مخطّطًا.
+    فكلُّ ميزةٍ إداريّةٍ تمرّ بملفٍّ لا يُقرأ كاملًا، و**ثلاثةٌ من فواصله
+    العشرة انحرفت** عن محتواها دون أن ينبّه شيء.
+
+    والسقفُ ٣٠٠ ليس رقمًا مختارًا للنجاح: أكبرُ وحدةٍ اليوم ٢٦٥
+    (`routes/me.py` — سطحُ الطيّار كلُّه)، والملفُّ المُقسَّم كان يتجاوزه
+    **٢٫٧ ضعفًا**. فالسقفُ يترك مساحةً للنموّ الطبيعيّ ويرفض عودةَ الكتلة.
+
+    ويُحرَس معه ما **لا يُرى في عدد الأسطر**: أن حزمةَ المشرف تُسجّل على
+    مخطَّطٍ واحدٍ لا أحدَ عشر — فلو عرّفت وحدةٌ مخطَّطَها الخاصّ لتغيّرت
+    أسماءُ النقاط وعقدُ OpenAPI بصمتٍ، وهو ما حرصَ التقسيمُ على منعه.
+
+    @covers ق-٢٩٧
+    """
+    routes = ROOT / "app" / "routes"
+    modules = sorted(p for p in routes.rglob("*.py") if p.name != "__init__.py")
+    assert len(modules) >= 12, f"استُخرجت {len(modules)} وحدةً — فحصٌ معطوبٌ لا نجاحٌ له"
+
+    fat = [
+        f"{p.relative_to(ROOT)} — {n} سطرَ كود"
+        for p in modules
+        if (n := _code_lines(p)) > ROUTE_CODE_CAP
+    ]
+    assert not fat, f"وحداتُ مسارٍ تجاوزت {ROUTE_CODE_CAP} سطرَ كود:\n  " + "\n  ".join(fat)
+
+    assert not (routes / "admin.py").exists(), "عاد `routes/admin.py` ملفًّا واحدًا"
+
+    own = [
+        p.name
+        for p in (routes / "admin").glob("*.py")
+        if p.name != "__init__.py"
+        and re.search(r"^\s*\w+\s*=\s*Blueprint\(", p.read_text(encoding="utf-8"), re.M)
+    ]
+    assert not own, "وحدةُ مشرفٍ تُعرّف مخطَّطَها الخاصّ:\n  " + "\n  ".join(own)
