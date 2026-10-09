@@ -349,8 +349,8 @@ def test_tahdir_routes_require_session(client, seeded):
 
 # ═══ ق-١٦٩ — «يوم مكتمل» = معتمد بصفحات ≥٧ لا معلَّق ═══
 #
-# `weekly_report`/`org_weekly_report` يُستدعيان **مباشرةً من الخدمة** بـ`now`
-# مجمَّد (نمط `entry.undo(..., now=...)` القائم في `test_admin_attendance.py`)
+# `weekly_report` يُستدعى **مباشرةً من الخدمة** بـ`now`
+# مجمَّدًا (نمط `entry.undo(..., now=...)` القائم في `test_admin_attendance.py`)
 # — لا عبر HTTP: التقرير دائمًا عن «الأسبوع الحاليّ» الحقيقيّ، وربطه بتاريخ
 # ثابت في الماضي (SUNDAY) عبر HTTP كان سيجعل الاختبار هشًّا زمنيًّا (نفس
 # هشاشة `test_undo_after_window_is_409` الموثَّقة في `HANDOFF.md` §١٢).

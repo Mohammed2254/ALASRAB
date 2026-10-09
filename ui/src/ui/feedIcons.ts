@@ -14,7 +14,6 @@
 export const FEED_ICONS = {
   check: 'M5 12l4 4L19 6',
   cross: 'M6 6l12 12M18 6L6 18',
-  warn: 'M12 3v10M12 21h.01',
   trend: 'M4 17L10 9L14 13L20 5',
   plus: 'M12 5v14M5 12h14',
   arrow: 'M4 12h16M14 6l6 6-6 6',

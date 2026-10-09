@@ -55,36 +55,14 @@ import { parse } from '@typescript-eslint/typescript-estree'
 const UI = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 const CONSUMER_GLOBS = ['src/screens/**/*.tsx', 'src/ui/**/*.tsx']
-const VISUAL_PRIMITIVES = [
-  'src/ui/HexIcon.tsx',
-  'src/ui/TierBadge.tsx',
-  'src/ui/Placard.tsx',
-  'src/ui/Prow.tsx',
-  'src/ui/Pill.tsx',
-  'src/ui/Field.tsx',
-  'src/ui/ProgressBar.tsx',
-  'src/ui/StatCard.tsx',
-  'src/ui/FeedRow.tsx',
-  'src/ui/BarRow.tsx',
-  'src/ui/Tile.tsx',
-  'src/ui/SegmentedControl.tsx',
-  'src/ui/Toast.tsx',
-  'src/ui/Button.tsx',
-  'src/ui/EmptyState.tsx',
-  'src/ui/ChgBadge.tsx',
-  'src/ui/Subback.tsx',
-  'src/ui/FuelDial.tsx',
-  'src/ui/PlaneIcon.tsx',
-  'src/ui/FormationSky.tsx',
-  'src/ui/Podium.tsx',
-  'src/ui/ChartBars.tsx',
-  'src/ui/CelebrateBadge.tsx',
-  'src/ui/BottomTabs.tsx',
-  'src/ui/SideNav.tsx',
-  'src/ui/TaskRow.tsx',
-  'src/ui/DataTable.tsx',
-  'src/ui/Async.tsx',
-]
+// **تُشتقّ بالنمط لا تُسرَد بيدٍ** (و-٢٢): كانت قائمةً يدوية بثمانيةٍ
+// وعشرين ملفًّا **مطابقةً حرفيًّا** لـ`src/ui/**/*.tsx` الواقع سطرًا واحدًا
+// فوقها — أي صيانةُ نسخةٍ ثانية من نمطٍ موجود. وثمنُها دُفع ثلاث مرّات في
+// و-٢٠ و-٢١ (بدائيةٌ تُضاف فتُنسى من القائمة، أو تُحذف فتبقى معلَنة).
+//
+// وحارسُ «معلَنٌ وغير موجود» أدناه يبقى: هو الآن يحرس خطأ القراءة لا خطأ
+// السرد، ولا يُستغنى عنه — فحصٌ يصمت على ملفٍّ لا يُقرأ فحصٌ أعمى.
+const VISUAL_PRIMITIVES = globSync('src/ui/**/*.tsx', { cwd: UI }).sort()
 const MOTION_ONLY = 'src/motion/'
 
 // حارس الفراغ: أقلّ عددٍ معقول من الملفّات المفحوصة. استخراجٌ دونه **عطلٌ في

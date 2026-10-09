@@ -4,7 +4,6 @@
  * تستهلكها (البلاطات وشريط التبويب والمنصّة).
  */
 export const GLYPHS = {
-  chevron: 'M24 34 L32 25 L40 34',
   formation: 'M18 40 L26 26 L34 34 L46 18',
   book: 'M32 22 L32 42 M20 24 Q32 18 44 24 M20 40 Q32 34 44 40',
   fuel: 'M20 40 L20 22 L34 22 L34 40 M34 27 L40 27 L40 36',
@@ -20,13 +19,6 @@ export const GLYPHS = {
   // ── و-١٧: بلاطات المشرف الجديدة (`report`/`adminTahdirReport` تُعيدان
   // استعمال `board`/`checklist`؛ `adminWeekPilot` تُعيد استعمال `star`؛
   // `adminNotes` تُعيد استعمال `note` — نفس المفهوم بصريًّا). أربعة جديدة فقط.
-  queue: 'M20 18 H44 V34 L38 40 H26 L20 34 Z',
-  team: 'M32 16 V28 M20 40 L32 28 L44 40',
-  scale: 'M32 16 V44 M18 24 H46 M18 24 L12 36 H24 Z M46 24 L40 36 H52 Z',
-  ladder: 'M18 44 H26 V36 H34 V28 H42 V20 H48',
   // ── و-١٨: بلاطات المشرف الأخيرة (`fuelActivities`/`fuelAssess`/
   // `quranEdit` تُعيد استعمال `fuel`/`checklist`/`book` القائمة).
-  ledger: 'M22 16 H42 V48 H22 Z M27 24 H37 M27 32 H37 M27 40 H34',
-  calendarCheck: 'M20 20 H44 V46 H20 Z M20 28 H44 M26 16 V22 M38 16 V22 M27 36 L30 39 L37 32',
-  importArrow: 'M32 16 V36 M24 28 L32 36 L40 28 M18 44 H46',
 } as const

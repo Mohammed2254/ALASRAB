@@ -17,7 +17,6 @@ class Team(db.Model):
     org_id: Mapped[int] = mapped_column(ForeignKey("orgs.id"), nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
     code: Mapped[str] = mapped_column(String, nullable=False)
-    thread_color: Mapped[str | None] = mapped_column(String, nullable=True)
 
     # أرشفة لا حذف: حذف السرب يتيّم أحداثه.
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

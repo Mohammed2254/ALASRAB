@@ -166,11 +166,6 @@ def logout(token: str) -> None:
         db.session.commit()
 
 
-def set_pin(user: User, new_pin: str) -> None:
-    user.pin_hash = hash_pin(new_pin)
-    db.session.commit()
-
-
 def revoke_all_sessions(user_id: int) -> int:
     """
     إبطال كل جلسات مستخدم. لا `commit` — المستدعي يُتمّ المعاملة.
