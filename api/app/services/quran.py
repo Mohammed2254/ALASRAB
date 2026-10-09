@@ -19,7 +19,7 @@ from sqlalchemy import select
 from ..extensions import db
 from ..models import Membership, Org, PointEvent, User
 from ..rules.engine import Achievement, hours_for
-from . import audit, ledger, week
+from . import audit, ledger, membership, week
 from .deck import recent_events
 from .errors import ServiceError
 
@@ -50,7 +50,9 @@ def roster(org_id: int) -> list[User]:
         db.session.scalars(
             select(User)
             .join(Membership, Membership.user_id == User.id)
-            .where(User.org_id == org_id, User.is_active.is_(True), Membership.left_at.is_(None))
+            .where(
+                *membership.active_roster_clauses(org_id),
+            )
             .order_by(User.full_name)
         )
     )

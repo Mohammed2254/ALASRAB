@@ -19,7 +19,7 @@ from sqlalchemy.exc import IntegrityError
 from ..extensions import db
 from ..models import Membership, Org, PointEvent, ReadingSubmission, Team, User
 from ..rules.engine import Achievement, ruleset_at
-from . import audit, ledger, week
+from . import audit, ledger, membership, week
 from .errors import ServiceError
 
 ACTIVITY = "reading"
@@ -491,7 +491,9 @@ def org_tahdir_report(
         select(User.id, User.full_name, Team.name)
         .join(Membership, Membership.user_id == User.id)
         .join(Team, Team.id == Membership.team_id)
-        .where(User.org_id == org.id, User.is_active.is_(True), Membership.left_at.is_(None))
+        .where(
+            *membership.active_roster_clauses(org.id),
+        )
     ).all()
 
     rows = db.session.execute(

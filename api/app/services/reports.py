@@ -20,7 +20,7 @@ from ..extensions import db
 from ..models import Membership, Org, Team, User
 from ..rules.engine import CENT
 from . import hours as hours_query
-from . import readiness
+from . import membership, readiness
 
 DEFAULT_DAYS = 7
 MAX_DAYS = 90
@@ -57,9 +57,7 @@ def build(org: Org, days: int = DEFAULT_DAYS) -> Report:
         .join(Team, Team.id == Membership.team_id)
         .outerjoin(window, window.c.user_id == User.id)
         .where(
-            User.org_id == org.id,
-            User.is_active.is_(True),
-            Membership.left_at.is_(None),
+            *membership.active_roster_clauses(org.id),
         )
     ).all()
 

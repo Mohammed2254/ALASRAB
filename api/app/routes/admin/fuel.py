@@ -110,7 +110,8 @@ class FuelWeekView(MethodView):
         **بلا كتابة**: أسبوعٌ لم يُفتح يُعرَض بقائمته الافتراضية، فتصفّحُ
         الماضي لا يترك صفوفًا فارغة خلفه.
         """
-        return fuel_week_service.week_view(_org(), _requested_week(_org()))
+        org = _org()
+        return fuel_week_service.week_view(org, _requested_week(org))
 
 
 @blp.route("/admin/fuel/week/team")
@@ -120,9 +121,10 @@ class FuelWeekTeam(MethodView):
     @blp.response(200, FuelWeekSchema)
     def post(self, data):
         """تعيين سربٍ لمهمّة — «لكل سرب مهمّة واحدة» إرشادٌ لا قيد."""
+        org = _org()
         try:
             return fuel_week_service.set_task_team(
-                _org(), _requested_week(_org()), data["activity_id"], data["team_id"]
+                org, _requested_week(org), data["activity_id"], data["team_id"]
             )
         except fuel_service.FuelError as exc:
             abort(exc.status, message=str(exc))
@@ -135,8 +137,9 @@ class FuelWeekTasks(MethodView):
     @blp.response(200, FuelWeekSchema)
     def post(self, data):
         """إضافة مهمّة **لهذا الأسبوع وحده**."""
+        org = _org()
         try:
-            return fuel_week_service.add_task(_org(), _requested_week(_org()), data["activity_id"])
+            return fuel_week_service.add_task(org, _requested_week(org), data["activity_id"])
         except fuel_service.FuelError as exc:
             abort(exc.status, message=str(exc))
 
@@ -145,10 +148,9 @@ class FuelWeekTasks(MethodView):
     @blp.response(200, FuelWeekSchema)
     def delete(self, data):
         """إزالة مهمّة **لهذا الأسبوع وحده** — لا تمسّ النشاط ولا أسبوعًا آخر."""
+        org = _org()
         try:
-            return fuel_week_service.remove_task(
-                _org(), _requested_week(_org()), data["activity_id"]
-            )
+            return fuel_week_service.remove_task(org, _requested_week(org), data["activity_id"])
         except fuel_service.FuelError as exc:
             abort(exc.status, message=str(exc))
 
@@ -161,9 +163,10 @@ class FuelWeekScores(MethodView):
     def post(self, data):
         """درجاتٌ **مسوّدة** — لا حدث دفتر، ولا فحص «تجمع ١٠٠٪» إلا عند الاعتماد."""
         scores = {s["criterion_id"]: s["score_pct"] for s in data["scores"]}
+        org = _org()
         try:
             return fuel_week_service.save_scores(
-                _org(), _requested_week(_org()), data["activity_id"], scores
+                org, _requested_week(org), data["activity_id"], scores
             )
         except fuel_service.FuelError as exc:
             abort(exc.status, message=str(exc))
@@ -178,9 +181,10 @@ class FuelWeekApprove(MethodView):
         اعتماد الأسبوع — **مرّةً واحدة**، والأحداث مؤرَّخة ببداية الأسبوع لا
         باليوم (فتقييمٌ متأخّر يقع في مكانه من الدفتر).
         """
+        org = _org()
         try:
             return fuel_week_service.approve_week(
-                _org(), _requested_week(_org()), g.user.id, datetime.now(UTC)
+                org, _requested_week(org), g.user.id, datetime.now(UTC)
             )
         except fuel_service.FuelError as exc:
             abort(exc.status, message=str(exc))

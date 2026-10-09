@@ -15,7 +15,7 @@ from sqlalchemy import func, select, update
 
 from ..extensions import db
 from ..models import LoginAttempt, Membership, Org, Session, User
-from . import audit
+from . import audit, membership
 
 SESSION_DAYS = 90
 MAX_ATTEMPTS = 5
@@ -218,6 +218,4 @@ def reset_pin(org_id: int, target: User, actor_id: int) -> str:
 
 
 def membership_of(user: User) -> Membership | None:
-    return db.session.scalar(
-        select(Membership).where(Membership.user_id == user.id, Membership.left_at.is_(None))
-    )
+    return membership.current(user.id)

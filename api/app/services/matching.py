@@ -16,6 +16,7 @@ from sqlalchemy import select
 
 from ..extensions import db
 from ..models import Membership, User
+from . import membership
 
 
 @dataclass(frozen=True)
@@ -36,7 +37,9 @@ def match_names(org_id: int, names: list[str]) -> dict[str, Match]:
     roster = db.session.execute(
         select(User)
         .join(Membership, Membership.user_id == User.id)
-        .where(User.org_id == org_id, User.is_active.is_(True), Membership.left_at.is_(None))
+        .where(
+            *membership.active_roster_clauses(org_id),
+        )
     ).scalars()
 
     by_name: dict[str, list[int]] = {}

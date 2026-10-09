@@ -109,4 +109,8 @@ class AppendThreshold(MethodView):
                 _org(), data["name"], data["at_hours"], g.user.id
             )
         except rules_admin_service.RulesAdminError as exc:
-            abort(422, message=str(exc))
+            # `exc.status` لا ٤٢٢ مُثبَّتًا: هذا كان **المعالجَ الوحيدَ** من
+            # أربعين يُثبّت الرمز. والسلوكُ اليوم واحدٌ (كلُّ رفعةٍ تستعمل
+            # افتراضَ `ServiceError`)، فالعطلُ **مؤجَّلٌ لا غائب**: أوّلُ رفعةٍ
+            # بـ`status=409` تُسطَّح إلى ٤٢٢ صامتةً.
+            abort(exc.status, message=str(exc))

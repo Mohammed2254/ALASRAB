@@ -25,6 +25,7 @@ from ..extensions import db
 from ..models import Membership, Org, Team, User
 from ..rules.engine import CENT
 from . import hours as hours_query
+from . import membership as membership_service
 from . import readiness, week
 
 
@@ -34,7 +35,9 @@ def _pilot_rows(org: Org, since: datetime, until: datetime | None) -> list:
         select(User.id, User.full_name, func.coalesce(window.c.hours, 0).label("hours"))
         .join(Membership, Membership.user_id == User.id)
         .outerjoin(window, window.c.user_id == User.id)
-        .where(User.org_id == org.id, User.is_active.is_(True), Membership.left_at.is_(None))
+        .where(
+            *membership_service.active_roster_clauses(org.id),
+        )
         # فكّ تعادل بـ`id` — استقرار تقنيّ بحت، لا معيار FR-052 (يخصّ الأسراب وحدها).
         .order_by(func.coalesce(window.c.hours, 0).desc(), User.id)
     ).all()
@@ -182,7 +185,9 @@ def _general_aircraft(org: Org) -> list[_Aircraft]:
         select(User.id, User.full_name, func.coalesce(window.c.hours, 0).label("hours"))
         .join(Membership, Membership.user_id == User.id)
         .outerjoin(window, window.c.user_id == User.id)
-        .where(User.org_id == org.id, User.is_active.is_(True), Membership.left_at.is_(None))
+        .where(
+            *membership_service.active_roster_clauses(org.id),
+        )
     ).all()
     return [_Aircraft(uid, name, Decimal(hours).quantize(CENT)) for uid, name, hours in rows]
 
@@ -193,9 +198,7 @@ def formation(org: Org, user_id: int, scope: str, now: datetime | None = None) -
     اسم للساقط («إنجاز فقط»). الحجم تراكميّ (توثيق الوحدة أعلاه).
     """
     if scope == "team":
-        membership = db.session.scalar(
-            select(Membership).where(Membership.user_id == user_id, Membership.left_at.is_(None))
-        )
+        membership = membership_service.current(user_id)
         # بلا عضوية سارية: لا معنى لـ«سربي» — مشهدٌ فارغ لا خطأ (نمط `team: null`).
         aircraft = _team_aircraft(org, membership.team_id) if membership else []
     else:

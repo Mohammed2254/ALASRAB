@@ -11,7 +11,7 @@
 بسطرٍ يُحذف سهوًا، ويعود العمى. فهذه الفحوص تحرس **شكل البوّابة نفسها** —
 وهي الطبقة التي لم يكن أحدٌ يحرسها.
 
-@covers ق-٢٨٥, ق-٢٨٩, ق-٢٩٠, ق-٢٩٣, ق-٢٩٥, ق-٢٩٦, ق-٢٩٧, ق-٢٩٨, ق-٣٠٠
+@covers ق-٢٨٥, ق-٢٨٩, ق-٢٩٠, ق-٢٩٣, ق-٢٩٥, ق-٢٩٦, ق-٢٩٧, ق-٢٩٨, ق-٣٠٠, ق-٣٠١
 """
 
 import ast
@@ -459,3 +459,40 @@ def test_no_design_document_claims_behaviour_without_a_citation():
         bare += [f"{doc.name} › {name}" for name, ok, n in closed if n and not ok]
 
     assert not bare, "قسمُ وثيقةٍ يدّعي سلوكًا بلا استشهاد:\n  " + "\n  ".join(bare)
+
+
+def test_the_active_member_condition_has_one_owner():
+    """
+    **وُجد هذا الفحص لأن الشرطَ الناقص لا يُفشل استعلامًا.**
+
+    `left_at IS NULL` كان مكتوبًا **ثلاثًا وعشرين مرّة** في أحدَ عشرَ ملفًّا،
+    منها ثماني نسخٍ **متطابقةٍ حرفيًّا** من «كشفِ جمعيةٍ نشط». ونسخةٌ تُكتب غدًا
+    وتنسى الشرط **تُرجع صفًّا زائدًا لا خطأً**: طالبٌ ترك السرب يظهر في
+    الترتيب، ويُحسب في المتوسّط، وتُطلب له ساعات. فالعطلُ **رقمٌ خاطئٌ صامت**،
+    وهو أسوأُ ما يُنتجه هذا المشروع لأن أحدًا لا يراه.
+
+    وهذا بعينه مبدأُ `week.py` و`hours.py`: ما يحمل سياسةً له مالكٌ واحد.
+
+    **والشكلُ المختلفُ جوهرًا يبقى** (`standings` لترتيب الأسراب — يزيد
+    `Team.archived_at` · `roster._other_admins` — المشرفون وحدهم · `teams`
+    — عدٌّ لكل سرب): توحيدُها يُخفي فرقًا حقيقيًّا، فالفحصُ على **الشكل
+    الموحَّد** لا على ذكر العمود.
+
+    @covers ق-٣٠١
+    """
+    services = ROOT / "app" / "services"
+    # ووجودُ المالك نفسِه لا يحتاج تأكيدًا حقيقيًّا: حذفُه يُسقط `conftest`
+    # بـ`ImportError` قبل أن يُجمَع اختبارٌ واحد — فحذفُه صاخبٌ أصلًا، والذي
+    # يحتاج حرسًا هو **عودةُ النسخة** بجانبه.
+    assert (services / "membership.py").exists()
+
+    shape = re.compile(
+        r"User\.org_id == (?:org_id|org\.id),\s*User\.is_active\.is_\(True\),"
+        r"\s*Membership\.left_at\.is_\(None\)",
+        re.S,
+    )
+    modules = sorted(p for p in services.glob("*.py") if p.name != "membership.py")
+    assert len(modules) >= 15, f"استُخرجت {len(modules)} خدمةً — فحصٌ معطوبٌ لا نجاحٌ له"
+
+    inline = [p.name for p in modules if shape.search(p.read_text(encoding="utf-8"))]
+    assert not inline, "شرطُ الكشف النشط مكتوبٌ سطريًّا بدل المالك:\n  " + "\n  ".join(inline)

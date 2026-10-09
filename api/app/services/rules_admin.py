@@ -29,7 +29,7 @@ from ..models import (
     WeightVersion,
 )
 from ..rules.engine import CENT
-from . import audit, week
+from . import audit, membership, week
 from .errors import ServiceError
 
 
@@ -186,7 +186,9 @@ def _active_users_hours(org_id: int) -> dict[int, Decimal]:
             & (PointEvent.org_id == org_id)
             & (PointEvent.scope == "individual"),
         )
-        .where(User.org_id == org_id, User.is_active.is_(True), Membership.left_at.is_(None))
+        .where(
+            *membership.active_roster_clauses(org_id),
+        )
         .group_by(User.id)
     ).all()
     return {uid: Decimal(hours).quantize(CENT) for uid, hours in rows}

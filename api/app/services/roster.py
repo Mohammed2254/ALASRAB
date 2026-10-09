@@ -27,6 +27,7 @@ from sqlalchemy.exc import IntegrityError
 from ..extensions import db
 from ..models import Membership, Team, User
 from . import audit
+from . import membership as membership_service
 from .auth import generate_pin, hash_pin, revoke_all_sessions
 from .errors import ServiceError
 
@@ -189,9 +190,7 @@ def set_role(org, user_id: int, role: str, actor_id: int) -> dict:
     if role not in ROLES:
         raise RosterError("دورٌ غير معروف.")
     user = _target(org.id, user_id)
-    membership = db.session.scalar(
-        select(Membership).where(Membership.user_id == user.id, Membership.left_at.is_(None))
-    )
+    membership = membership_service.current(user.id)
     if membership is None:
         raise RosterError("لا عضوية سارية لهذا الطالب — انقله إلى سرب أوّلًا.")
     if membership.role == role:
@@ -262,9 +261,7 @@ def set_active(org, user_id: int, active: bool, actor_id: int) -> dict:
 
 
 def _is_last_admin(org_id: int, user_id: int) -> bool:
-    membership = db.session.scalar(
-        select(Membership).where(Membership.user_id == user_id, Membership.left_at.is_(None))
-    )
+    membership = membership_service.current(user_id)
     if membership is None or membership.role != "admin":
         return False
     return _other_admins(org_id, user_id) == 0

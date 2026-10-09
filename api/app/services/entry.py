@@ -25,7 +25,7 @@ from sqlalchemy.exc import IntegrityError
 from ..extensions import db
 from ..models import Membership, Org, PointEvent, User
 from ..rules.engine import Achievement, ruleset_at
-from . import ledger, week
+from . import ledger, membership, week
 from .errors import ServiceError
 
 UNDO_WINDOW = timedelta(minutes=5)
@@ -62,7 +62,9 @@ def _roster(org_id: int) -> list[User]:
         db.session.scalars(
             select(User)
             .join(Membership, Membership.user_id == User.id)
-            .where(User.org_id == org_id, User.is_active.is_(True), Membership.left_at.is_(None))
+            .where(
+                *membership.active_roster_clauses(org_id),
+            )
         )
     )
 

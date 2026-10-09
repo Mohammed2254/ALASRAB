@@ -15,6 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from ..extensions import db
 from ..models import Membership, Team, User
 from . import audit
+from . import membership as membership_service
 from .errors import ServiceError
 
 
@@ -128,9 +129,7 @@ def transfer_member(org, team_id: int, user_id: int, actor_id: int) -> Membershi
     if user is None or user.org_id != org.id:
         raise TeamsError("لا طالب بهذا المعرّف.", status=404)
 
-    current = db.session.scalar(
-        select(Membership).where(Membership.user_id == user.id, Membership.left_at.is_(None))
-    )
+    current = membership_service.current(user.id)
     role = current.role if current is not None else "pilot"
     if current is not None:
         current.left_at = datetime.now(UTC)
