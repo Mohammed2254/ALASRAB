@@ -86,18 +86,15 @@ jobs:
       # مصفوفة CI عديمة الحالة بسهولة — يبقى يدويًّا قبل إغلاق كل شريحة كما
       # كان طوال و-١٣..و-١٨، لا آليًّا هنا.
 
-  web-regression:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - run: npm ci
-        working-directory: web
-      - run: npx vitest run
-        working-directory: web
-      - run: npm run check:arch
-        working-directory: web
+  # ── `web-regression` أُزيلت في و-٢٢ ──
+  #
+  # `web/` واجهةٌ قديمة **لا تُشحن**: `ui/` لا يستوردها، و`api/` لا يخدمها،
+  # و`Dockerfile` لا يبنيها. فاختباراتُها الـ٥١ كانت تحمي كودًا لا يصل
+  # مستخدمًا — **وشبكةُ انحدارٍ لا تحمي شيئًا حيًّا ليست شبكة**، وهي تُطيل كل
+  # دفعةٍ وتُضيف `node_modules` ثالثة.
+  #
+  # والملفّات باقيةٌ على القرص بقرار المستخدم (`web/README.md` يشرح حدَّها)،
+  # وتاريخُها في git على أيّ حال.
 
   slice-gate:
     runs-on: ubuntu-latest

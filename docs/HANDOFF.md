@@ -124,7 +124,7 @@
 |---|---|
 | `api/` | الخلفية — ٤٩ مسارًا · ٣٧٠ اختبارًا. **مسٌّ حقيقيّ وحيد بعد اكتمالها**: `app/__init__.py` يخدم `ui/dist/` الساكنة (و-١٩، لأجل النشر لا عقد جديد) |
 | `ui/` | ⭐ **الواجهة مكتملة — ٢٥/٢٥ شاشة** — TypeScript · ٩٠ ملفّ مصدر (٢٣ بدائية بصرية + طبقة حركة + ٩ شاشات طيّار + ١٥ شاشة مشرف) · ٦ سكربتات بوابات · ١٢ خطًّا |
-| `web/` | 🔒 **مرجع مجمَّد** (٤٠ ملفّ JSX) — بواباته تبقى تعمل شبكةَ انحدار، ولا يُطوَّر |
+| `web/` | 🔒 **مرجع مجمَّد لا يُشحن** (٤٥ ملفًّا) — **خارج CI منذ و-٢٢**، ولا يُتَّخذ مرجعًا لعملٍ جديد (`web/README.md`: ثمنُ ذلك دُفع في و-١٧) |
 | `scripts/` | بوابة التتبّع للمستودع كلّه (رُقّيت من `web/scripts/` في و-١٣) |
 | جذر المستودع | `Dockerfile` (**مستخدمٌ غير جذر · HEALTHCHECK · gunicorn مُصلَّب**) · `docker-compose.yml` (تحقّق محليّ) · `docker-compose.prod.yml` (**تدوير سجلّات · بوّابة صحّة**) · `render.yaml` · `.github/workflows/{ci,deploy}.yml` · `deploy/{Caddyfile,bootstrap.sh,backup.sh}` |
 
@@ -188,7 +188,8 @@ cd ui && npx tsc --noEmit                     # أنواع
         LD_LIBRARY_PATH=~/.local/lib/poppler \
           node scripts/visual-qa.mjs /tmp/uiqa # ٢٨ شاشة · ٣٢٠ · ٣٧٥ · ١٢٨٠ · ١٤٤٠px
 cd ../api && pytest -q                         # ٤٩٣ اختبارًا — و`pytest` و`python -m pytest` متكافئان الآن
-cd ../web && npm run check:arch && npx vitest run  # شبكة الانحدار (٥١/٥١)
+# `web/` خارج البوّابات (و-٢٢): واجهةٌ لا تُشحن، وشبكةُ انحدارٍ لا تحمي
+# شيئًا حيًّا ليست شبكة. و`web/README.md` يشرح حدَّها.
 ```
 
 **⚠️ قياسُ التقسيم يكون على `vite preview` لا على خادم التطوير** — الأخير
@@ -354,7 +355,7 @@ grep -E '^\| FR-[0-9]{3} \|' docs/design/TRACEABILITY.md \
 | جداول قائمة | **٢٣** من ٢٤ مصمَّمًا | `SELECT count(*) … WHERE schemaname='public' AND tablename <> 'alembic_version'` — الناقص الوحيد: `readiness_log` (مؤجَّل عمدًا بلا FR يطلبه). `raw_rows`/`entry_defaults` بُنيا في و-٥؛ و-١١ عمودٌ على جدول قائم لا جدول جديد. **و-١٢ صفر جدول** — أرضيّة تحقّق لا مخطّط |
 | دوالّ اختبار خلفية | **٣٤٣** | `grep -h 'def test_' api/tests/*.py \| wc -l` |
 | **حالات** pytest | **٣٧٠** | `pytest -q` |
-| اختبارات الواجهة (`web/`) | **٥١** | `cd web && npx vitest run` (بلا تغيير منذ و-١٢) |
+| اختبارات `web/` | ~~٥١~~ | **أُخرجت من CI في و-٢٢** — واجهةٌ لا تُشحن، فاختباراتُها لا تحمي شيئًا حيًّا. تُشغَّل يدويًّا إن احتُجت: `cd web && npx vitest run` |
 | اختبارات الواجهة (`ui/`) | **٤٠** | `cd ui && npx vitest run` — ١٣ من و-١٣ (`nav/history`) + ٢٧ من و-١٤/١٥ (`geometry` · `primitives`، منها ٣ لـ`splitTop3`) |
 | معايير القبول | **٢٣١ معلَنًا / ٢٣١ مملوكًا** | `bash scripts/check-slice-gate.sh` — كانت ٢١٠ قبل و-١٣، ٢٢٣ بعدها، وأضافت و-١٤ ٨ معايير (ق-٢٢٤..ق-٢٣١) |
 | ملفّات هجرة | **١١** | `ls api/migrations/versions/*.py \| wc -l` (بلا تغيير — و-١٢ صفر هجرة، انتقلت مصدرًا لا عددًا) |

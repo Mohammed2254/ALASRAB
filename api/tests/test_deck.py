@@ -374,13 +374,25 @@ def test_team_is_null_when_membership_is_absent(client, seeded):
     assert body["hours"] == "0.00"
 
 
-def test_internal_errors_are_not_exposed(client, seeded, app):
+def test_internal_errors_are_not_exposed(client, seeded, app, monkeypatch):
     """
-    سُلّم رتب مفقود يرفع `ValueError` — ويجب ألّا يصل نصّه ولا أثر التنفيذ إلى
-    المستخدم. تفصيلٌ داخلي في ردّ خطأ هو خريطة للمهاجم.
+    استثناءٌ **غير متوقَّع** لا يصل نصُّه ولا أثرُ تنفيذه إلى المستخدم —
+    تفصيلٌ داخليّ في ردّ خطأ خريطةٌ للمهاجم (`API.md §١`).
+
+    **وبُدِّلت وسيلةُ هذا الاختبار في و-٢٢، لا قصدُه.** كان يستعمل «سُلّم رتب
+    مفقود» وسيلةً، ويؤكّد أن الردّ ٥٠٠ وأن «سُلّم رتب» **لا** يظهر — أي أنه
+    **كان يُقنّن عطلًا سلوكًا مقصودًا**: ذاك عطلُ **إعداد** يملك المشرف
+    إصلاحه، فإخفاؤه خلف «حدث خلل في الخادم» يُرسله يبحث في السجلّات عن خطأٍ
+    ليس فيها. صار ٤٢٢ برسالةٍ صريحة (ق-٢٩٢).
+
+    فالوسيلةُ الآن استثناءٌ **حقيقيُّ المفاجأة** يُحقَن في الخدمة — وهو ما
+    كان يُقصَد قياسه أصلًا.
     """
-    db.session.execute(db.text("DELETE FROM rank_thresholds"))
-    db.session.commit()
+
+    def boom(*_a, **_k):
+        raise RuntimeError('تفصيلٌ داخليّ: relation "point_events" لا يمكن قراءتها')
+
+    monkeypatch.setattr("app.services.deck.build", boom)
     _auth(client)
 
     # وضع الاختبار يمرّر الاستثناء افتراضيًّا؛ نقيس سلوك الإنتاج الفعلي.
@@ -390,6 +402,33 @@ def test_internal_errors_are_not_exposed(client, seeded, app):
     assert r.status_code == 500
     body = r.get_data(as_text=True)
     assert "Traceback" not in body
-    assert "rank_thresholds" not in body
-    assert "سُلّم رتب" not in body
+    assert "point_events" not in body
+    assert "تفصيلٌ داخليّ" not in body
     assert r.json["message"] == "حدث خلل في الخادم. حاول بعد قليل."
+
+
+# ═══ و-٢٢ — جمعيةٌ بلا سُلّم رتب: ٤٢٢ لا ٥٠٠ (ق-٢٩٢) ═══
+
+
+def test_org_without_a_rank_ladder_gets_a_clear_422_not_a_500(client, seeded):
+    """
+    **كان `deck.py` الخدمةَ الوحيدة التي ترفع `ValueError` عاريًا**،
+    و`routes/me.py` ينادي `build` بلا `try` — فيلتقطه معالجُ التطبيق العامّ
+    ويردّ **٥٠٠ بـ«حدث خلل في الخادم»** على الشاشة الرئيسية للطالب.
+
+    وعطلُ إعدادٍ يُقرَأ عطلَ خادم يُرسل المشرفَ يبحث في السجلّات عن خطأٍ
+    ليس فيها — والرسالة تقول الآن ما الناقص وأين يُضبَط.
+
+    ومُقاسٌ حيًّا قبل الإصلاح: `GET /me/deck → 500`. وبعده: `422`.
+
+    @covers ق-٢٩٢
+    """
+    db.session.execute(db.text("DELETE FROM rank_thresholds"))
+    db.session.commit()
+    client.post("/api/auth/login", json=CREDS, headers=ORIGIN)
+
+    r = client.get(DECK, headers=ORIGIN)
+    assert r.status_code == 422
+    assert "سُلّم رتب" in r.get_json()["message"]
+    # ولا رسالةَ الخادم العامّة — تلك تعني أن الاستثناء أفلت.
+    assert "حدث خلل" not in r.get_json()["message"]

@@ -57,7 +57,11 @@ class Deck(MethodView):
         المسار الذي يحتاج تحقّقًا.
         """
         org = db.session.get(Org, g.user.org_id)
-        card = deck_service.build(org, g.user.id)
+        try:
+            card = deck_service.build(org, g.user.id)
+        except deck_service.DeckError as exc:
+            # عطلُ إعدادٍ لا عطلُ خادم: رسالةٌ تقول ما الناقص بدل «حدث خلل».
+            abort(exc.status, message=str(exc))
 
         team = None
         if card.team is not None:

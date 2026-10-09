@@ -17,6 +17,26 @@ from ..extensions import db
 from ..models import Membership, Org, PointEvent, RankThreshold, Team, User
 from . import readiness
 
+
+class DeckError(Exception):
+    """
+    خطأُ عملٍ يُترجَم إلى رمز حالة في المسار — لا يعرف HTTP (نمط `ReadingError`).
+
+    **وكان `deck.py` الخدمةَ الوحيدة التي ترفع `ValueError` عاريًا**، و
+    `routes/me.py` ينادي `build` بلا `try` — فجمعيةٌ بلا سُلّم رتب كانت تردّ
+    **٥٠٠ بـ«حدث خلل في الخادم»** على الشاشة الرئيسية للطالب. رسالةٌ لا تقول
+    للمشرف ما الناقص، وعطلُ إعدادٍ يُقرَأ عطلَ خادم.
+
+    وكلُّ ما عدا `deck.py` يلفّ `ValueError` في خطأ نطاقه (`reading.py:191` ·
+    `quran.py:102` · `entry.py:137` · `paste.py:140`) — فهذا إرجاعٌ للنمط لا
+    نمطٌ جديد.
+    """
+
+    def __init__(self, message: str, status: int = 422):
+        self.status = status
+        super().__init__(message)
+
+
 CENT = Decimal("0.01")
 
 
@@ -74,7 +94,7 @@ def build(org: Org, user_id: int) -> Deck:
         select(RankThreshold).where(RankThreshold.org_id == org.id).order_by(RankThreshold.at_hours)
     ).all()
     if not ladder:
-        raise ValueError("لا سُلّم رتب مهيّأ لهذه المنظمة.")
+        raise DeckError("لا سُلّم رتب مهيّأ لهذه الجمعية — اضبط العتبات من شاشة المشرف.")
 
     # أدنى رتبة أرضيةٌ لا يُسقَط منها: رصيدٌ سالب بعد تصحيح يبقي صاحبه «طيارًا».
     reached = [i for i, r in enumerate(ladder) if hours >= r.at_hours]
