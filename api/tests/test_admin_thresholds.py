@@ -128,12 +128,9 @@ def test_inconsistent_ladder_is_rejected_by_save_too(client, seeded):
     broken[2] = {**broken[2], "at_hours": "200"}
     assert _submit(client, broken).status_code == 422
     # ولم يتغيّر شيء في القاعدة.
-    assert (
-        db.session.scalar(
-            select(RankThreshold.at_hours).where(RankThreshold.key == "squadron")
-        )
-        == Decimal("900.00")
-    )
+    assert db.session.scalar(
+        select(RankThreshold.at_hours).where(RankThreshold.key == "squadron")
+    ) == Decimal("900.00")
 
 
 def test_consistent_ladder_is_accepted(client, seeded):
@@ -154,8 +151,7 @@ def test_removing_an_existing_key_is_rejected(client, seeded):
     without_squadron = [r for r in ORIGINAL_LADDER if r["key"] != "squadron"]
     assert _submit(client, without_squadron).status_code == 422
     assert (
-        db.session.scalar(select(RankThreshold).where(RankThreshold.key == "squadron"))
-        is not None
+        db.session.scalar(select(RankThreshold).where(RankThreshold.key == "squadron")) is not None
     )
 
 

@@ -7,16 +7,16 @@ import type { AdminTeamRow } from '../../api/types/teams'
 import { useAsync } from '../../state/useAsync'
 import { Async } from '../../ui/Async'
 import Button from '../../ui/Button'
-import Field from '../../ui/Field'
+import Field, { fieldClass } from '../../ui/Field'
 import Placard from '../../ui/Placard'
 import Prow from '../../ui/Prow'
+import ErrorText from '../../ui/ErrorText'
 
 /**
  * تقييم نشاط الوقود — `POST /admin/fuel/assess` (FR-070 · FR-071).
  * `team_id` صريح — المشرف على مستوى الجمعية يقيّم أيّ سرب (`AGENTS.md` ٩).
  * **`total_pct`/`litres` يعودان من الخادم بعد الحفظ** — لا حساب هنا.
  */
-const fieldClass = 'min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)'
 
 function Form({ activities, teams }: { activities: ActivityRow[]; teams: AdminTeamRow[] }) {
   const [teamId, setTeamId] = useState('')
@@ -97,11 +97,7 @@ function Form({ activities, teams }: { activities: ActivityRow[]; teams: AdminTe
         </div>
       ) : null}
 
-      {error ? (
-        <p role="alert" className="mb-3 text-[13px] text-(--color-red-text)">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorText>{error}</ErrorText> : null}
       {resultLitres ? <Prow label="نتيجة التقييم" value={<bdi dir="ltr">{resultLitres} لتر</bdi>} tone="accent" /> : null}
 
       <Button disabled={busy || !ready} onClick={submit} className="mt-2 w-full">

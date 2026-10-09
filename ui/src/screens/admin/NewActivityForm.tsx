@@ -3,8 +3,9 @@ import { useState } from 'react'
 import { api, ApiError } from '../../api'
 import type { CriterionRowForm } from '../../api/types/fuel'
 import Button from '../../ui/Button'
-import Field from '../../ui/Field'
+import Field, { fieldClass } from '../../ui/Field'
 import Placard from '../../ui/Placard'
+import ErrorText from '../../ui/ErrorText'
 
 /**
  * إنشاء نشاط وقودٍ جديد — **إنشاءٌ لا تعديل**: الخادم يرفض بنودًا لا تجمع
@@ -14,7 +15,7 @@ import Placard from '../../ui/Placard'
  * تقييمَ أسبوعٍ قائم، وتعريفَ نشاطٍ جديد. وهما عمران مختلفان لمستخدمٍ واحد.
  */
 
-const fieldClass = 'min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)'
+// محليٌّ لا مشترك: عرضُه `w-1/3` خاصٌّ بشبكةِ ثلاثة أعمدة هنا.
 const rowInputClass = 'min-h-[44px] w-1/3 min-w-0 rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-2 text-[14px] text-(--color-text)'
 
 export default function NewActivityForm({ onCreated }: { onCreated: () => void }) {
@@ -81,11 +82,7 @@ export default function NewActivityForm({ onCreated }: { onCreated: () => void }
         + بند جديد
       </button>
 
-      {error ? (
-        <p role="alert" className="mb-3 text-[13px] text-(--color-red-text)">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorText>{error}</ErrorText> : null}
 
       <Button disabled={busy || !ready} onClick={submit} className="w-full">
         {busy ? 'جارٍ الإنشاء…' : 'إنشاء نشاط'}

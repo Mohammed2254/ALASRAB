@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { api, ApiError } from '../../api'
 import type { RosterRow } from '../../api/types/roster'
+import ErrorText from '../../ui/ErrorText'
 
 /**
  * إجراءات الصفّ — ثلاثة أفعال كلّها لها أثرٌ لا يُرى فورًا، فكلٌّ منها
@@ -78,11 +79,7 @@ export default function StudentRowActions({ row, onChanged }: { row: RosterRow; 
           الرمز الجديد <bdi dir="ltr" className="font-bold">{pin}</bdi> — لا يُعرض مرّة أخرى.
         </p>
       ) : null}
-      {error ? (
-        <p role="alert" className="text-[13px] text-(--color-red-text)">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorText spacing="">{error}</ErrorText> : null}
     </div>
   )
 }

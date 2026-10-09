@@ -5,18 +5,17 @@ import type { AdminTeamRow } from '../../api/types/teams'
 import { useAsync } from '../../state/useAsync'
 import { Async } from '../../ui/Async'
 import Button from '../../ui/Button'
-import Field from '../../ui/Field'
+import Field, { fieldClass } from '../../ui/Field'
 import Placard from '../../ui/Placard'
 import Prow from '../../ui/Prow'
 import AddMemberForm from './AddMemberForm'
+import ErrorText from '../../ui/ErrorText'
 
 /**
  * الأسراب والعضويات — `GET/POST /admin/teams*` (FR-083). **أرشفة لا حذف،
  * ونقلٌ لا يزوّر التاريخ** (م-١٠): رسالة الخادم عند رفض أرشفة سرب مأهول أو
  * نقلٍ إلى سرب مؤرشَف تُعرض كما وصلت، بلا فحص هنا.
  */
-const fieldClass =
-  'min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)'
 
 function TeamRow({ team, onChanged }: { team: AdminTeamRow; onChanged: () => void }) {
   const [error, setError] = useState('')
@@ -64,11 +63,7 @@ function TeamRow({ team, onChanged }: { team: AdminTeamRow; onChanged: () => voi
           أرشفة
         </button>
       )}
-      {error ? (
-        <p role="alert" className="mt-1 text-[13px] text-(--color-red-text)">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorText spacing="mt-1">{error}</ErrorText> : null}
     </div>
   )
 }
@@ -102,11 +97,7 @@ function CreateTeamForm({ onCreated }: { onCreated: () => void }) {
       <Field label="الرمز" htmlFor="team_code">
         <input id="team_code" value={code} onChange={(e) => setCode(e.target.value)} className={fieldClass} />
       </Field>
-      {error ? (
-        <p role="alert" className="mb-3 text-[13px] text-(--color-red-text)">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorText>{error}</ErrorText> : null}
       <Button disabled={busy || !name.trim() || !code.trim()} onClick={submit} className="w-full">
         {busy ? 'جارٍ الإنشاء…' : 'إنشاء سرب'}
       </Button>

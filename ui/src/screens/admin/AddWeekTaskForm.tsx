@@ -4,8 +4,9 @@ import { api, ApiError } from '../../api'
 import type { FuelWeek } from '../../api/types/fuel'
 import Button from '../../ui/Button'
 import EmptyState from '../../ui/EmptyState'
-import Field from '../../ui/Field'
+import Field, { fieldClass } from '../../ui/Field'
 import Placard from '../../ui/Placard'
+import ErrorText from '../../ui/ErrorText'
 
 /**
  * «+ إضافة مهمة لهذا الأسبوع» — النموذج المعتمد (و-٢١).
@@ -21,8 +22,6 @@ import Placard from '../../ui/Placard'
  * و`available` تصل محسوبةً من الخادم — الفرقُ بين كلّ الأنشطة ومهامِّ الأسبوع
  * قاعدةٌ لا عرض، ولا تُحسَب هنا.
  */
-const fieldClass =
-  'min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)'
 
 export default function AddWeekTaskForm({
   week,
@@ -67,11 +66,7 @@ export default function AddWeekTaskForm({
               ))}
             </select>
           </Field>
-          {error ? (
-            <p role="alert" className="mb-3 text-[13px] text-(--color-red-text)">
-              {error}
-            </p>
-          ) : null}
+          {error ? <ErrorText>{error}</ErrorText> : null}
           <Button disabled={busy || !activityId} onClick={submit} className="w-full">
             {busy ? 'جارٍ الإضافة…' : 'إضافة إلى هذا الأسبوع'}
           </Button>

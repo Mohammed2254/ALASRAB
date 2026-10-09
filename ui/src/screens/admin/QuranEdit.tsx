@@ -7,10 +7,11 @@ import { useAsync } from '../../state/useAsync'
 import { Async } from '../../ui/Async'
 import Button from '../../ui/Button'
 import EmptyState from '../../ui/EmptyState'
-import Field from '../../ui/Field'
+import Field, { fieldClass } from '../../ui/Field'
 import Placard from '../../ui/Placard'
 import EventRow from './QuranEventRow'
 import Prow from '../../ui/Prow'
+import ErrorText from '../../ui/ErrorText'
 
 /**
  * التصحيح والتعديل القرآني — `GET /admin/quran/{students,events}` ·
@@ -19,7 +20,6 @@ import Prow from '../../ui/Prow'
  * كل تصحيح وكل إضافة بسبب مكتوب إلزاميًّا — حدثٌ معاكس، لا `UPDATE`/`DELETE`
  * أبدًا. الساعات نصٌّ يأتي من الخادم فقط — تُعرض كما وصلت (`AGENTS.md` ٥).
  */
-const fieldClass = 'min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)'
 
 function StudentEvents({ userId }: { userId: string }) {
   const state = useAsync(() => api.admin.quranEvents(userId), [userId])
@@ -118,11 +118,7 @@ function AddEntryForm({ students, defaultUserId }: { students: StudentRef[]; def
         />
       </Field>
 
-      {error ? (
-        <p role="alert" className="mb-3 text-[13px] text-(--color-red-text)">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorText>{error}</ErrorText> : null}
       {resultDelta ? <Prow label="أُضيف" value={<bdi dir="ltr">{resultDelta}</bdi>} tone="accent" /> : null}
 
       <Button disabled={busy || !ready} onClick={submit} className="mt-2 w-full">

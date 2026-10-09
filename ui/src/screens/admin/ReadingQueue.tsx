@@ -8,6 +8,8 @@ import Button from '../../ui/Button'
 import EmptyState from '../../ui/EmptyState'
 import Placard from '../../ui/Placard'
 import Prow from '../../ui/Prow'
+import { fieldClass } from '../../ui/Field'
+import ErrorText from '../../ui/ErrorText'
 
 /**
  * طابور اعتماد القراءات — `GET/POST /admin/readings*` (FR-022..024).
@@ -73,7 +75,7 @@ function QueueItemCard({
             id={`reason-${item.id}`}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            className="min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)"
+            className={fieldClass}
           />
           <Button
             variant="danger"
@@ -127,11 +129,7 @@ function Queue({ submissions, onChanged }: { submissions: QueueItem[]; onChanged
         </Button>
       ) : null}
 
-      {error ? (
-        <p role="alert" className="text-[13px] text-(--color-red-text)">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorText spacing="">{error}</ErrorText> : null}
 
       {submissions.map((s) => (
         <QueueItemCard

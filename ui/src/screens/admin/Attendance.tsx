@@ -14,6 +14,7 @@ import type { Column } from '../../ui/DataTable'
 import DataTable from '../../ui/DataTable'
 import Placard from '../../ui/Placard'
 import Prow from '../../ui/Prow'
+import ErrorText from '../../ui/ErrorText'
 
 /**
  * الحضور اليدويّ — `GET/POST /admin/attendance*` (FR-041/042، احتياطيّ).
@@ -62,11 +63,7 @@ function RollCall({ pilots, onRecorded }: { pilots: PilotRosterRow[]; onRecorded
           )
         })}
       </div>
-      {error ? (
-        <p role="alert" className="mt-3 text-[13px] text-(--color-red-text)">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorText spacing="mt-3">{error}</ErrorText> : null}
       <Button disabled={busy} onClick={submit} className="mt-4 w-full">
         حفظ الحضور
       </Button>
@@ -99,11 +96,7 @@ function Recorded({ data, onChanged }: { data: AttendanceStatus; onChanged: () =
       <Prow label="حاضرون" value={present.length} tone="accent" />
       <Prow label="غائبون" value={absent.length} tone={absent.length ? 'red' : undefined} />
       {absent.length ? <p className="mt-2 text-[13px] text-(--color-text-dim)">{absent.map((p) => p.full_name).join('، ')}</p> : null}
-      {error ? (
-        <p role="alert" className="mt-3 text-[13px] text-(--color-red-text)">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorText spacing="mt-3">{error}</ErrorText> : null}
       {canUndo ? (
         <Button variant="danger" disabled={busy} onClick={undo} className="mt-4 w-full">
           تراجع

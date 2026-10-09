@@ -105,6 +105,4 @@ def assert_production_safe(config) -> None:
         )
 
     if problems:
-        raise ProductionConfigError(
-            "إعدادات غير صالحة للإنتاج:\n  · " + "\n  · ".join(problems)
-        )
+        raise ProductionConfigError("إعدادات غير صالحة للإنتاج:\n  · " + "\n  · ".join(problems))

@@ -23,6 +23,7 @@ import { useScreen } from './nav/useNavigation'
  * على النيّة.
  */
 const AdminShell = lazy(() => import('./screens/admin/AdminShell'))
+import EmptyState from './ui/EmptyState'
 import Login from './screens/Login'
 import PilotShell from './screens/PilotShell'
 import { PILOT_SUB, PILOT_TABS } from './screens/registry'
@@ -135,9 +136,16 @@ function Gate() {
     )
   }
 
+  // **فرعٌ لا يُبلَغ — بإثباتٍ لا بظنّ.** `adminNav.test.ts` يؤكّد أن كل
+  // `ScreenKey` مُسجَّلٌ في واحدٍ من السجلّات الثلاثة أعلاه، فالوصول هنا يعني
+  // أن ذلك الفحص سقط. ولا يُحذف الفرع: `PILOT_TABS`/`PILOT_SUB` من نوع
+  // `Partial<Record<…>>` فالمترجم يطلب مخرجًا.
+  //
+  // وكان يطبع «الشاشة: {screen}» — نصًّا تطويريًّا في وجه طالب. والرسالة
+  // الآن له لا لي.
   return (
     <Shell>
-      <p className="text-[14px] text-(--color-text-dim)">الشاشة: {screen}</p>
+      <EmptyState>تعذّر فتح هذه الشاشة. عُد إلى بطاقتك وحاول من جديد.</EmptyState>
     </Shell>
   )
 }

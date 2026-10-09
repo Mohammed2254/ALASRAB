@@ -30,7 +30,6 @@ class TeamBoardRowSchema(Schema):
     chg = fields.Int()
 
 
-
 class TeamsBoardSchema(Schema):
     teams = fields.List(fields.Nested(TeamBoardRowSchema))
 

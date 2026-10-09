@@ -8,9 +8,10 @@ import { useAsync } from '../../state/useAsync'
 import { Async } from '../../ui/Async'
 import Button from '../../ui/Button'
 import EmptyState from '../../ui/EmptyState'
-import Field from '../../ui/Field'
+import Field, { fieldClass } from '../../ui/Field'
 import Placard from '../../ui/Placard'
 import Prow from '../../ui/Prow'
+import ErrorText from '../../ui/ErrorText'
 
 /**
  * طابور تحضير القراءة — `GET /admin/tahdir` (FR-092). **الاعتماد والرفض
@@ -24,8 +25,6 @@ const dayFormatter = new Intl.DateTimeFormat('ar-SA-u-ca-gregory-nu-latn', {
   timeZone: 'Asia/Riyadh',
 })
 const formatDay = (iso: string) => dayFormatter.format(new Date(`${iso}T00:00:00Z`))
-const fieldClass =
-  'min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)'
 
 function QueueItemCard({
   item,
@@ -132,11 +131,7 @@ function Queue({ submissions, onChanged }: { submissions: QueueItem[]; onChanged
         {busy ? 'جارٍ الاعتماد…' : selected.length ? `اعتماد المحدَّد (${selected.length})` : `قبول الكلّ (${submissions.length})`}
       </Button>
 
-      {error ? (
-        <p role="alert" className="text-[13px] text-(--color-red-text)">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorText spacing="">{error}</ErrorText> : null}
 
       {submissions.map((s) => (
         <QueueItemCard
@@ -203,11 +198,7 @@ function DirectEntryForm({ students, onAdded }: { students: StudentRef[]; onAdde
         <input id="td_entry_book" value={book} onChange={(e) => setBook(e.target.value)} className={fieldClass} />
       </Field>
 
-      {error ? (
-        <p role="alert" className="mb-3 text-[13px] text-(--color-red-text)">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorText>{error}</ErrorText> : null}
       {resultHours ? <Prow label="أُضيف" value={<bdi dir="ltr">{resultHours}</bdi>} tone="accent" /> : null}
 
       <Button disabled={busy || !ready} onClick={submit} className="mt-2 w-full">

@@ -7,6 +7,7 @@ import PlaneIcon from '../ui/PlaneIcon'
 import { flyAway } from '../motion/mo'
 import Placard from '../ui/Placard'
 import Subback from '../ui/Subback'
+import ErrorText from '../ui/ErrorText'
 
 /**
  * ملاحظة مجهولة — `POST /notes` (FR-061). **بلا تاريخ إرسال ولا سجلّ يُعرض
@@ -58,11 +59,7 @@ export default function SubmitNote() {
               placeholder="اكتب ما تريد…"
               className="w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) p-3 text-[16px] text-(--color-text)"
             />
-            {error ? (
-              <p role="alert" className="text-[13px] text-(--color-red-text)">
-                {error}
-              </p>
-            ) : null}
+            {error ? <ErrorText spacing="">{error}</ErrorText> : null}
             <div className="flex items-center justify-between gap-2">
               <span className="text-[12px] text-(--color-text-dim)">
                 <bdi dir="ltr">{body.length}</bdi>/<bdi dir="ltr">{NOTE_MAX}</bdi>

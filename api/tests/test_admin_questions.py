@@ -35,9 +35,7 @@ def _login(client, student_no="1001", pin="1234"):
 
 
 def _as_admin(client, seeded):
-    m = db.session.scalar(
-        select(Membership).where(Membership.user_id == seeded["users"]["1001"])
-    )
+    m = db.session.scalar(select(Membership).where(Membership.user_id == seeded["users"]["1001"]))
     m.role = "admin"
     db.session.commit()
     _login(client)
@@ -93,9 +91,7 @@ def test_correct_id_outside_the_choices_is_refused(client, seeded):
     @covers ق-٢٧٩
     """
     _as_admin(client, seeded)
-    r = client.post(
-        "/api/admin/questions", json={**BODY, "correct_id": 99}, headers=ORIGIN
-    )
+    r = client.post("/api/admin/questions", json={**BODY, "correct_id": 99}, headers=ORIGIN)
     assert r.status_code == 422
     assert "أحد الخيارات" in r.get_json()["message"]
     assert db.session.scalar(select(db.func.count(DailyQuestion.id))) == 0
@@ -127,9 +123,7 @@ def _answer_it(client, seeded, question_id):
     """الطالب الثاني يجيب — فيُقفَل السؤال."""
     client.post("/api/auth/logout", headers=ORIGIN)
     _login(client, "1002")
-    r = client.post(
-        f"/api/questions/{question_id}/answer", json={"choice_id": 2}, headers=ORIGIN
-    )
+    r = client.post(f"/api/questions/{question_id}/answer", json={"choice_id": 2}, headers=ORIGIN)
     assert r.status_code in (200, 201), r.get_json()
     client.post("/api/auth/logout", headers=ORIGIN)
     _login(client)
@@ -186,9 +180,7 @@ def test_answered_question_cannot_be_deleted(client, seeded):
     ).get_json()
     _answer_it(client, seeded, created["id"])
 
-    assert (
-        client.delete(f"/api/admin/questions/{created['id']}", headers=ORIGIN).status_code == 409
-    )
+    assert client.delete(f"/api/admin/questions/{created['id']}", headers=ORIGIN).status_code == 409
     assert db.session.get(DailyQuestion, created["id"]) is not None
     assert db.session.scalar(select(db.func.count(Answer.id))) == 1
 
@@ -212,9 +204,7 @@ def test_unanswered_question_can_be_edited_and_deleted(client, seeded):
     assert patched.status_code == 200, patched.get_json()
     assert db.session.get(DailyQuestion, created["id"]).prompt == "نصّ مُصحَّح"
 
-    assert (
-        client.delete(f"/api/admin/questions/{created['id']}", headers=ORIGIN).status_code == 204
-    )
+    assert client.delete(f"/api/admin/questions/{created['id']}", headers=ORIGIN).status_code == 204
     assert db.session.get(DailyQuestion, created["id"]) is None
 
 
@@ -264,9 +254,7 @@ def test_negative_reward_is_refused(client, seeded):
     @covers ق-٢٨١
     """
     _as_admin(client, seeded)
-    r = client.post(
-        "/api/admin/questions", json={**BODY, "reward_hours": "-1.00"}, headers=ORIGIN
-    )
+    r = client.post("/api/admin/questions", json={**BODY, "reward_hours": "-1.00"}, headers=ORIGIN)
     assert r.status_code == 422
 
 

@@ -14,6 +14,8 @@ import { useState, type FormEvent } from 'react'
 
 import HexIcon from '../ui/HexIcon'
 import { useApp } from '../state/AppState'
+import { fieldClass } from '../ui/Field'
+import ErrorText from '../ui/ErrorText'
 
 const CHEVRON = 'M17 40 L32 22 L47 40'
 
@@ -65,7 +67,7 @@ export default function Login() {
             autoComplete="username"
             value={studentNo}
             onChange={(e) => setStudentNo(e.target.value)}
-            className="mb-4 min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)"
+            className={`mb-4 ${fieldClass}`}
           />
 
           <label htmlFor="pin" className="mb-2 block text-[13px] text-(--color-text-dim)">
@@ -79,14 +81,10 @@ export default function Login() {
             autoComplete="current-password"
             value={pin}
             onChange={(e) => setPin(e.target.value)}
-            className="min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)"
+            className={fieldClass}
           />
 
-          {error ? (
-            <p role="alert" className="mt-3 text-[13px] text-(--color-red-text)">
-              {error}
-            </p>
-          ) : null}
+          {error ? <ErrorText spacing="mt-3">{error}</ErrorText> : null}
 
           <button
             type="submit"

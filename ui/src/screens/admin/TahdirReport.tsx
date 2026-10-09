@@ -7,7 +7,7 @@ import { Async } from '../../ui/Async'
 import Button from '../../ui/Button'
 import type { Column } from '../../ui/DataTable'
 import DataTable from '../../ui/DataTable'
-import Field from '../../ui/Field'
+import Field, { fieldClass } from '../../ui/Field'
 import Pill from '../../ui/Pill'
 import Placard from '../../ui/Placard'
 import StatCard from '../../ui/StatCard'
@@ -28,8 +28,6 @@ const TIER: Record<TahdirTier, { label: string; tone: 'green' | 'accent' | 'red'
   low: { label: 'يحتاج متابعة', tone: 'red' },
 }
 
-const fieldClass =
-  'min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)'
 
 const COLUMNS: Column<OrgTahdirRow>[] = [
   { id: 'name', header: 'الطالب', cell: (s) => s.full_name, primary: true },

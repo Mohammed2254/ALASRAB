@@ -11,6 +11,7 @@ import Pill from '../ui/Pill'
 import Placard from '../ui/Placard'
 import Prow from '../ui/Prow'
 import Subback from '../ui/Subback'
+import ErrorText from '../ui/ErrorText'
 
 /**
  * سؤال اليوم — `GET /questions/today` · `POST /questions/{id}/answer` (FR-060).
@@ -50,11 +51,7 @@ function ChoiceForm({ question, onAnswered }: { question: Question; onAnswered: 
           </button>
         ))}
       </div>
-      {error ? (
-        <p role="alert" className="mt-3 text-[13px] text-(--color-red-text)">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorText spacing="mt-3">{error}</ErrorText> : null}
     </Placard>
   )
 }

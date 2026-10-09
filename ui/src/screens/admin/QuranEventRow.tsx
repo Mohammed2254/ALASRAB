@@ -4,11 +4,10 @@ import { api, ApiError } from '../../api'
 import { fmtDecimal } from '../../api/format'
 import type { QuranEventRow } from '../../api/types/quran'
 import Button from '../../ui/Button'
-import Field from '../../ui/Field'
+import Field, { fieldClass } from '../../ui/Field'
 import Prow from '../../ui/Prow'
+import ErrorText from '../../ui/ErrorText'
 
-const fieldClass =
-  'min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)'
 
 /**
  * صفّ حدثٍ في سجلّ الطالب — **تعديل وحذف كما في النموذج، وADR-004 محفوظ.**
@@ -130,11 +129,7 @@ export default function EventRow({ event, onChanged }: { event: QuranEventRow; o
             />
           </Field>
 
-          {error ? (
-            <p role="alert" className="mt-1 text-[13px] text-(--color-red-text)">
-              {error}
-            </p>
-          ) : null}
+          {error ? <ErrorText spacing="mt-1">{error}</ErrorText> : null}
 
           <div className="mt-2 flex gap-2">
             <Button

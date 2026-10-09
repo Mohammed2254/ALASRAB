@@ -158,8 +158,11 @@ def test_pilot_can_see_station_admin_required_does_not_apply(client, seeded):
     @covers ق-٧٥ — الحدّ الآخر المتعمَّد: `/station` شاشة طيّار لا مشرف
     (`docs/slices/و-٨.md`) — طيّار غير مرفَّع يرى محطته بلا `403`.
     """
-    assert db.session.scalar(
-        select(Membership.role).where(Membership.user_id == seeded["users"]["1001"])
-    ) == "pilot"
+    assert (
+        db.session.scalar(
+            select(Membership.role).where(Membership.user_id == seeded["users"]["1001"])
+        )
+        == "pilot"
+    )
     _login(client)
     assert client.get(STATION, headers=ORIGIN).status_code == 200

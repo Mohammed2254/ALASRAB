@@ -35,9 +35,9 @@ def test_week_formula_lives_in_exactly_one_module():
         for path in SERVICES_DIR.glob("*.py")
         if formula in path.read_text() and path.name != "week.py"
     )
-    assert not offenders, (
-        f"صيغة بداية الأسبوع مكتوبة في {offenders} — مالكها `services/week.py` وحده."
-    )
+    assert (
+        not offenders
+    ), f"صيغة بداية الأسبوع مكتوبة في {offenders} — مالكها `services/week.py` وحده."
 
 
 def test_week_starts_on_the_configured_day_in_org_timezone():

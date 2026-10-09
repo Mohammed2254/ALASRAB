@@ -79,9 +79,7 @@ def test_recording_grants_hours_to_present_only(client, seeded):
     _add_attendance_weight(seeded, hours="3.00")
     _make_admin(seeded["users"]["1001"])
     _login(client)
-    r = client.post(
-        ATTENDANCE, json={"absent_user_ids": [seeded["users"]["1002"]]}, headers=ORIGIN
-    )
+    r = client.post(ATTENDANCE, json={"absent_user_ids": [seeded["users"]["1002"]]}, headers=ORIGIN)
     assert r.status_code == 201
     assert r.json["present"] == 1
     assert r.json["absent"] == 1
@@ -268,11 +266,7 @@ def test_rasd_attendance_view_reads_the_latest_import(client, seeded):
 
     _make_admin(seeded["users"]["1001"])
     _login(client)
-    fixture = (
-        Path(__file__).parent
-        / "fixtures"
-        / "تقرير_الإنجاز_جميع_الحلقات_١٤٤٨-٠٣-٢٥.csv"
-    )
+    fixture = Path(__file__).parent / "fixtures" / "تقرير_الإنجاز_جميع_الحلقات_١٤٤٨-٠٣-٢٥.csv"
     client.post(
         "/api/admin/paste/commit",
         data={

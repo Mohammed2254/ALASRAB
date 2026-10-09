@@ -3,8 +3,9 @@ import { useState } from 'react'
 import { api, ApiError } from '../../api'
 import type { QuestionForm } from '../../api/types/dailyQuestion'
 import Button from '../../ui/Button'
-import Field from '../../ui/Field'
+import Field, { fieldClass } from '../../ui/Field'
 import Placard from '../../ui/Placard'
+import ErrorText from '../../ui/ErrorText'
 
 /**
  * إنشاء سؤال اليوم — `POST /admin/questions` (و-٢١ · FR-060).
@@ -17,8 +18,6 @@ import Placard from '../../ui/Placard'
  * والحدّ أربعة لأن بطاقة الطالب تعرضها عمودًا واحدًا على عرض ٣٢٠px،
  * والخامس يُخرجها عن المنفذ.
  */
-const fieldClass =
-  'min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)'
 
 const SLOTS = [1, 2, 3, 4] as const
 
@@ -150,11 +149,7 @@ export default function NewQuestionForm({ onCreated }: { onCreated: () => void }
         />
       </Field>
 
-      {error ? (
-        <p role="alert" className="mb-3 text-[13px] text-(--color-red-text)">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorText>{error}</ErrorText> : null}
 
       <Button
         disabled={busy || !form.day || !form.prompt.trim() || !form.note.trim() || !chosenHasText}

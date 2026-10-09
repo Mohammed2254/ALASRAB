@@ -7,11 +7,12 @@ import { useAsync } from '../state/useAsync'
 import { Async } from '../ui/Async'
 import Button from '../ui/Button'
 import EmptyState from '../ui/EmptyState'
-import Field from '../ui/Field'
+import Field, { fieldClass } from '../ui/Field'
 import Pill from '../ui/Pill'
 import Placard from '../ui/Placard'
 import Prow from '../ui/Prow'
 import Subback from '../ui/Subback'
+import ErrorText from '../ui/ErrorText'
 
 /**
  * تحضير القراءة — `GET`/`POST /me/tahdir` (FR-090..093). نفس شكل «قراءاتي»
@@ -58,8 +59,6 @@ function SubmitForm({ onSubmitted }: { onSubmitted: () => void }) {
     }
   }
 
-  const fieldClass =
-    'min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)'
 
   return (
     <Placard title="تحضير جديد">
@@ -74,11 +73,7 @@ function SubmitForm({ onSubmitted }: { onSubmitted: () => void }) {
           <input id="td_book" value={book} onChange={(e) => setBook(e.target.value)} className={fieldClass} />
         </Field>
 
-        {error ? (
-          <p role="alert" className="mb-4 text-[13px] text-(--color-red-text)">
-            {error}
-          </p>
-        ) : null}
+        {error ? <ErrorText spacing="mb-4">{error}</ErrorText> : null}
 
         <Button type="submit" disabled={busy || !readOn || !pages || !book.trim()} className="w-full">
           {busy ? 'جارٍ الإرسال…' : 'إرسال للمراجعة'}

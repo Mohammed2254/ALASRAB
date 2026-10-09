@@ -31,9 +31,7 @@ def _create(client, effective_from, weights, multipliers=None, note=None):
         json={
             "effective_from": effective_from,
             "note": note,
-            "weights": [
-                {"activity_type": k, "hours_per_unit": str(v)} for k, v in weights.items()
-            ],
+            "weights": [{"activity_type": k, "hours_per_unit": str(v)} for k, v in weights.items()],
             "multipliers": [
                 {"grade": k, "multiplier": str(v)} for k, v in (multipliers or {}).items()
             ],

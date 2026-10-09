@@ -10,6 +10,7 @@ import DataTable from '../../ui/DataTable'
 import EmptyState from '../../ui/EmptyState'
 import Placard from '../../ui/Placard'
 import Prow from '../../ui/Prow'
+import ErrorText from '../../ui/ErrorText'
 
 /**
  * التقرير الدوري — `GET /admin/report` (FR-085). **كل رقم يصل محسوبًا**
@@ -58,11 +59,7 @@ function GroundedRow({ pilot }: { pilot: Grounded }) {
           {busy ? 'جارٍ…' : 'إعادة تعيين الرمز'}
         </button>
       )}
-      {error ? (
-        <p role="alert" className="mb-2 text-[13px] text-(--color-red-text)">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorText spacing="mb-2">{error}</ErrorText> : null}
     </div>
   )
 }

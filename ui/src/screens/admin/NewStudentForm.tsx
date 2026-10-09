@@ -4,9 +4,10 @@ import { api, ApiError } from '../../api'
 import type { BulkStudentRow, IssuedStudent } from '../../api/types/roster'
 import type { AdminTeamRow } from '../../api/types/teams'
 import Button from '../../ui/Button'
-import Field from '../../ui/Field'
+import Field, { fieldClass } from '../../ui/Field'
 import Placard from '../../ui/Placard'
 import IssuedPins from './IssuedPins'
+import ErrorText from '../../ui/ErrorText'
 
 /**
  * إنشاء الطلاب — إفراديًّا ولصقًا (و-٢١).
@@ -20,8 +21,6 @@ import IssuedPins from './IssuedPins'
  * يستعملها يؤجّل الإدخال (خ-١). وهي تمرّ بنفس كتابة الإفراديّ في الخدمة، لا
  * بمسارٍ ثانٍ حرٍّ في أن يفترق عنه.
  */
-const fieldClass =
-  'min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)'
 
 /**
  * سطر = `الاسم, رقم الطالب`. الفاصلة أو التبويب — لأن النسخ من جدول يأتي
@@ -175,11 +174,7 @@ export default function NewStudentForm({
         </Placard>
       ) : null}
 
-      {error ? (
-        <p role="alert" className="text-[13px] text-(--color-red-text)">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorText spacing="">{error}</ErrorText> : null}
     </div>
   )
 }

@@ -276,9 +276,7 @@ def append_threshold(org, name: str, at_hours: Decimal, actor_id: int) -> dict:
         )
 
     key = _free_key({r.key for r in ladder})
-    rows = [
-        ThresholdRow(key=r.key, name=r.name, tier=r.tier, at_hours=r.at_hours) for r in ladder
-    ]
+    rows = [ThresholdRow(key=r.key, name=r.name, tier=r.tier, at_hours=r.at_hours) for r in ladder]
     rows.append(ThresholdRow(key=key, name=name.strip(), tier=top.tier + 1, at_hours=at_hours))
 
     # **يمرّ بـ`save_thresholds` لا بإدراجٍ مباشر:** هناك يقع قفل الأرضيات
@@ -296,6 +294,7 @@ def _free_key(taken: set[str]) -> str:
         if candidate not in taken:
             return candidate
     raise AssertionError("unreachable")  # pragma: no cover
+
 
 def save_thresholds(org, rows: list[ThresholdRow], actor_id: int) -> dict:
     """

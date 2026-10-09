@@ -11,13 +11,12 @@
 from decimal import Decimal
 
 import pytest
+from conftest import TABLES
 from sqlalchemy import select
 
 from app.extensions import db
 from app.models import EntryDefault, Membership, Org, RankThreshold, User, Weight, WeightVersion
 from app.services import provision
-
-from conftest import TABLES
 
 ORIGIN = {"Origin": "http://localhost:5173"}
 
@@ -54,9 +53,7 @@ def test_bootstrap_produces_a_loginable_org(client, empty):
     assert org.id and team.id and admin.id
     assert len(pin) == 4 and pin.isdigit()
 
-    r = client.post(
-        "/api/auth/login", json={"student_no": "9001", "pin": pin}, headers=ORIGIN
-    )
+    r = client.post("/api/auth/login", json={"student_no": "9001", "pin": pin}, headers=ORIGIN)
     assert r.status_code == 200, r.get_json()
     # والدور **مشرف** — لا جمعيةً يفتحها طيّار بلا لوحة إدارة.
     assert r.get_json()["user"]["role"] == "admin"
@@ -81,9 +78,7 @@ def test_bootstrap_lays_the_full_scaffold(empty):
     assert [r.at_hours for r in ladder] == [Decimal(h) for h in ("0", "400", "900", "1500")]
 
     version = db.session.scalar(select(WeightVersion).where(WeightVersion.org_id == org.id))
-    weights = db.session.scalars(
-        select(Weight).where(Weight.version_id == version.id)
-    ).all()
+    weights = db.session.scalars(select(Weight).where(Weight.version_id == version.id)).all()
     # الثمانية كاملةً — لا الأربعة الأولى وحدها (و-١٢).
     assert {w.activity_type for w in weights} == {
         "memorize",
@@ -96,9 +91,7 @@ def test_bootstrap_lays_the_full_scaffold(empty):
         "quran_muraja3a",
     }
 
-    defaults = db.session.scalars(
-        select(EntryDefault).where(EntryDefault.org_id == org.id)
-    ).all()
+    defaults = db.session.scalars(select(EntryDefault).where(EntryDefault.org_id == org.id)).all()
     assert len(defaults) == len(provision.RASD_ENTRY_DEFAULTS)
 
 
@@ -158,9 +151,7 @@ def test_generated_pins_differ_across_orgs(empty):
         db.session.execute(db.text(f"TRUNCATE {', '.join(TABLES)} RESTART IDENTITY CASCADE"))
         db.session.commit()
         db.session.remove()  # خريطة الهوية تحمل `User(1)` من الدورة السابقة
-        _, _, _, pin = provision.bootstrap(
-            **{**ARGS, "admin_student_no": f"90{index:02d}"}
-        )
+        _, _, _, pin = provision.bootstrap(**{**ARGS, "admin_student_no": f"90{index:02d}"})
         pins.add(pin)
     # اثنا عشر سحبًا من عشرة آلاف: التطابق الكامل احتمالٌ لا يُقاس.
     assert len(pins) > 1

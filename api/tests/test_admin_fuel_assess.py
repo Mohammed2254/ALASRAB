@@ -68,7 +68,10 @@ def test_partial_scoring_is_rejected(client, seeded):
     activity_id, attendance_id, _quality_id = _create_activity(client)
 
     r = _assess(
-        client, seeded["team_id"], activity_id, "2026-08-20",
+        client,
+        seeded["team_id"],
+        activity_id,
+        "2026-08-20",
         [{"criterion_id": attendance_id, "score_pct": "100"}],
     )
     assert r.status_code == 422
@@ -85,7 +88,10 @@ def test_assessment_creates_a_correct_ledger_event(client, seeded):
     activity_id, attendance_id, quality_id = _create_activity(client)
 
     r = _assess(
-        client, seeded["team_id"], activity_id, "2026-08-20",
+        client,
+        seeded["team_id"],
+        activity_id,
+        "2026-08-20",
         [
             {"criterion_id": attendance_id, "score_pct": "100"},
             {"criterion_id": quality_id, "score_pct": "90"},
@@ -114,7 +120,10 @@ def test_occurred_at_uses_occurred_on_not_submission_time(client, seeded):
 
     before_submission = datetime.now(UTC)
     _assess(
-        client, seeded["team_id"], activity_id, "2026-01-01",
+        client,
+        seeded["team_id"],
+        activity_id,
+        "2026-01-01",
         [
             {"criterion_id": attendance_id, "score_pct": "100"},
             {"criterion_id": quality_id, "score_pct": "100"},
@@ -171,7 +180,10 @@ def test_scores_are_saved_in_detail(client, seeded):
     _login(client)
     activity_id, attendance_id, quality_id = _create_activity(client)
     _assess(
-        client, seeded["team_id"], activity_id, "2026-08-20",
+        client,
+        seeded["team_id"],
+        activity_id,
+        "2026-08-20",
         [
             {"criterion_id": attendance_id, "score_pct": "100"},
             {"criterion_id": quality_id, "score_pct": "90"},
@@ -192,7 +204,10 @@ def test_assessment_is_audited(client, seeded):
     _login(client)
     activity_id, attendance_id, quality_id = _create_activity(client)
     _assess(
-        client, seeded["team_id"], activity_id, "2026-08-20",
+        client,
+        seeded["team_id"],
+        activity_id,
+        "2026-08-20",
         [
             {"criterion_id": attendance_id, "score_pct": "100"},
             {"criterion_id": quality_id, "score_pct": "100"},

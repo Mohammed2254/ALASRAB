@@ -6,8 +6,9 @@ import type { Mover } from '../../api/types/report'
 import { useAsync } from '../../state/useAsync'
 import { Async } from '../../ui/Async'
 import EmptyState from '../../ui/EmptyState'
-import Field from '../../ui/Field'
+import Field, { fieldClass } from '../../ui/Field'
 import Placard from '../../ui/Placard'
+import ErrorText from '../../ui/ErrorText'
 
 /**
  * اختيار طيار الأسبوع — `POST /admin/week/pilot` (FR-062 · م-٦).
@@ -66,7 +67,7 @@ function ChooseForm({ candidates, onChosen }: { candidates: Mover[]; onChosen: (
             min="0"
             value={bonusHours}
             onChange={(e) => setBonusHours(e.target.value)}
-            className="min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)"
+            className={fieldClass}
           />
         </Field>
       </Placard>
@@ -95,11 +96,7 @@ function ChooseForm({ candidates, onChosen }: { candidates: Mover[]; onChosen: (
           placeholder="السبب — القيمة كلّها هنا لا في الاسم"
           className="w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) p-3 text-[16px] text-(--color-text)"
         />
-        {error ? (
-          <p role="alert" className="text-[13px] text-(--color-red-text)">
-            {error}
-          </p>
-        ) : null}
+        {error ? <ErrorText spacing="">{error}</ErrorText> : null}
         <button
           type="button"
           disabled={busy || userId === null || !reason.trim()}

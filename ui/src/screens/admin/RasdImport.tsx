@@ -8,9 +8,10 @@ import { Async } from '../../ui/Async'
 import Button from '../../ui/Button'
 import type { Column } from '../../ui/DataTable'
 import DataTable from '../../ui/DataTable'
-import Field from '../../ui/Field'
+import Field, { fieldClass } from '../../ui/Field'
 import Placard from '../../ui/Placard'
 import Prow from '../../ui/Prow'
+import ErrorText from '../../ui/ErrorText'
 
 /**
  * استيراد راصد — `POST /admin/paste/{preview,commit}` (FR-030..034/040).
@@ -20,7 +21,6 @@ import Prow from '../../ui/Prow'
  * **`value_overrides` بلا واجهة عمدًا** — قرار و-٥ الموروث (`و-١٨.md §١.٢`).
  */
 const STATUS_LABEL: Record<string, string> = { matched: 'مطابَق', ambiguous: 'تطابق متعدّد', unmatched: 'غير مطابَق' }
-const fieldClass = 'min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)'
 
 /**
  * «ما سيُكتب» — تُعرَض **قبل** زرّ الاعتماد لا بعده.
@@ -217,11 +217,7 @@ function PreviewBody({
             onResolve={resolve}
           />
 
-          {error ? (
-            <p role="alert" className="text-[13px] text-(--color-red-text)">
-              {error}
-            </p>
-          ) : null}
+          {error ? <ErrorText spacing="">{error}</ErrorText> : null}
 
           <Button disabled={busy} onClick={commit} className="w-full">
             {busy ? 'جارٍ الاعتماد…' : unresolved.length ? `اعتماد الاستيراد (سيُستبعَد ${unresolved.length} بلا حلّ)` : 'اعتماد الاستيراد'}
@@ -281,11 +277,7 @@ export default function RasdImport() {
           <input id="rasd_date" type="date" value={occurredOn} onChange={(e) => setOccurredOn(e.target.value)} className={fieldClass} />
         </Field>
 
-        {error ? (
-          <p role="alert" className="mb-3 text-[13px] text-(--color-red-text)">
-            {error}
-          </p>
-        ) : null}
+        {error ? <ErrorText>{error}</ErrorText> : null}
 
         <Button disabled={busy || !file || !occurredOn} onClick={doPreview} className="w-full">
           {busy ? 'جارٍ المعاينة…' : 'معاينة'}

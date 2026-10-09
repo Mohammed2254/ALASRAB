@@ -3,11 +3,10 @@ import { useState } from 'react'
 import { api, ApiError } from '../../api'
 import type { AdminTeamRow } from '../../api/types/teams'
 import Button from '../../ui/Button'
-import Field from '../../ui/Field'
+import Field, { fieldClass } from '../../ui/Field'
 import Placard from '../../ui/Placard'
+import ErrorText from '../../ui/ErrorText'
 
-const fieldClass =
-  'min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)'
 
 /**
  * «اختر طالبًا لإضافته…» + «إضافة» — النموذج المعتمد (و-٢١).
@@ -91,11 +90,7 @@ export default function AddMemberForm({ teams, onTransferred }: { teams: AdminTe
         </p>
       ) : null}
 
-      {error ? (
-        <p role="alert" className="mb-3 text-[13px] text-(--color-red-text)">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorText>{error}</ErrorText> : null}
       <Button disabled={busy || !userId || !teamId} onClick={submit} className="w-full">
         {busy ? 'جارٍ النقل…' : 'إضافة'}
       </Button>

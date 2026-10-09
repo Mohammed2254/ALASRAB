@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest'
 
 import { ADMIN_NAV, ADMIN_PATHS, isAdminScreen, LABEL_OF } from '../nav/adminNav'
 import { ADMIN_SCREENS } from '../screens/admin/registry'
+import { PILOT_SUB, PILOT_TABS } from '../screens/registry'
 import { keyOf, pathOf, ROUTES } from '../nav/routes'
 
 const navKeys = ADMIN_NAV.flatMap((group) => group.items.map((item) => item.key))
@@ -56,6 +57,27 @@ describe('اتّفاق جداول تنقّل المشرف', () => {
   it('«الصندوق الأسود» هو الملاحظة المجهولة لا سجلّ التدقيق — `SCOPE.md §٨`', () => {
     expect(LABEL_OF.adminNotes).toBe('الصندوق الأسود')
     expect(LABEL_OF.adminAudit).toBe('سجلّ التغييرات')
+  })
+
+  /**
+   * **كلُّ `ScreenKey` له مُصيِّرٌ واحدٌ بالضبط** — وهذا ما لا يحرسه المترجم:
+   * `PILOT_TABS` و`PILOT_SUB` من نوع `Partial<Record<ScreenKey, …>>`، فمسارٌ
+   * يُضاف إلى `ROUTES` وينسى صاحبُه تسجيله يبقى صحيحَ الأنواع تمامًا ويسقط
+   * على الفرع الأخير في `App.tsx` — أي شاشةٌ **لا طريق إليها**.
+   *
+   * وهو خطأ و-١٧ حرفيًّا (سقوط `adminDashboard` من التنقّل)، ويحرسه
+   * `adminNav.test` للإداريّ وحده. هذا الفحص يمدّ الحرس إلى **كل** الشاشات،
+   * ويجعل الفرع الأخير في `App.tsx` غيرَ قابلٍ للوصول بالإثبات لا بالظنّ.
+   */
+  it('كلُّ `ScreenKey` مُسجَّلٌ في واحدٍ من ثلاثة سجلّات — لا شاشةَ بلا مُصيِّر', () => {
+    const pilotTabs = Object.keys(PILOT_TABS)
+    const pilotSub = Object.keys(PILOT_SUB)
+    const admin = Object.keys(ADMIN_PATHS)
+    const registered = [...pilotTabs, ...pilotSub, ...admin]
+
+    expect([...registered].sort()).toEqual(Object.keys(ROUTES).sort())
+    // وواحدٌ بالضبط: مفتاحٌ في سجلَّين يجعل أيُّهما يُصيِّر رهنَ ترتيب الفحص.
+    expect(new Set(registered).size).toBe(registered.length)
   })
 
   it('`isAdminScreen` يميّز الإداريّ من شاشات الطيّار', () => {

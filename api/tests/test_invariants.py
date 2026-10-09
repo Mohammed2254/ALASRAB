@@ -470,12 +470,7 @@ def test_consistent_ladder_addition_is_accepted(seeded):
         {"org": seeded["org_id"]},
     )
     db.session.commit()
-    assert (
-        db.session.scalar(
-            db.text("SELECT count(*) FROM rank_thresholds WHERE key='ace'")
-        )
-        == 1
-    )
+    assert db.session.scalar(db.text("SELECT count(*) FROM rank_thresholds WHERE key='ace'")) == 1
 
 
 def test_highest_achieved_tier_cannot_be_lowered_by_direct_update(seeded):
@@ -505,9 +500,12 @@ def test_highest_achieved_tier_can_be_raised(seeded):
         db.text("UPDATE users SET highest_achieved_tier = 3 WHERE id = :u"), {"u": uid}
     )
     db.session.commit()
-    assert db.session.scalar(
-        db.text("SELECT highest_achieved_tier FROM users WHERE id = :u"), {"u": uid}
-    ) == 3
+    assert (
+        db.session.scalar(
+            db.text("SELECT highest_achieved_tier FROM users WHERE id = :u"), {"u": uid}
+        )
+        == 3
+    )
 
 
 # ═══ ث-١٠أ · ث-١٠ب · و-٨ — أوزان الوقود تجمع ١٠٠٪ على نقطتين ═══
@@ -576,9 +574,14 @@ def test_assessment_scoring_all_criteria_is_accepted(seeded):
     """@covers ق-٦٦ — الحدّ الآخر: تقييم يُغطّي كل البنود يمرّ."""
     aid = _make_activity(seeded["org_id"], [40, 60])
     db.session.commit()
-    criteria = db.session.execute(
-        db.text("SELECT id FROM fuel_criteria WHERE activity_id=:a ORDER BY position"), {"a": aid}
-    ).scalars().all()
+    criteria = (
+        db.session.execute(
+            db.text("SELECT id FROM fuel_criteria WHERE activity_id=:a ORDER BY position"),
+            {"a": aid},
+        )
+        .scalars()
+        .all()
+    )
 
     event_id = ledger.append(
         [
@@ -700,9 +703,7 @@ def test_duplicate_entry_default_activity_is_rejected_by_database(seeded):
 
     with pytest.raises(IntegrityError):
         db.session.add(
-            EntryDefault(
-                org_id=seeded["org_id"], activity_type="quran_hifz_target", label="تكرار"
-            )
+            EntryDefault(org_id=seeded["org_id"], activity_type="quran_hifz_target", label="تكرار")
         )
         db.session.commit()
     db.session.rollback()
@@ -726,6 +727,4 @@ def test_same_activity_in_different_orgs_does_not_collide(seeded):
     )
     db.session.commit()
 
-    assert (
-        db.session.scalar(db.select(db.func.count(EntryDefault.id))) == 2
-    )
+    assert db.session.scalar(db.select(db.func.count(EntryDefault.id))) == 2

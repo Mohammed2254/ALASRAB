@@ -64,9 +64,7 @@ def test_activity_with_weights_summing_to_100_is_accepted(client, seeded):
         ],
     )
     assert r.status_code == 201
-    assert (
-        db.session.scalar(select(db.func.count(FuelCriterion.id))) == 2
-    )
+    assert db.session.scalar(select(db.func.count(FuelCriterion.id))) == 2
 
 
 def test_activities_list_includes_criteria(client, seeded):

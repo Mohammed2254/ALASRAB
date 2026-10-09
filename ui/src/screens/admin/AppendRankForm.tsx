@@ -2,10 +2,10 @@ import { useState } from 'react'
 
 import { api, ApiError } from '../../api'
 import Button from '../../ui/Button'
-import Field from '../../ui/Field'
+import Field, { rowInputClass } from '../../ui/Field'
 import Placard from '../../ui/Placard'
+import ErrorText from '../../ui/ErrorText'
 
-const rowInputClass = 'min-h-[44px] rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-2 text-[14px] text-(--color-text)'
 
 /**
  * «+ إضافة رتبة» — النموذج المعتمد (و-٢١).
@@ -58,11 +58,7 @@ export default function AppendRankForm({ onAppended }: { onAppended: () => void 
           className={`${rowInputClass} w-full`}
         />
       </Field>
-      {error ? (
-        <p role="alert" className="mb-3 text-[13px] text-(--color-red-text)">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorText>{error}</ErrorText> : null}
       <p className="mb-3 text-[12px] text-(--color-text-dim)">
         الرتبة الجديدة تُضاف أعلى السُّلّم، فلا يفقد أحدٌ رتبةً بلغها. وإدخال رتبة بين رتبتين
         قائمتين غير متاح — يُعيد ترقيم ما بعدها.

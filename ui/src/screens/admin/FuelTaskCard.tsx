@@ -6,6 +6,7 @@ import type { FuelWeek, WeekTask } from '../../api/types/fuel'
 import Button from '../../ui/Button'
 import Placard from '../../ui/Placard'
 import Prow from '../../ui/Prow'
+import ErrorText from '../../ui/ErrorText'
 
 /**
  * بطاقة مهمّةٍ واحدة في أسبوع الوقود — تعيينُ سربها ودرجاتُها وإزالتُها.
@@ -130,11 +131,7 @@ export default function TaskCard({
         />
       ) : null}
 
-      {error ? (
-        <p role="alert" className="mt-2 text-[13px] text-(--color-red-text)">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorText spacing="mt-2">{error}</ErrorText> : null}
     </Placard>
   )
 }

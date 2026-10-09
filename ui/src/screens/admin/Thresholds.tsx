@@ -9,6 +9,8 @@ import EmptyState from '../../ui/EmptyState'
 import Placard from '../../ui/Placard'
 import AppendRankForm from './AppendRankForm'
 import Prow from '../../ui/Prow'
+import { rowInputClass } from '../../ui/Field'
+import ErrorText from '../../ui/ErrorText'
 
 /**
  * العتبات — `GET/POST /admin/thresholds*` (FR-082). **الرتبة لا تنخفض**
@@ -16,7 +18,6 @@ import Prow from '../../ui/Prow'
  * تعرض ما وصل ولا تحسبه. **معاينة قبل حفظ إلزامية** — تغييرٌ يمسّ كل طالب
  * دفعة واحدة يستحقّ نظرة قبله؛ زرّ الحفظ معطَّل حتى تُشغَّل المعاينة.
  */
-const rowInputClass = 'min-h-[44px] rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-2 text-[14px] text-(--color-text)'
 
 function Editor({ initial, onSaved }: { initial: ThresholdRowForm[]; onSaved: () => void }) {
   const [rows, setRows] = useState<ThresholdRowForm[]>(initial.map((r) => ({ ...r })))
@@ -89,11 +90,7 @@ function Editor({ initial, onSaved }: { initial: ThresholdRowForm[]; onSaved: ()
         </Placard>
       ) : null}
 
-      {error ? (
-        <p role="alert" className="text-[13px] text-(--color-red-text)">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorText spacing="">{error}</ErrorText> : null}
 
       <div className="flex gap-2">
         <Button variant="outline" disabled={busy} onClick={runPreview} className="flex-1">

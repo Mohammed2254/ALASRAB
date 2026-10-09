@@ -501,9 +501,7 @@ def test_bonus_hours_land_on_the_week_start_not_the_choice_day(client, seeded):
     """
     org = db.session.get(Org, seeded["org_id"])
     local_now = datetime.now(UTC).astimezone(ZoneInfo(org.timezone))
-    expected = local_now.date() - timedelta(
-        days=(local_now.weekday() - org.week_starts_on) % 7
-    )
+    expected = local_now.date() - timedelta(days=(local_now.weekday() - org.week_starts_on) % 7)
 
     _make_admin(seeded["users"]["1001"])
     _login(client)

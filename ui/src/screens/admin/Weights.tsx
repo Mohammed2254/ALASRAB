@@ -7,9 +7,10 @@ import { useAsync } from '../../state/useAsync'
 import { Async } from '../../ui/Async'
 import Button from '../../ui/Button'
 import EmptyState from '../../ui/EmptyState'
-import Field from '../../ui/Field'
+import Field, { fieldClass } from '../../ui/Field'
 import Placard from '../../ui/Placard'
 import Prow from '../../ui/Prow'
+import ErrorText from '../../ui/ErrorText'
 
 /**
  * إصدارات الأوزان — `GET/POST /admin/weights` (FR-081). **إصدارٌ جديد لا
@@ -26,8 +27,8 @@ const formatDay = (iso: string) => dayFormatter.format(new Date(iso))
 // `min-w-0` ضروريّ لا زخرفة: بلا هذا يرفض المُدخَل الانكماش تحت عرضه
 // الجوهريّ داخل `flex` (`min-width:auto` الافتراضيّ)، فيفيض عرض الصفّ عن
 // الشاشة — عيبٌ حقيقيّ ضربه القياس الحيّ على `Thresholds.tsx` المطابقة.
+// محليٌّ لا مشترك: عرضُه `w-1/2` خاصٌّ بشبكةِ عمودين هنا.
 const rowInputClass = 'min-h-[44px] w-1/2 min-w-0 rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-2 text-[14px] text-(--color-text)'
-const fieldClass = 'min-h-[48px] w-full rounded-(--radius-sm) border border-(--color-border-strong) bg-(--color-bg-2) px-3 text-[16px] text-(--color-text)'
 
 function NewVersionForm({ seed, onSaved }: { seed: CurrentWeightVersion | null; onSaved: () => void }) {
   const [effectiveFrom, setEffectiveFrom] = useState('')
@@ -105,11 +106,7 @@ function NewVersionForm({ seed, onSaved }: { seed: CurrentWeightVersion | null; 
         + مضاعف جديد
       </button>
 
-      {error ? (
-        <p role="alert" className="mb-3 text-[13px] text-(--color-red-text)">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ErrorText>{error}</ErrorText> : null}
 
       <Button disabled={busy || !ready} onClick={submit} className="w-full">
         {busy ? 'جارٍ الحفظ…' : 'حفظ إصدار جديد'}
