@@ -11,6 +11,8 @@
 
 **الجاهزية عبر `readiness.flight_states` المجمَّعة لا في حلقة** — عقد
 `/boards/teams` يشترط صراحةً «استعلام واحد بلا N+1».
+
+@implements FR-050, FR-051, FR-052, FR-053
 """
 
 from dataclasses import dataclass

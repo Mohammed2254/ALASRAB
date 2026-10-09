@@ -6,6 +6,8 @@
 - العتبات **لا تُؤرَّخ** — تمثّل معيارًا حاليًّا، لا سجلًّا ماليًّا. حمايتها من
   إعادة تفسير الماضي بأثر رجعي تمرّ بمِسنَن `users.highest_achieved_tier` لا
   بإصدارات (`docs/slices/و-٧.md` §الرتب لا تنخفض).
+
+@implements FR-081, FR-082
 """
 
 from dataclasses import dataclass

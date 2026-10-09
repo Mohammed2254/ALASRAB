@@ -6,6 +6,8 @@
 التدقيق **ذرّيًّا مع الحدث نفسه** — لا معاملتين منفصلتين (`docs/slices/و-٦.md`
 §٢.٢). **بلا `raw_row_id`**: الإدخال اليدوي مستقلّ عن خطّ استيراد راصد
 تمامًا (`HANDOFF.md` §٩).
+
+@implements FR-035, FR-036, FR-037, FR-080
 """
 
 from datetime import UTC, date, datetime, time

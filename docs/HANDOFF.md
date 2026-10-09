@@ -35,6 +35,22 @@
 
 ### الحالة في سطر
 
+**و-٢٢ — تنظيفٌ معماريّ، وأهمُّ ما فيه أن CI كان أعمى.** أوّلُ تشغيلٍ حقيقيّ
+للبوّابة الخلفية سقط بـ**exit 4**: `pytest` السكربت لا يضيف المجلّد الحاليّ
+إلى `sys.path` بخلاف `python -m pytest`. و**هذا الملفّ** كان يوثّق الثاني
+و`ci.yml` يكتب الأوّل — فلم يُشغَّل اختبارٌ خلفيٌّ واحد في CI قطّ، و«٤٨٨
+نجحت» كانت محليّةً وحدها. وبوّابةٌ لم تُشغَّل ليست بوّابة.
+
+وانكشف خلفه: **`ruff` ليس في CI إطلاقًا** (فعاش خطأُ ترتيبِ استيرادٍ و١٥
+ملفًّا غير مُهيَّأة)، و**`FR` بلا بوّابةٍ واحدة** بينما `ق` محروسةٌ بالكامل.
+والآن: `check-fr-gate.sh` يُلزم كلَّ متطلَّب `MUST`/`SHOULD` بمالكٍ معلَن
+(`@implements`)، و`TRACEABILITY.md` **تُولَّد ولا تُكتب** بعد أن تعفّنت شهرًا.
+
+> **والقياس ينقض «الكود متضخّم»:** الحيُّ ١٣٣١١ سطرًا لـ٥٧ مسارًا و٤١ شاشة
+> و٢٦ جدولًا — **٨٥ سطرًا لكل نقطة نهاية** عبر كل الطبقات، وهو دون المعتاد.
+> والشحمُ المقيس ~٨٪ كلُّه boilerplate: حُذف الميّت كلُّه، و٥٠ نسخةً مكرَّرة
+> صارت ثلاث بدائيات.
+
 **و-٢١ = COMPLETE — المنصّة صارت قابلةً للنشر فعلًا.** وقبلها كانت مكتملةً
 وغيرَ قابلة للتشغيل: ثلاث حقائق مقيسة من الكود لا رأيًا —
 
@@ -158,10 +174,11 @@
 ### البوابات الستّ — شغّلها كلّها
 
 ```bash
-bash scripts/check-slice-gate.sh              # ٢٧٥/٢٧٥ — للمستودع كلّه
+bash scripts/check-slice-gate.sh              # ٢٨٢/٢٨٢ — للمستودع كلّه
+bash scripts/check-fr-gate.sh                 # ٤٩/٤٩ متطلَّبًا مُلزِمًا · `--list` يطبع الخريطة
 cd ui && npx tsc --noEmit                     # أنواع
         npx vitest --typecheck.only run       # ٦ اختبارات نوع (الوسم العشريّ)
-        npx vitest run                        # ٦٨ حتميّ (nav · geometry · بدائيات · شاشات)
+        npx vitest run                        # ٦٩ حتميّ (nav · geometry · بدائيات · شاشات)
         node scripts/check-no-domain-logic.mjs # AST على TSX + حارسا استيراد gsap/geometry
         node scripts/check-opaque-floor.mjs    # لون حرفيّ · --line كنصّ · تدرّج بلا أرضية
         node scripts/check-contract.mjs        # بايثون ↔ TS
@@ -170,7 +187,7 @@ cd ui && npx tsc --noEmit                     # أنواع
         node scripts/perf-budget.mjs           # ثلاثة سقوف: إقلاع ١٠٨٫٨٢/١١٥ · إجمالي ١٢٦٫٢٣/١٦٥ · CSS ٦٫٠٨/٢٢
         LD_LIBRARY_PATH=~/.local/lib/poppler \
           node scripts/visual-qa.mjs /tmp/uiqa # ٢٨ شاشة · ٣٢٠ · ٣٧٥ · ١٢٨٠ · ١٤٤٠px
-cd ../api && .venv/bin/python -m pytest -q     # ٤٨٨ اختبارًا خلفيًّا
+cd ../api && pytest -q                         # ٤٩٣ اختبارًا — و`pytest` و`python -m pytest` متكافئان الآن
 cd ../web && npm run check:arch && npx vitest run  # شبكة الانحدار (٥١/٥١)
 ```
 

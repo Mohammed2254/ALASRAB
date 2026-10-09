@@ -104,3 +104,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: bash scripts/check-slice-gate.sh
+      # **بوّابة المتطلَّبات** (و-٢٢): `ق` تقيس «هل اختبرتُ ما قلتُ إنّي
+      # سأختبره»، و`FR` تقيس «هل المنتج مكتمل». وغيابُ الثانية هو ما جعل
+      # «٢٧٥/٢٧٥ أخضر» يُقرَأ اكتمالًا وهو ليس كذلك.
+      - run: bash scripts/check-fr-gate.sh

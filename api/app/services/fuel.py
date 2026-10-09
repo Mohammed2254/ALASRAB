@@ -5,6 +5,8 @@
 `ruleset_at`؛ حسابٌ مختلف لعملة مختلفة (`RULES.md` §١، `ARCHITECTURE.md`
 «`rules/` لا تملك: ❌ الوقود»). `ledger.append` وحده هو المشترك، وهو **بلا أي
 تعديل** — القيد `currency_scope_match` يستوعب `fuel`/`team` منذ و-١.
+
+@implements FR-070, FR-071, FR-072
 """
 
 from dataclasses import dataclass

@@ -38,7 +38,24 @@ jobs:
       github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
+      # **بلا خادمٍ مضبوط يتخطّى ولا يفشل.** إجراءٌ يحمرّ في كل دفعة لأن
+      # هدفه غير موجود يُعلّم القارئَ تجاهلَ الأحمر — وحينها لا تنفع بوّابةٌ
+      # حين تحمرّ لسببٍ حقيقيّ. (ظهر فورًا: أوّل دفعةٍ بعد ربط GitHub أخضرّ
+      # فيها CI وحمرّ Deploy بلا سبب يملكه أحد.)
+      - name: هل ثمّة خادمٌ مضبوط؟
+        id: gate
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          if [ -z "$HOST" ]; then
+            echo "::notice::لا DEPLOY_HOST — لا نشر. اضبط الأسرار الثلاثة في Settings ⇒ Secrets ⇒ Actions."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: مفتاح النشر وبصمة الخادم
+        if: steps.gate.outputs.ready == 'true'
         run: |
           install -m 700 -d ~/.ssh
           printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy
@@ -47,6 +64,7 @@ jobs:
           ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
 
       - name: النشر — ويتوقّف إن كانت ثمّة هجرة معلَّقة
+        if: steps.gate.outputs.ready == 'true'
         run: |
           ssh -i ~/.ssh/deploy -o BatchMode=yes \
             "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" bash -se << 'REMOTE'
@@ -90,7 +108,7 @@ jobs:
           REMOTE
 
       - name: تنظيف الصُوَر القديمة
-        if: always()
+        if: always() && steps.gate.outputs.ready == 'true'
         run: |
           ssh -i ~/.ssh/deploy -o BatchMode=yes \
             "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \

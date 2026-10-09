@@ -12,6 +12,8 @@
 
 **وق-٦٧ باقٍ:** المسوّدة في `fuel_week_scores`، ولا يُخلَق صفٌّ في
 `fuel_assessments` إلا ومعه حدثُه في المعاملة نفسها.
+
+@implements FR-073, FR-074, FR-075
 """
 
 from datetime import date, datetime

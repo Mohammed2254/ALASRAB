@@ -6,6 +6,8 @@
 ينساه — وهي نفس علّة رفض «عمود رصيد» في ADR-001.
 
 **قراءة خالصة:** لا `ledger` ولا كتابة ولا هجرة.
+
+@implements FR-085
 """
 
 from dataclasses import dataclass

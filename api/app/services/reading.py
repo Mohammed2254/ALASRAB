@@ -4,6 +4,8 @@
 **هذه أوّل خدمة إنتاج تستدعي `ledger`.** وحدّها المعلَن: تقرّر **متى** يستحقّ
 الاعتمادُ حدثًا ولماذا؛ و`ledger` يعرف **كيف** يُلحق حدثٌ صحيح (AGENTS ٨).
 فلا يظهر `PointEvent(` هنا، ولا يعرف `ledger` ما «القراءة».
+
+@implements FR-020, FR-021, FR-022, FR-023, FR-024, FR-090, FR-091, FR-092, FR-093
 """
 
 from dataclasses import dataclass
