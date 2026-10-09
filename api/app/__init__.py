@@ -133,6 +133,8 @@ def create_app(config_object=Config):
         """
         يفحص القاعدة فعلًا: خادمٌ يردّ ٢٠٠ وقاعدته ساقطة يخدع المراقبة ويؤخّر
         اكتشاف العطل — وهو أسوأ من غياب الفحص.
+
+        @covers ق-٢٩٩
         """
         try:
             db.session.execute(text("SELECT 1"))

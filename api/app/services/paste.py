@@ -418,6 +418,8 @@ def _ruleset_or_none(org_id: int, occurred_at: datetime) -> RuleSet | None:
     """
     للمعاينة: غيابُ نسخة أوزان **لا يمنع النظر في الملفّ**، بل يُعرض تحذيرًا
     ويُترك الاحتساب فارغًا. (التنفيذ يرفض صراحةً — `commit` أدناه.)
+
+    @covers ق-٢٤١
     """
     try:
         return ruleset_at(org_id, occurred_at)

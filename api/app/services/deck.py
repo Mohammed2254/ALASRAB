@@ -31,6 +31,8 @@ class DeckError(Exception):
     وكلُّ ما عدا `deck.py` يلفّ `ValueError` في خطأ نطاقه (`reading.py:191` ·
     `quran.py:102` · `entry.py:137` · `paste.py:140`) — فهذا إرجاعٌ للنمط لا
     نمطٌ جديد.
+
+    @covers ق-٢٩٢
     """
 
     def __init__(self, message: str, status: int = 422):

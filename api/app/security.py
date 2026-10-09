@@ -36,7 +36,11 @@ def current_identity():
 
 
 def login_required(fn):
-    """يضع `g.user` و`g.membership`، أو يردّ ٤٠١ برسالة لا تكشف السبب."""
+    """
+    يضع `g.user` و`g.membership`، أو يردّ ٤٠١ برسالة لا تكشف السبب.
+
+    @covers ق-٢٩١ — والمصفوفةُ مولَّدةٌ من `url_map`، فالقادمُ محروسٌ كالقائم.
+    """
 
     @wraps(fn)
     def wrapper(*args, **kwargs):

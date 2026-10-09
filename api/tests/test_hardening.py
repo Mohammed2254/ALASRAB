@@ -4,13 +4,14 @@
 ثلاثة ثقوب كانت قائمة، كلٌّ منها **عطلٌ صامت** لا صاخب: سقفُ جسمٍ مفقود،
 وترويساتُ أمان غائبة، وإعدادٌ تطويريّ يُنشَر بلا اعتراض.
 
-@covers ق-٢٧٣, ق-٢٧٤, ق-٢٧٥
+@covers ق-٢٧٣, ق-٢٧٤, ق-٢٧٥, ق-٢٩٩
 """
 
 import io
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import OperationalError
 
 from app import BASE_CSP, DOCS_CDN, create_app
 
@@ -300,3 +301,42 @@ def test_deliberate_abort_keeps_its_own_arabic_message(client, seeded):
     r = client.post(f"/api/admin/users/{10**9}/reset-pin", headers=ORIGIN)
     assert r.status_code == 404
     assert r.get_json()["message"] == "لا طالب بهذا المعرّف."
+
+
+# ═══ ق-٢٩٩ — فحصُ الصحّة يصدق أو يصمت ═══
+
+
+def test_health_reports_the_database_being_unreachable(client, monkeypatch):
+    """
+    **كُتب هذا الاختبار لأن توثيقَ `/health` كان يدّعي ما لا يُثبته أحد.**
+
+    قِيس في و-٢٢: صفرُ اختبارٍ يذكر ٥٠٣ أو `db_unreachable` في المجموعة
+    كلّها، وتوثيقُ المسار يقول «خادمٌ يردّ ٢٠٠ وقاعدته ساقطة يخدع المراقبة».
+    فالفرعُ الذي يحمل القيمةَ كلَّها — الردُّ عند السقوط — كان **الفرعَ
+    الوحيدَ غيرَ المُشغَّل**.
+
+    وهو أخطرُ من مسارٍ غير مُختبَر عاديّ: فحصُ صحّةٍ كاذبٌ **يُخفي العطل
+    بدل أن يُظهره**، والمراقبةُ المبنيّة عليه تبقى خضراءَ والموقعُ ساقط.
+
+    @covers ق-٢٩٩
+    """
+    from app import db
+
+    def unreachable(*args, **kwargs):
+        raise OperationalError("SELECT 1", {}, Exception("connection refused"))
+
+    monkeypatch.setattr(db.session, "execute", unreachable)
+    res = client.get("/health")
+    assert res.status_code == 503
+    assert res.get_json()["status"] == "db_unreachable"
+
+
+def test_health_reports_ok_when_the_database_answers(client):
+    """
+    النصفُ الآخر: فحصٌ يردّ ٥٠٣ دائمًا يمرّ من الاختبار أعلاه وحده.
+
+    @covers ق-٢٩٩
+    """
+    res = client.get("/health")
+    assert res.status_code == 200
+    assert res.get_json()["status"] == "ok"

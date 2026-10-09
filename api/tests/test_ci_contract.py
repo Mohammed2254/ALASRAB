@@ -11,7 +11,7 @@
 بسطرٍ يُحذف سهوًا، ويعود العمى. فهذه الفحوص تحرس **شكل البوّابة نفسها** —
 وهي الطبقة التي لم يكن أحدٌ يحرسها.
 
-@covers ق-٢٨٥, ق-٢٨٩, ق-٢٩٠, ق-٢٩٣, ق-٢٩٥, ق-٢٩٦, ق-٢٩٧
+@covers ق-٢٨٥, ق-٢٨٩, ق-٢٩٠, ق-٢٩٣, ق-٢٩٥, ق-٢٩٦, ق-٢٩٧, ق-٢٩٨, ق-٣٠٠
 """
 
 import ast
@@ -302,3 +302,160 @@ def test_no_route_module_becomes_a_monolith():
         and re.search(r"^\s*\w+\s*=\s*Blueprint\(", p.read_text(encoding="utf-8"), re.M)
     ]
     assert not own, "وحدةُ مشرفٍ تُعرّف مخطَّطَها الخاصّ:\n  " + "\n  ".join(own)
+
+
+def _pins(path: Path) -> dict[str, str]:
+    """
+    اسمُ الحزمة ⇒ إصدارُها المثبَّت، بلا تعاليقَ ولا إحالاتِ `-r`.
+
+    **والإضافةُ تُجرَّد:** `requirements.txt` يكتب `psycopg[binary]` و`pip
+    freeze` يكتب `psycopg` و`psycopg-binary` سطرين — فمقارنةٌ بالاسم الخام
+    تُبلّغ تعارضًا كاذبًا. والتسويةُ بـPEP 503 (الشرطةُ والسفليّةُ واحدة).
+    """
+    out: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        spec = line.split("#", 1)[0].strip()
+        if "==" in spec and not spec.startswith("-"):
+            name, version = spec.split("==", 1)
+            bare = name.split("[", 1)[0].strip().lower().replace("_", "-")
+            out[bare] = version.strip()
+    return out
+
+
+def test_every_install_site_applies_the_constraints_file():
+    """
+    **وُجد هذا الفحص لأن الانزلاق كان مقيسًا لا متخيَّلًا.**
+
+    `requirements.txt` كان يثبّت المباشرَ ويترك المنقولَ طليقًا، فانزلقت **ستُّ
+    حزم** بين البيئة المحليّة وتثبيتٍ نظيف — أظهرُها `alembic 1.19.1` مقابل
+    `1.20.0`، و**هي التي تُشغّل الهجرات على الإنتاج**. فما اختُبر عليه ليس ما
+    يُشحن، وفرقُ إصدارٍ في مولّد الهجرات لا يظهر إلا على بياناتٍ حقيقية.
+
+    وموضعُ تثبيتٍ واحدٌ يُنسى يُبطل الملفَّ كلَّه — فالحرسُ على **كل** موضع:
+    صورةُ الإنتاج، ووظيفةُ الاختبارات، وفحصُ الثغرات.
+
+    **وفحصُ الثغرات على `constraints.txt` لا على `requirements.txt`**: الأوّل
+    الشجرةُ المشحونة مُثبَّتةً، والثاني يترك حلَّ المنقول للحظة الفحص — فيُفحَص
+    غيرُ ما يُشحن، وهو أخضرُ على لا شيء.
+
+    @covers ق-٢٩٨
+    """
+    constraints = ROOT / "constraints.txt"
+    pinned = _pins(constraints)
+    assert len(pinned) >= 20, f"استُخرجت {len(pinned)} حزمةً — فحصٌ معطوبٌ لا نجاحٌ له"
+
+    direct = _pins(ROOT / "requirements.txt")
+    assert direct, "فحصٌ معطوب: لا تثبيتَ مباشرًا استُخرج"
+    drift = [
+        f"{name}: requirements={v} · constraints={pinned.get(name, 'غائب')}"
+        for name, v in direct.items()
+        if pinned.get(name) != v
+    ]
+    assert not drift, "تعارضٌ بين المباشر والقيد:\n  " + "\n  ".join(drift)
+
+    dockerfile = (REPO / "Dockerfile").read_text(encoding="utf-8")
+    installs = [ln.strip() for ln in dockerfile.splitlines() if "pip install" in ln]
+    assert installs, "فحصٌ معطوب: لا سطرَ تثبيتٍ في `Dockerfile`"
+    loose = [ln for ln in installs if "-c constraints.txt" not in ln]
+    assert not loose, "تثبيتٌ في الصورة بلا قيد:\n  " + "\n  ".join(loose)
+
+    ci = CI.read_text(encoding="utf-8")
+    ci_installs = [
+        ln.strip() for ln in ci.splitlines() if "pip install" in ln and "pip-audit" not in ln
+    ]
+    assert ci_installs, "فحصٌ معطوب: لا سطرَ تثبيتٍ في CI"
+    loose_ci = [ln for ln in ci_installs if "-c constraints.txt" not in ln]
+    assert not loose_ci, "تثبيتٌ في CI بلا قيد:\n  " + "\n  ".join(loose_ci)
+
+    assert (
+        "pip-audit --strict --requirement api/constraints.txt" in ci
+    ), "فحصُ الثغرات لا يمشي على الشجرة المشحونة (`constraints.txt`)"
+
+
+# ادّعاءُ سلوكٍ: «يردّ · يرفض · يفرض» — أي جملةٍ تَعِد بردٍّ أو منعٍ من النظام.
+#
+# **و`[وفل]?` ليست زينة:** أوّلُ صيغةٍ من هذا النمط أهملت واوَ العطف، فزُرعت
+# «**و**يرفض الإقلاع بلا مفتاح» في توثيقٍ بلا استشهادٍ **ومرّت**. وواوُ العطف
+# أشيعُ ما يبدأ به سطرٌ عربيّ، فالثقبُ كان يُفلت أكثرَ الادّعاءات لا أقلَّها —
+# والزرعُ هو ما كشفه، لا القراءة.
+CLAIM = re.compile(r"(?:^|[\s«*`(])[وفل]?(يردّ|يرفض|يفرض|ترفض|تفرض|تردّ)(?=[\s»*`،.:)]|$)")
+
+# والاستشهادُ المقبول: معيارٌ · ثابتٌ · متطلَّبٌ · قسمُ وثيقةٍ · أو اختبارٌ
+# بالاسم. وقبولُ اسمِ الاختبار مقصود: الغرضُ أن يجد القارئُ **الإثبات**، وليس
+# كلُّ سلوكٍ صحيحٍ يستحقّ معيارًا جديدًا — واختراعُ معاييرَ لتمرير بوّابةٍ
+# يُفرغها من معناها.
+CITATION = re.compile(r"ق-[٠-٩]+|ث-[٠-٩]+|@covers|@implements|FR-\d+|§\s*[٠-٩]+|::test_")
+
+
+def test_no_behaviour_claim_goes_without_a_citation():
+    """
+    **وُجد هذا الفحص لأن أسوأَ مخالفةٍ في المستودع كانت تعليقًا صادقَ النبرة.**
+
+    `AGENTS.md` ينصّ «التعليق يشرح *لماذا* لا *ماذا*»، وكان في `spa_fallback`
+    تعليقٌ يقول «يردّ JSON» فوق كودٍ يردّ **HTML إنجليزيًّا** لكلّ ٤٠٤ على
+    `/api` — بما فيها `abort(404, message=…)` المقصودة. فالتعليقُ لم يكن
+    قديمًا، بل **لم يكن صحيحًا يومًا**، وعاش خلف ٤٨٥ اختبارًا.
+
+    وفي أوّل تشغيلٍ لهذا الفحص ظهرت الحالةُ نفسها حيّةً: توثيقُ `/health`
+    يقول «خادمٌ يردّ ٢٠٠ وقاعدته ساقطة يخدع المراقبة»، و**صفرُ اختبارٍ يذكر
+    ٥٠٣ أو `db_unreachable`** في المجموعة كلّها — أي أن الفرعَ الذي يحمل
+    القيمةَ كلَّها كان الفرعَ الوحيدَ غيرَ المُشغَّل. فق-٢٩٩ وُلد من هذا
+    الفحص قبل أن يُثبَّت.
+
+    **والوحدةُ هي الكتلةُ لا السطر.** قِيس في و-٢٢: ٨٤ ادّعاءً في المستودع،
+    ١١ منها مستشهِدٌ في السطر نفسه — فقاعدةٌ على السطر تطلب ٧٣ تعديلًا
+    **وأكثرُها استشهادُه في التوثيق المحيط أصلًا**. فالشرطُ: توثيقُ الدالّة
+    أو الصنف أو الوحدة يستشهد، أو قسمُ الوثيقة يستشهد.
+
+    @covers ق-٣٠٠
+    """
+    bare: list[str] = []
+    blocks = 0
+    for path in sorted((ROOT / "app").rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(
+                node, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
+            ):
+                continue
+            doc = ast.get_docstring(node) or ""
+            if not doc:
+                continue
+            blocks += 1
+            if CLAIM.search(doc) and not CITATION.search(doc):
+                where = getattr(node, "name", path.name)
+                bare.append(f"{path.relative_to(ROOT)}:{getattr(node, 'lineno', 1)} {where}")
+
+    assert blocks >= 100, f"استُخرجت {blocks} كتلةً موثَّقة — فحصٌ معطوبٌ لا نجاحٌ له"
+    assert not bare, "ادّعاءُ سلوكٍ في توثيقٍ بلا استشهاد:\n  " + "\n  ".join(bare)
+
+
+def test_no_design_document_claims_behaviour_without_a_citation():
+    """
+    النصفُ الوثائقيّ من ق-٣٠٠ — والوحدةُ **القسم** (`## `) لا السطر.
+
+    ووثائقُ التصميم وحدها: الأرشيفُ تاريخٌ لا يُستشهد به كحاضر (ق-٢٩٥)،
+    فمطالبتُه باستشهادٍ حاضرٍ تناقضُ أرشفتَه.
+
+    @covers ق-٣٠٠
+    """
+    docs = sorted((REPO / "docs" / "design").glob("*.md"))
+    assert len(docs) >= 5, f"استُخرجت {len(docs)} وثيقةً — فحصٌ معطوبٌ لا نجاحٌ له"
+
+    bare: list[str] = []
+    for doc in docs:
+        # القسمُ يُغلق عند العنوان التالي، فالمجموعُ يُقيَّد ثمّ يُعاد التصفير.
+        section, cited, claims = "(قبل أوّل عنوان)", False, 0
+        closed: list[tuple[str, bool, int]] = []
+        for line in doc.read_text(encoding="utf-8").splitlines():
+            if line.startswith("## "):
+                closed.append((section, cited, claims))
+                section, cited, claims = line[3:].strip(), False, 0
+            if CITATION.search(line):
+                cited = True
+            if CLAIM.search(line):
+                claims += 1
+        closed.append((section, cited, claims))
+        bare += [f"{doc.name} › {name}" for name, ok, n in closed if n and not ok]
+
+    assert not bare, "قسمُ وثيقةٍ يدّعي سلوكًا بلا استشهاد:\n  " + "\n  ".join(bare)

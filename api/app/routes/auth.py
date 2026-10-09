@@ -72,6 +72,9 @@ class Logout(MethodView):
 
         بلا حارس عمدًا: تسجيل الخروج بجلسة منتهية يجب أن ينجح صامتًا لا أن يردّ
         ٤٠١، وإلا عَلِق المستخدم في شاشة لا يخرج منها.
+
+        @covers ق-٩ · والصمتُ أثبته
+        `tests/test_auth.py::test_logout_without_session_succeeds_quietly`.
         """
         auth_service.logout(request.cookies.get(COOKIE, ""))
         response = make_response("", 204)

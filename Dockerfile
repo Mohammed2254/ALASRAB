@@ -21,8 +21,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends libpq5 \
 # **الإنتاج وحده** — `requirements-dev.txt` لا يُنسَخ ولا يُثبَّت. وكان
 # `pytest` و`ruff` في هذا الملفّ حتى و-٢٢، أي يُشحنان إلى الصورة: أدواتُ
 # تطويرٍ على خادمٍ حيّ سطحُ هجومٍ بلا مقابل.
-COPY api/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+# و`constraints.txt` معه: بلاه يُثبّت المنقولُ أحدثَ ما يجده **وقت البناء**،
+# فصورتان من نفس الدفعة تحملان شجرتين مختلفتين. وأظهرُ ما يمسّ: `alembic`
+# يُشغّل الهجرات.
+COPY api/requirements.txt api/constraints.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -c constraints.txt
 
 COPY api/ ./
 # الساكن يُنسَخ إلى مكان `static_folder` الافتراضيّ لفلاسك — بلا تجاوز

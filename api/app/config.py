@@ -76,6 +76,8 @@ def assert_production_safe(config) -> None:
     """
     حرسُ إقلاع: نفس مبدأ حرس `seed.py` — **الفشل الصاخب أرحم من الصامت**.
 
+    @covers ق-٢٧٥
+
     و`SESSION_COOKIE_SECURE` هي علامة الإنتاج الوحيدة الصادقة في هذا المشروع:
     المتصفّح يرفض الكوكي الآمن على http، فلا تُضبَط `true` إلا خلف HTTPS
     حقيقيّ. و`docker-compose.prod.yml` يضبطها، و`docker-compose.yml` المحليّ

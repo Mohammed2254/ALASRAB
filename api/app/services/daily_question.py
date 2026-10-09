@@ -43,6 +43,8 @@ def list_questions(org_id: int) -> list[dict]:
 
     والعدد ليس زينة: هو ما يُخبر المشرف أن السؤال **مُقفَل** — فلا يضغط زرًّا
     يردّ الخادمُ عليه بـ٤٢٢. ووصلٌ واحد لا N+1: قائمةٌ تنمو يومًا كل يوم.
+
+    @covers ق-٢٨١ — والرفضُ نفسه ق-٢٨٠.
     """
     rows = db.session.execute(
         select(DailyQuestion, func.count(Answer.id))

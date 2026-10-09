@@ -38,8 +38,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
-      # التطوير يسحب الإنتاج معه (`-r requirements.txt` في أعلاه).
-      - run: pip install -r requirements-dev.txt
+      # التطوير يسحب الإنتاج معه (`-r requirements.txt` في أعلاه)، و`-c`
+      # يجعل الشجرةَ المنقولة **هي نفسها** محليًّا وفي CI وفي الصورة.
+      - run: pip install -r requirements-dev.txt -c constraints.txt
         working-directory: api
       # **اللنت والتهيئة لم يكونا في CI إطلاقًا** (و-٢٢): `ruff` مثبَّتٌ في
       # `requirements.txt` منذ و-١ ويُشغَّل بيدٍ وحدها — فعاش خطأُ ترتيبِ
@@ -106,10 +107,13 @@ jobs:
 
       # `--strict` يفشل إن تعذّر حلُّ اعتماديةٍ بدل أن يتخطّاها بصمت —
       # ففحصٌ يتخطّى ما لا يفهمه يُعطي أخضرَ على لا شيء.
+      # والفحصُ على `constraints.txt` لا على `requirements.txt`: الأوّل
+      # **الشجرةُ المشحونة كاملةً** مُثبَّتةً، والثاني المباشرُ وحده ويترك
+      # حلَّ المنقول للحظة الفحص — فيُفحَص غيرُ ما يُشحن.
       - name: ثغرات بايثون
         run: |
           pip install --quiet pip-audit
-          pip-audit --strict --requirement api/requirements.txt
+          pip-audit --strict --requirement api/constraints.txt
 
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
