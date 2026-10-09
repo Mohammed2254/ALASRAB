@@ -1,5 +1,7 @@
 from marshmallow import Schema, fields
 
+from .event import EventRowSchema
+
 
 class RankSchema(Schema):
     name = fields.Str()
@@ -36,16 +38,5 @@ class DeckSchema(Schema):
     team = fields.Nested(TeamSchema, allow_none=True)
 
 
-class EventSchema(Schema):
-    id = fields.Int()
-    kind = fields.Str()
-    # نصّ عشري كبقية المبالغ. **والسالب بإشارته** لا بقيمته المطلقة: التصحيح
-    # الذي يُعرض موجبًا يقلب معناه تمامًا.
-    delta = fields.Decimal(as_string=True)
-    occurred_on = fields.Date()
-    # غير فارغ في التصحيحات (ث-٧) — وإخفاؤه هو ما يثير الشك لا إظهاره (ط-٤).
-    reason = fields.Str(allow_none=True)
-
-
 class EventsSchema(Schema):
-    events = fields.List(fields.Nested(EventSchema))
+    events = fields.List(fields.Nested(EventRowSchema))

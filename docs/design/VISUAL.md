@@ -109,7 +109,7 @@ grep -rnE "text-hold|border-hold|'hold'|\"hold\"" web/src --include=*.jsx
 | حالة «أرضي» في البطاقة | `web/src/pages/PilotDeck.jsx:212` | هذا الملفّ منذ و-١ |
 | عدّاد «طائرات أرضية» في التقرير | `web/src/pages/admin/Report.jsx:62` | امتداد الدلالة نفسها (و-١٠ـجزئية) |
 | صفّ الطيار الأرضي في التقرير | `web/src/pages/admin/Report.jsx:141` | امتداد الدلالة نفسها (و-٢) |
-| حدث التصحيح السالب | `web/src/pages/PilotDeck.jsx:290` | `docs/slices/و-٣.md:34` — «التصحيح **بالأحمر** وبإشارته السالبة وسببه المكتوب» |
+| حدث التصحيح السالب | `web/src/pages/PilotDeck.jsx:290` | `docs/archive/slices/و-٣.md:34` — «التصحيح **بالأحمر** وبإشارته السالبة وسببه المكتوب» |
 | سبب التصحيح | `web/src/pages/PilotDeck.jsx:293` | المستند نفسه |
 | شارة «مرفوض» | `web/src/pages/MyReadings.jsx:19` | قُنِّن في مراجعة التسليم |
 | سبب الرفض المعروض للطالب | `web/src/pages/MyReadings.jsx:165` | قُنِّن في مراجعة التسليم |

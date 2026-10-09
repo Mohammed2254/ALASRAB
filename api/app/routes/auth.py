@@ -6,7 +6,7 @@ from flask import current_app, g, jsonify, make_response, request
 from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 
-from ..schemas import LoginSchema, SessionSchema
+from ..schemas.auth import LoginSchema, SessionSchema
 from ..security import COOKIE, login_required, role_of
 from ..services import auth as auth_service
 

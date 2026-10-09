@@ -4,7 +4,7 @@
 **`preview` بلا كتابة إطلاقًا، و`commit` يكتب `raw_rows` دائمًا** لكل صفّ
 طالب حقيقيّ، ثم يُلحق أحداثًا **للصفوف الجديدة فقط** — أيّ (تاريخ، طالب،
 نشاط) له `external_ref` قائم فعلًا يُستبعَد صراحةً بدل رفض الدفعة كلّها
-(`docs/slices/و-٥.md` §٢.١ب): إعادة استيراد مصحَّحة لبعض الطلاب يجب أن تبقى
+(`docs/archive/slices/و-٥.md` §٢.١ب): إعادة استيراد مصحَّحة لبعض الطلاب يجب أن تبقى
 ممكنة للباقين.
 
 @implements FR-030, FR-031, FR-032, FR-033, FR-034
@@ -37,7 +37,7 @@ ATTENDANCE_ACTIVITY = "attendance"
 DISPLAY_PRECISION = Decimal("0.1")
 
 # `entry_defaults.activity_type` ⇒ مفتاح صفّ `ingest/rasd` المطبَّع — قرار
-# #١١: صفٌّ لكل عمود مصدر، لا لكل فئة (`docs/slices/و-٥.md` §٢.٢).
+# #١١: صفٌّ لكل عمود مصدر، لا لكل فئة (`docs/archive/slices/و-٥.md` §٢.٢).
 _ENTRY_DEFAULT_TO_KEY = {
     "quran_hifz_target": "hifz_target",
     "quran_hifz_achieved": "hifz_achieved",
@@ -120,7 +120,7 @@ def _row_percentages(row: dict) -> dict[str, Decimal]:
 def _already_imported(org_id: int, external_ref: str) -> bool:
     """
     فحصٌ استباقي **قبل** الإلحاق — لا اعتمادًا وحيدًا على `uq_event_external_ref`
-    (الذي يبقى حارسًا أخيرًا لأي تسابق، لا الآلية الأساسية، `docs/slices/و-٥.md` §٢.١ب).
+    (الذي يبقى حارسًا أخيرًا لأي تسابق، لا الآلية الأساسية، `docs/archive/slices/و-٥.md` §٢.١ب).
     """
     return (
         db.session.scalar(
@@ -226,7 +226,7 @@ def _category_plan(
 
     if hours == 0:
         # لا حدث لصفرٍ حقيقيّ — نفس مبدأ `services/entry.record`: غيابٌ لا
-        # يُنشئ حدثًا أصلًا، لا حدثًا بصفر ساعة (`docs/slices/و-٥.md`).
+        # يُنشئ حدثًا أصلًا، لا حدثًا بصفر ساعة (`docs/archive/slices/و-٥.md`).
         return CategoryPlan(status="skipped_zero", hours=hours, **common)
     return CategoryPlan(status="created", hours=hours, **common)
 

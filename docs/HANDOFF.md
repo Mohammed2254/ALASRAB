@@ -17,11 +17,19 @@
 |:--:|---|---|
 | ١ | `AGENTS.md` | القواعد الدائمة والمفردات وحدود الحجم — يُقرأ قبل أي تغيير |
 | ٢ | **هذا الملفّ** | الحالة · القواعد · آلة التحقّق · الباقي · الدروس |
-| ٣ | `docs/product/SCOPE.md` | المصدر الأول للحقيقة: ٤١ متطلَّبًا وقصصها وافتراضاتها |
+| ٣ | `docs/product/SCOPE.md` | المصدر الأول للحقيقة: ٥٢ متطلَّبًا وقصصها وافتراضاتها |
 
-ثم عند الحاجة فقط: `docs/design/{ARCHITECTURE,DATABASE,RULES,API,TRACEABILITY,VISUAL}.md`
-· `docs/decisions/ADR-*.md` (**تسعة**) · `docs/plans/SLICE-01.md` و`docs/slices/*.md`
-(خطط الوحدات ومعايير قبولها).
+ثم عند الحاجة فقط: `docs/design/ARCHITECTURE.md` (**خريطةٌ تُقرأ في عشر
+دقائق** — ١٦٠ سطرًا بعد أن كانت ٥٢٣) · و`{SECURITY,OPERATIONS,DATABASE,RULES,API,VISUAL}.md`
+· `docs/decisions/ADR-*.md` (**عشرة**).
+
+> **و`docs/archive/slices/*.md` تاريخٌ لا يُقرَأ كحاضر** (و-٢٢): ٦٥١٥ سطرًا
+> كان صحيحًا يومَ كُتب، وبعضُه نُقض بعده — وكلُّ ملفٍّ فيها يحمل ترويسةً
+> تقول ذلك، يحرسها `test_ci_contract.py`. **و§٧ منها وحدها حيّة**: معايير
+> `ق-N` عقدٌ تقرؤه `check-slice-gate.sh`.
+>
+> وثمنُ خلط الاثنين مدفوع: في و-٢١ قُرئت «لا مسار إنشاء إداريّ للسؤال» من
+> `و-٩` على أنها حاضرة — وكانت صحيحةً حين كُتبت.
 
 **الكود لا يعيد تعريف المنتج.** إن كشف التنفيذُ تناقضًا في الوثيقة: **قف**،
 اشرح عدم التطابق، اقترح أصغر تصحيح، وانتظر الموافقة.
@@ -168,13 +176,13 @@
 واحد **إلى الأبد**. صار `FR-097`، ومعه قاعدةٌ مشتقّة من ث-١٧: **سؤالٌ أُجيب
 لا يُعدَّل ولا يُحذَف**.
 
-**وما بقي مكشوفًا** مفصَّلٌ في `docs/slices/و-٢١.md §٩`: حدُّ `/notes`
+**وما بقي مكشوفًا** مفصَّلٌ في `docs/archive/slices/و-٢١.md §٩`: حدُّ `/notes`
 (تعارضٌ موثَّق مع `NFR-04`) · الدفعُ والنشر السحابيّ · ومراجعةُ أمانٍ مستقلّة.
 
 ### البوابات الستّ — شغّلها كلّها
 
 ```bash
-bash scripts/check-slice-gate.sh              # ٢٨٢/٢٨٢ — للمستودع كلّه
+bash scripts/check-slice-gate.sh              # ٢٨٨/٢٨٨ — للمستودع كلّه
 bash scripts/check-fr-gate.sh                 # ٤٩/٤٩ متطلَّبًا مُلزِمًا · `--list` يطبع الخريطة
 cd ui && npx tsc --noEmit                     # أنواع
         npx vitest --typecheck.only run       # ٦ اختبارات نوع (الوسم العشريّ)
@@ -187,7 +195,7 @@ cd ui && npx tsc --noEmit                     # أنواع
         node scripts/perf-budget.mjs           # ثلاثة سقوف: إقلاع ١٠٨٫٨٢/١١٥ · إجمالي ١٢٦٫٢٣/١٦٥ · CSS ٦٫٠٨/٢٢
         LD_LIBRARY_PATH=~/.local/lib/poppler \
           node scripts/visual-qa.mjs /tmp/uiqa # ٢٨ شاشة · ٣٢٠ · ٣٧٥ · ١٢٨٠ · ١٤٤٠px
-cd ../api && pytest -q                         # ٤٩٣ اختبارًا — و`pytest` و`python -m pytest` متكافئان الآن
+cd ../api && pytest -q                         # ٥٠٤ اختبارًا — و`pytest` و`python -m pytest` متكافئان الآن
 # `web/` خارج البوّابات (و-٢٢): واجهةٌ لا تُشحن، وشبكةُ انحدارٍ لا تحمي
 # شيئًا حيًّا ليست شبكة. و`web/README.md` يشرح حدَّها.
 ```
@@ -456,10 +464,10 @@ grep -E '^\| FR-[0-9]{3} \|' docs/design/TRACEABILITY.md \
 | `nav/history.ts` | التنقّل فوق History API — `go`/`replace`/`init`/`listen`، بلا اعتمادية (ADR-008) |
 | `nav/useNavigation.ts` | ربط `history.ts` بـReact عبر `useSyncExternalStore` |
 | `screens/Login.tsx` | الدخول — الشاشة السادسة والعشرون، لم يحملها النموذج المعتمد |
-| `screens/{Deck,Readings,Station,Formation,Boards}.tsx` (و-١٥) | أوّل خمس شاشات حقيقية — البطاقة · القراءات · محطة التزوّد · التشكيل · الصدارة؛ التفصيل الكامل في `docs/slices/و-١٥.md` |
+| `screens/{Deck,Readings,Station,Formation,Boards}.tsx` (و-١٥) | أوّل خمس شاشات حقيقية — البطاقة · القراءات · محطة التزوّد · التشكيل · الصدارة؛ التفصيل الكامل في `docs/archive/slices/و-١٥.md` |
 | `screens/PilotShell.tsx` (و-١٥) | قشرة الشاشات الخمس — شريط هوية علويّ (بلا اسم سرب عمدًا، تكلفة جلبٍ بلا فائدة) + `BottomTabs` |
 | `ui/{HexIcon,TierBadge}.tsx` (و-١٣) | الشارة السداسية ودرجات الرتب |
-| `ui/{Placard,Prow,Pill,Field,ProgressBar,StatCard,FeedRow,BarRow,Tile,SegmentedControl,Toast,Button,EmptyState,ChgBadge,Subback,FuelDial,PlaneIcon,FormationSky,Podium,ChartBars,CelebrateBadge}.tsx` (و-١٤) | ٢١ بدائية بصرية — دمجٌ لا نسخٌ حرفيّ لكلاسات النموذج (`ProgressBar` وحدها تستوعب `bar/gauge/prog-fill`)؛ التفصيل الكامل في `docs/slices/و-١٤.md` §٣ |
+| `ui/{Placard,Prow,Pill,Field,ProgressBar,StatCard,FeedRow,BarRow,Tile,SegmentedControl,Toast,Button,EmptyState,ChgBadge,Subback,FuelDial,PlaneIcon,FormationSky,Podium,ChartBars,CelebrateBadge}.tsx` (و-١٤) | ٢١ بدائية بصرية — دمجٌ لا نسخٌ حرفيّ لكلاسات النموذج (`ProgressBar` وحدها تستوعب `bar/gauge/prog-fill`)؛ التفصيل الكامل في `docs/archive/slices/و-١٤.md` §٣ |
 | `ui/{Async,BottomTabs}.tsx` · `ui/glyphs.ts` (و-١٥) | حالات التحميل/الخطأ الثلاث (`web/States.jsx` بأنواع) · شريط التبويب الثابت (نفس نمط قياس `SegmentedControl`) · مسارات أيقونات مشتركة |
 | `ui/toastStore.ts` | متجر `Toast` — نمط `nav/history.ts` نفسه خارج React |
 | `motion/geometry.ts` | كل حساب هندسيّ (قوس الوقود · زاوية العقرب · حجم/إحداثيات طائرة التشكيل · `splitTop3` منصّة/قائمة) — الوحيدة المسموح لها بالحساب؛ بدائيات `ui/` تستوردها مباشرةً (قرارٌ صُحِّح في و-١٤ ليستثنيها)، و`screens/**` تبقى ممنوعة |
@@ -472,7 +480,7 @@ grep -E '^\| FR-[0-9]{3} \|' docs/design/TRACEABILITY.md \
 | `test/types.test-d.ts` | **@covers ق-٢١٨** — ستّة اختبارات نوع للوسم العشريّ |
 | `test/geometry.test.ts` | **@covers ق-٢٢٧** — ٢٢ اختبارًا لـ`motion/geometry.ts` عند ٠٪/١٠٠٪/خارج المدى (منها ٣ لـ`splitTop3`) |
 | `test/primitives.test.tsx` | **@covers ق-٢٢٩, ق-٢٣٠** — خمسة اختبارات (`@testing-library/react`): مؤشّر `SegmentedControl` من الرسم الأوّل، وحالة نهائية تحت تقليل الحركة |
-| `scripts/{check-no-domain-logic,check-opaque-floor,check-contract}.mjs` | بوابات AST/لون/عقد — تفصيلها الكامل في `docs/slices/و-١٣.md` §٤ |
+| `scripts/{check-no-domain-logic,check-opaque-floor,check-contract}.mjs` | بوابات AST/لون/عقد — تفصيلها الكامل في `docs/archive/slices/و-١٣.md` §٤ |
 | `scripts/perf-budget.mjs` (و-١٤) | **@covers ق-٢٢٤, ق-٢٢٥, ق-٢٣١** — سقفان مستقلّان (JS ≤١٦٥KB · CSS ≤٢٢KB) بـ`zlib.gzipSync` على `dist/` الفعليّ |
 | `scripts/{qa-core,visual-qa}.mjs` | محرّك القياس المنقول حرفيًّا + سائق حيّ بثلاثة مقاسات على ٦ شاشات (`@covers ق-٢١٧, ق-٢٢٠, ق-٢٢١, ق-٢٢٢, ق-٢٢٣`) |
 
@@ -497,7 +505,7 @@ node scripts/visual-qa.mjs             # قياس ٣٧٥px (يحتاج الخا�
 ### البوابة بقائمة بيان (`check-slice-gate.sh`)
 
 تستخرج `ق-N` من **§٧ فقط** في كل ملفّ خطة (`docs/plans/SLICE-01.md` +
-`docs/slices/*.md`)، وتقابلها بوسوم `@covers ق-N` داخل المصادر
+`docs/archive/slices/*.md`)، وتقابلها بوسوم `@covers ق-N` داخل المصادر
 (`api/tests`, `web/src/test`, `web/scripts`). **معيارٌ بلا مالك ⇒ سقوط. ووسمٌ
 يدّعي معيارًا غير معلَن ⇒ سقوط.** لها حارسان يدويّان: `LC_ALL=C.UTF-8`
 (الأرقام العربية متعدّدة البايتات) و`MIN_CRITERIA=16` (استخراجٌ دونها = فحص
@@ -717,7 +725,7 @@ Marshmallow (`validate.Length(min=1)`) قبل وصول كود الخدمة ال�
 كان يلتقط `submission.id` بـ`flush()` **قبل** حارس `IntegrityError` —
 والإدراج الفعليّ يقع عند `flush` لا `commit`، فتكرارٌ حقيقيّ كان يسرّب
 `500` بدل `409` مضبوط. اكتُشف أثناء إثبات ق-١٦٦ عدائيًّا لا بمراجعة مقصودة
-(`docs/slices/و-١١.md` §سجلّ التقدّم، نقطة تفتيش ٣، ق-١٧٤). ⇒ **كل نداءٍ
+(`docs/archive/slices/و-١١.md` §سجلّ التقدّم، نقطة تفتيش ٣، ق-١٧٤). ⇒ **كل نداءٍ
 قد يُدرج فعليًّا (`flush` أو `commit`) على صفّ له قيد `UNIQUE`/`CHECK`
 يدخل **داخل** الحارس نفسه، لا بعده — "التقاط المعرّف قبل الالتزام" حاجةٌ
 تقنيّة مشروعة، لكنها لا تُبرِّر إخراج الإدراج من الحماية.**
@@ -744,7 +752,7 @@ Marshmallow (`validate.Length(min=1)`) قبل وصول كود الخدمة ال�
 المتغيّر المشتبَه به، لا توقيعًا متخيَّلًا لما قد يبدو عليه الخطأ.**
 
 ٢٤. **مشغّل الإثبات العدائي نفسه أعطى "سقط ✅" مرّتين بلا سقوط حقيقيّ** (و-١٢،
-`docs/slices/و-١٢.md` §٨.٢) — امتدادٌ للدرس ١١ («أداة القياس نفسها تحتاج
+`docs/archive/slices/و-١٢.md` §٨.٢) — امتدادٌ للدرس ١١ («أداة القياس نفسها تحتاج
 فحصًا») إلى أداة الإثبات لا أداة القياس. الأولى: زُرعت مخالفةٌ واستُهدف اختبارٌ
 باسمٍ **غير موجود أصلًا** في الملفّ (نُسخ اسمٌ متخيَّل لا مُتحقَّقًا منه) —
 فخرج `pytest` بغير صفر لأنه «لم يجد الاختبار»، وعدّه المشغّل سقوطًا للسبب
@@ -964,7 +972,7 @@ Tunnel`) لعدم حسم نطاق بعد.
 توجّه القارئ إلى نظير `visual-qa.mjs` الأبسط في `web/` لا الأشمل في
 `ui/`)، وسطر الحالة في `README.md` الجذر (كان لا يزال يقول «لا كود بعد»)،
 وجدول الشرائح اليدويّ في `docs/README.md` (متجمّد منذ و-١٣، استُبدل بإحالة
-إلى `docs/slices/` + هذا الملفّ بدل نسخة ثالثة تتباعد). `SLICE-01.md`'s
+إلى `docs/archive/slices/` + هذا الملفّ بدل نسخة ثالثة تتباعد). `SLICE-01.md`'s
 سجلّ أوامر و-١ التاريخيّ **لم يُمَسّ** عمدًا — سجلّ لا تعليمات حيّة.
 
 **عيبٌ ثالث حقيقيّ في `check-contract.mjs` — امتدادٌ للدرس ٣٣ لا تكراره:**
@@ -1095,7 +1103,7 @@ JS/CSS بـ`zlib.gzipSync` على `dist/` الفعليّ لا تقدير `vite` 
 صفر تراجع؛ (٥) آلة التحقّق التسعة كاملة + الإتمام.
 
 **اكتشافان جوهريّان في نقطة تفتيش ٤ يستحقّان قراءةً منفردة** (تفصيلهما الكامل
-والأدلّة في `docs/slices/و-١٣.md` §٨.٢، والدرسان ٢٨أ/ب أدناه):
+والأدلّة في `docs/archive/slices/و-١٣.md` §٨.٢، والدرسان ٢٨أ/ب أدناه):
 
 1. **اختبار ق-٢٢٠/ق-٢٢١ كان يدّعي تغطية لم يُنفِّذها** — `measureHistory` في
    `visual-qa.mjs` كانت تستدعي `history.pushState` مباشرةً مرّةً واحدة، متجاوِزةً
@@ -1119,14 +1127,14 @@ FR-036 مستقلّ عن `raw_row_id` تمامًا (`ADR-004`). ذرّية FR-03
 إضافة يظهر في `audit_log`) محسومة بـ`ledger.append_pending` الجديدة
 (`reverse_pending`) + `audit.record` + `commit` واحد — امتداد نمط ث-١٧، لا
 معاملتين منفصلتين. توسيع ث-٧ ليشمل `kind='manual'` (هجرة `fba8d096bade`).
-التفصيل الكامل والإثبات العدائي (١٨ معيارًا، ق-١٣٩..ق-١٥٦) في `docs/slices/و-٦.md`.
+التفصيل الكامل والإثبات العدائي (١٨ معيارًا، ق-١٣٩..ق-١٥٦) في `docs/archive/slices/و-٦.md`.
 
 ### و-٥ — استيراد راصد (FR-030..034, FR-040) ✅ مغلقة
 
 **س-١ فُكَّت بعيّنتين حقيقيّتين** (`api/tests/fixtures/`) لا افتراضًا:
 راصد يُصدِّر **ملفّ CSV** لا نصًّا يُلصَق، وثلاث فئات نسبة مستقلّة (حفظ/
 تثبيت/مراجعة) لا فئة واحدة كما افترض ADR-005 ابتداءً — التصميم وسَّع لا
-نُقض (`docs/slices/و-٥.md` §١). ثلاث وحدات جديدة: `ingest/rasd.py` (محلّل
+نُقض (`docs/archive/slices/و-٥.md` §١). ثلاث وحدات جديدة: `ingest/rasd.py` (محلّل
 خام، لا DB) · `services/matching.py` (مطابقة Trim+تامّة، تطابق متعدّد
 يُعامَل كعدم تطابق) · `services/paste.py` (تنسيق `preview`/`commit`).
 جدولان جديدان (`raw_rows`، `entry_defaults` — الأخير مُوصَّل فعليًّا
@@ -1144,7 +1152,7 @@ FR-036 مستقلّ عن `raw_row_id` تمامًا (`ADR-004`). ذرّية FR-03
 بصفر ساعة لكلٍّ كان سيُضخّم السجلّ بلا فائدة تدقيقية.
 
 التفصيل الكامل والإثبات العدائي (٢٢ معيارًا، ق-١٧٥..ق-١٩٦) في
-`docs/slices/و-٥.md`.
+`docs/archive/slices/و-٥.md`.
 
 ### FR-086 — إعادة الحساب — لا يزال غير مبنيّ (لم يعد محجوبًا)
 
@@ -1161,7 +1169,7 @@ FR-036 مستقلّ عن `raw_row_id` تمامًا (`ADR-004`). ذرّية FR-03
 `CHECK` + فحص خدمة)، حدّ أدنى ٧ صفحات بلا حدّ أعلى، تقرير أسبوعي يشمل من
 لم يُرسل شيئًا (٠٪ · متعثّر بلا هامش تسامح). عيبٌ إنتاجيّ حقيقيّ اكتُشف
 ثبَّاته العدائي وأُصلح فورًا (`admin_submit` — الدرس ٢١). التفصيل الكامل
-والإثبات العدائي (١٨ معيارًا، ق-١٥٧..ق-١٧٤) في `docs/slices/و-١١.md`.
+والإثبات العدائي (١٨ معيارًا، ق-١٥٧..ق-١٧٤) في `docs/archive/slices/و-١١.md`.
 
 ---
 
@@ -1183,7 +1191,7 @@ FR-036 مستقلّ عن `raw_row_id` تمامًا (`ADR-004`). ذرّية FR-03
   خلال نافذة دقائق حول عبور منتصف ليل `week_starts_on` بتوقيت المنظمة (لأن
   `record` و`undo` يحسبان أسبوعين مختلفين إن وقع العبور بينهما) — مُثبَت
   بـ`git stash` أنه موجود على الالتزام النظيف، ونجح تلقائيًّا بعد عبور
-  النافذة بلا أي تغيير كودٍ (`docs/slices/و-٦.md` §سجلّ التقدّم، نقطة ٢).
+  النافذة بلا أي تغيير كودٍ (`docs/archive/slices/و-٦.md` §سجلّ التقدّم، نقطة ٢).
   **الإصلاح:** تجميد `now` في الاختبار كباقي اختبارات المشروع.
 
 ---

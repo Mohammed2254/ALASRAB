@@ -4,7 +4,7 @@
 **أوّل كتابة `ledger` جديدة في هذه الوحدة** (`kind='daily_question'`)، وأوّل
 قيدَي `UNIQUE` جديدين كليًّا في المشروع (`daily_questions.org_id+day`،
 `pilot_of_week.org_id+week_start`) — كلاهما مُثبَت في القاعدة الحقيقية
-بـSQL خام قبل أي كود خدمة (`docs/slices/و-٩.md`).
+بـSQL خام قبل أي كود خدمة (`docs/archive/slices/و-٩.md`).
 
 **ث-١٧** (`answers.correct` و`point_event_id` لا يفترقان، `CHECK` +
 دفاع خدمة عبر `ledger.append_pending`) أُضيف بعد مراجعة صريحة لذرّية

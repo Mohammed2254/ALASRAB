@@ -3,7 +3,7 @@
 
 **راصد قاعدة، والتعديل اليدوي استثناء** (`ADR-004`): تصحيحٌ بحدث معاكس أو
 إضافةٌ لسجلّ ناقص، كلاهما **بسبب مكتوب إلزاميًّا**، وكلاهما يظهر في سجلّ
-التدقيق **ذرّيًّا مع الحدث نفسه** — لا معاملتين منفصلتين (`docs/slices/و-٦.md`
+التدقيق **ذرّيًّا مع الحدث نفسه** — لا معاملتين منفصلتين (`docs/archive/slices/و-٦.md`
 §٢.٢). **بلا `raw_row_id`**: الإدخال اليدوي مستقلّ عن خطّ استيراد راصد
 تمامًا (`HANDOFF.md` §٩).
 
@@ -69,7 +69,7 @@ def reverse(org: Org, event_id: int, reason: str, actor_id: int) -> PointEvent:
     """
     FR-035 · FR-080 — تصحيحٌ بحدث معاكس. **الحدث الأصل قد يكون أيّ `kind`**،
     بما فيه `correction` نفسه (تصحيح تصحيح مسموح ومختبَر منذ و-١، انظر
-    `docs/slices/و-٦.md` §٢.١أ) — `ledger.reverse_pending` لا يفحص `kind`
+    `docs/archive/slices/و-٦.md` §٢.١أ) — `ledger.reverse_pending` لا يفحص `kind`
     الأصل إطلاقًا.
     """
     event, correction = _reverse_pending(org, event_id, reason, actor_id)

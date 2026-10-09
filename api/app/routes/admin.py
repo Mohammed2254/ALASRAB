@@ -15,73 +15,86 @@ from flask_smorest import Blueprint, abort
 
 from ..extensions import db
 from ..models import User
-from ..schemas import (
-    ActiveSetSchema,
-    ActivitiesListSchema,
-    AddedQuranEntrySchema,
-    AddQuranEntrySchema,
-    AdminEntryResultSchema,
+from ..schemas.audit import ResetPinSchema
+from ..schemas.audit_log import AuditLogSchema
+from ..schemas.daily_question import (
+    CreateQuestionSchema,
+    QuestionRefSchema,
+    QuestionsListSchema,
+    UpdateQuestionSchema,
+)
+from ..schemas.engagement import (
     AdminNotesListSchema,
-    AdminTahdirEntrySchema,
-    AmendedEventSchema,
-    AmendEventSchema,
-    AppendThresholdSchema,
-    ApproveSchema,
-    ArchivedTeamSchema,
-    ArchiveTeamSchema,
+    ChooseWeekPilotSchema,
+    ChosenWeekPilotSchema,
+    MarkedNoteSchema,
+    MarkNoteReadSchema,
+)
+from ..schemas.entry import (
+    AttendanceStatusSchema,
+    RecordAttendanceSchema,
+    RecordedAttendanceSchema,
+    UndoneAttendanceSchema,
+)
+from ..schemas.fuel import (
+    ActivitiesListSchema,
     AssessedSchema,
     AssessSchema,
     AssignTeamSchema,
-    AttendanceStatusSchema,
-    AuditLogSchema,
-    BulkCreatedSchema,
-    BulkCreateStudentsSchema,
-    ChooseWeekPilotSchema,
-    ChosenWeekPilotSchema,
     CreateActivitySchema,
     CreatedActivitySchema,
-    CreatedTeamSchema,
-    CreateQuestionSchema,
-    CreateStudentSchema,
-    CreateTeamSchema,
-    CreateWeightVersionSchema,
     FuelWeekSchema,
-    IssuedStudentSchema,
-    MarkedNoteSchema,
-    MarkNoteReadSchema,
-    OrgTahdirReportSchema,
-    PasteCommitResultSchema,
-    PastePreviewSchema,
-    QuestionRefSchema,
-    QuestionsListSchema,
-    QueueSchema,
-    QuranEventsListSchema,
-    RasdLatestImportSchema,
-    RecordAttendanceSchema,
-    RecordedAttendanceSchema,
-    RejectSchema,
-    ReportSchema,
-    ResetPinSchema,
-    ReversedEventSchema,
-    ReverseEventSchema,
-    ReviewResultsSchema,
-    RoleSetSchema,
-    RosterListSchema,
-    SaveThresholdsSchema,
-    SetActiveSchema,
-    SetRoleSchema,
-    StudentsListSchema,
-    TeamsListSchema,
-    ThresholdsPreviewSchema,
-    ThresholdsSchema,
-    TransferMemberSchema,
-    TransferredMemberSchema,
-    UndoneAttendanceSchema,
-    UpdateQuestionSchema,
     WeekScoresSchema,
     WeekTaskRefSchema,
+)
+from ..schemas.paste import PasteCommitResultSchema, PastePreviewSchema, RasdLatestImportSchema
+from ..schemas.quran import (
+    AddQuranEntrySchema,
+    AmendedEventSchema,
+    AmendEventSchema,
+    EventRefSchema,
+    QuranEventsListSchema,
+    ReverseEventSchema,
+    StudentsListSchema,
+)
+from ..schemas.reading import (
+    AdminEntryResultSchema,
+    AdminTahdirEntrySchema,
+    ApproveSchema,
+    OrgTahdirReportSchema,
+    QueueSchema,
+    RejectSchema,
+    ReviewResultsSchema,
+)
+from ..schemas.report import ReportSchema
+from ..schemas.roster import (
+    ActiveSetSchema,
+    BulkCreatedSchema,
+    BulkCreateStudentsSchema,
+    CreateStudentSchema,
+    IssuedStudentSchema,
+    RoleSetSchema,
+    RosterListSchema,
+    SetActiveSchema,
+    SetRoleSchema,
+)
+from ..schemas.rules_admin import (
+    AppendThresholdSchema,
+    CreateWeightVersionSchema,
+    SaveThresholdsSchema,
+    ThresholdsPreviewSchema,
+    ThresholdsSchema,
     WeightsSchema,
     WeightVersionIdSchema,
+)
+from ..schemas.teams import (
+    ArchivedTeamSchema,
+    ArchiveTeamSchema,
+    CreatedTeamSchema,
+    CreateTeamSchema,
+    TeamsListSchema,
+    TransferMemberSchema,
+    TransferredMemberSchema,
 )
 from ..security import admin_required
 from ..services import audit as audit_service
@@ -165,7 +178,7 @@ class RejectReading(MethodView):
 
 # ═══ و-٥ — استيراد راصد (FR-030..034/040) ═══
 #
-# **الاسم تاريخيّ لا وظيفيّ** (`docs/slices/و-٥.md` §٢ قرار #١٠): الأصل كان
+# **الاسم تاريخيّ لا وظيفيّ** (`docs/archive/slices/و-٥.md` §٢ قرار #١٠): الأصل كان
 # لصق نصّ قبل وصول عيّنة راصد الحقيقية، والفعليّ اليوم استيراد ملفّ CSV —
 # ولا داعي لكسر مسار موثَّق سلفًا لتغيّر تفصيل التنفيذ.
 #
@@ -443,7 +456,7 @@ class AdminQuestionDetail(MethodView):
 #
 # **لا بند `SCOPE.md` لإنشاء طالب** — فُرض أنهم موجودون، وكان الكاتب الوحيد
 # لـ`User` في المشروع كلّه هو `seed.py` (وهو يرفض الإنتاج). فقاعدةٌ منشورة
-# جديدة كانت بلا أيّ طريق إلى طالب. التفصيل في `docs/slices/و-٢١.md` §١.
+# جديدة كانت بلا أيّ طريق إلى طالب. التفصيل في `docs/archive/slices/و-٢١.md` §١.
 
 
 @blp.route("/admin/users")
@@ -556,7 +569,7 @@ class Weights(MethodView):
     @blp.arguments(CreateWeightVersionSchema)
     @blp.response(201, WeightVersionIdSchema)
     def post(self, data):
-        """إصدارٌ **جديد** لا تعديل — ث-١١ لا تمسّ الماضي (`docs/slices/و-٧.md`)."""
+        """إصدارٌ **جديد** لا تعديل — ث-١١ لا تمسّ الماضي (`docs/archive/slices/و-٧.md`)."""
         try:
             return rules_admin_service.create_weight_version(
                 _org(),
@@ -966,7 +979,7 @@ class QuranEvents(MethodView):
 class ReverseEvent(MethodView):
     @admin_required
     @blp.arguments(ReverseEventSchema)
-    @blp.response(201, ReversedEventSchema)
+    @blp.response(201, EventRefSchema)
     def post(self, data, event_id):
         """
         FR-035 · FR-080 — تصحيحٌ **حدث معاكس بسبب إلزامي**، لا `UPDATE` ولا
@@ -1010,7 +1023,7 @@ class AmendEvent(MethodView):
 class QuranEntry(MethodView):
     @admin_required
     @blp.arguments(AddQuranEntrySchema)
-    @blp.response(201, AddedQuranEntrySchema)
+    @blp.response(201, EventRefSchema)
     def post(self, data):
         """
         FR-036 — إضافة سجلّ ناقص يدويًّا. **الساعات محسوبة عبر `rules/engine`**

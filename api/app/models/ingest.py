@@ -14,7 +14,7 @@ class RawRow(db.Model):
     الحمولة الخام كما وصلت من راصد، قبل أي اشتقاق (FR-033 · `RULES.md` §٦).
 
     **بلا `raw_row_id` على `point_events`** — الربط بالحدث منطقيّ عبر
-    `external_ref`/`batch_id` لا عمود FK (`docs/slices/و-٥.md` §٢.١أ): تجريدٌ
+    `external_ref`/`batch_id` لا عمود FK (`docs/archive/slices/و-٥.md` §٢.١أ): تجريدٌ
     لمشكلة لم تقع بعد، ونفس منطق ADR-005 في رفض طبقة لا يحتاجها كود قائم.
 
     **صفٌّ واحد لكل صفّ طالب حقيقيّ** — صفوف التذييل («الإجمالي»/«المتوسط»)
@@ -47,7 +47,7 @@ class RawRow(db.Model):
 class EntryDefault(db.Model):
     """
     مرادفات ترويسة الاستيراد والقيم الافتراضية — **بيانات لا كود**
-    (`DATABASE.md` §٣.١ · `docs/slices/و-٥.md` §٢.٢).
+    (`DATABASE.md` §٣.١ · `docs/archive/slices/و-٥.md` §٢.٢).
 
     صفٌّ واحد **لكلّ عمود مصدر** لا لكلّ فئة: فئة «حفظ» مثلًا تُمثَّل بصفَّين
     (`quran_hifz_target`، `quran_hifz_achieved`) لا صفٍّ واحد، لأن كلًّا منهما

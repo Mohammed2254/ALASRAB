@@ -156,7 +156,7 @@ def test_no_cookie_is_401(client, seeded):
 def test_pilot_can_see_station_admin_required_does_not_apply(client, seeded):
     """
     @covers ق-٧٥ — الحدّ الآخر المتعمَّد: `/station` شاشة طيّار لا مشرف
-    (`docs/slices/و-٨.md`) — طيّار غير مرفَّع يرى محطته بلا `403`.
+    (`docs/archive/slices/و-٨.md`) — طيّار غير مرفَّع يرى محطته بلا `403`.
     """
     assert (
         db.session.scalar(

@@ -393,7 +393,7 @@ def _summarize_week(week_start: date, pages_by_day: dict[date, int]) -> dict:
     """
     **يومٌ مكتمل = إرسالٌ معتمَد بصفحات ≥٧** (لا معلَّق، مطابقًا لمبدأ FR-021).
     `percent` مبنيّ على **مجموع الصفحات** لا عدد الأيام — الحقلان يُعرضان
-    معًا لا أحدهما بديلًا عن الآخر (`docs/slices/و-١١.md` §٢).
+    معًا لا أحدهما بديلًا عن الآخر (`docs/archive/slices/و-١١.md` §٢).
     """
     days = []
     for i in range(4):

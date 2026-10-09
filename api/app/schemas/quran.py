@@ -2,6 +2,8 @@ from decimal import Decimal
 
 from marshmallow import Schema, fields, validate
 
+from .event import EventRefSchema, EventRowSchema
+
 
 class StudentRowSchema(Schema):
     id = fields.Int()
@@ -12,27 +14,13 @@ class StudentsListSchema(Schema):
     students = fields.List(fields.Nested(StudentRowSchema))
 
 
-class QuranEventRowSchema(Schema):
-    id = fields.Int()
-    kind = fields.Str()
-    delta = fields.Decimal(as_string=True)
-    occurred_on = fields.Date()
-    reason = fields.Str(allow_none=True)
-
-
 class QuranEventsListSchema(Schema):
-    events = fields.List(fields.Nested(QuranEventRowSchema))
+    events = fields.List(fields.Nested(EventRowSchema))
 
 
 class ReverseEventSchema(Schema):
     # إلزامي في المخطّط **وفي القاعدة** (ث-٧ الموسَّعة) — نفس نمط `RejectSchema`.
     reason = fields.Str(required=True, validate=validate.Length(min=1, max=500))
-
-
-class ReversedEventSchema(Schema):
-    id = fields.Int()
-    delta = fields.Decimal(as_string=True)
-    kind = fields.Str()
 
 
 class AddQuranEntrySchema(Schema):
@@ -45,12 +33,6 @@ class AddQuranEntrySchema(Schema):
     )
     mastery = fields.Str(load_default=None, allow_none=True, validate=validate.Length(max=50))
     reason = fields.Str(required=True, validate=validate.Length(min=1, max=500))
-
-
-class AddedQuranEntrySchema(Schema):
-    id = fields.Int()
-    delta = fields.Decimal(as_string=True)
-    kind = fields.Str()
 
 
 class AmendEventSchema(Schema):
@@ -71,5 +53,5 @@ class AmendEventSchema(Schema):
 class AmendedEventSchema(Schema):
     """الأثر كاملًا: عكسُ الأصل وبديلُه — لا رقمٌ واحد يخفي العملية."""
 
-    correction = fields.Nested(AddedQuranEntrySchema)
-    replacement = fields.Nested(AddedQuranEntrySchema)
+    correction = fields.Nested(EventRefSchema)
+    replacement = fields.Nested(EventRefSchema)

@@ -14,24 +14,23 @@ from flask_smorest import Blueprint, abort
 
 from ..extensions import db
 from ..models import Team, User
-from ..schemas import (
+from ..schemas.engagement import (
     AnsweredSchema,
     AnswerSchema,
-    DeckSchema,
-    EventsSchema,
-    FormationSchema,
-    MyReadingsSchema,
-    PilotsBoardSchema,
-    StationSchema,
     SubmitNoteSchema,
+    TodayQuestionSchema,
+    WeekPilotSchema,
+)
+from ..schemas.fuel import StationSchema
+from ..schemas.me import DeckSchema, EventsSchema
+from ..schemas.reading import (
+    MyReadingsSchema,
     SubmitReadingSchema,
     SubmitTahdirSchema,
     SubmittedSchema,
     TahdirReportSchema,
-    TeamsBoardSchema,
-    TodayQuestionSchema,
-    WeekPilotSchema,
 )
+from ..schemas.standings import FormationSchema, PilotsBoardSchema, TeamsBoardSchema
 from ..security import login_required
 from ..services import deck as deck_service
 from ..services import engagement as engagement_service
@@ -330,7 +329,7 @@ class Station(MethodView):
         """
         محطة التزوّد — وقود سرب **الطالب المصادَق عليه** (FR-072 · و-٨).
 
-        **شاشة طيّار لا مشرف** (`docs/slices/و-٨.md`): كل عضو سرب يراه، تمامًا
+        **شاشة طيّار لا مشرف** (`docs/archive/slices/و-٨.md`): كل عضو سرب يراه، تمامًا
         كلوحات الصدارة، لا تقييمها الذي يملكه المشرف وحده. `team: null` لمن
         بلا عضوية سارية — حالة مصمَّمة لا عطل (`SCOPE.md` ط-٢)، نفس عقد
         `GET /me/deck`.
