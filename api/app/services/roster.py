@@ -28,6 +28,7 @@ from ..extensions import db
 from ..models import Membership, Team, User
 from . import audit
 from .auth import generate_pin, hash_pin, revoke_all_sessions
+from .errors import ServiceError
 
 ROLES = ("pilot", "admin")
 
@@ -36,12 +37,8 @@ ROLES = ("pilot", "admin")
 BULK_MAX_ROWS = 400
 
 
-class RosterError(Exception):
-    """خطأ عملٍ يُترجَم إلى رمز حالة في المسار — لا يعرف HTTP (نمط `TeamsError`)."""
-
-    def __init__(self, message: str, status: int = 422):
-        self.status = status
-        super().__init__(message)
+class RosterError(ServiceError):
+    """خطأ نطاق roster — الاسمُ يبقى لأن المسارات تُلقّط به (`services/errors.py`)."""
 
 
 def roster(org_id: int) -> list[dict]:

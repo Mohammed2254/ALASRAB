@@ -16,9 +16,8 @@
 بـ`external_ref` حتميّ آخر يمنع تراجعًا مزدوجًا.
 """
 
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -27,19 +26,27 @@ from ..extensions import db
 from ..models import Membership, Org, PointEvent, User
 from ..rules.engine import Achievement, ruleset_at
 from . import ledger, week
+from .errors import ServiceError
 
 UNDO_WINDOW = timedelta(minutes=5)
 ACTIVITY = "attendance"
 
 
-class AttendanceError(Exception):
-    def __init__(self, message: str, status: int):
-        super().__init__(message)
-        self.status = status
+class AttendanceError(ServiceError):
+    """
+    خطأ نطاق الحضور — الاسمُ يبقى لأن المسارات تُلقّط به (`services/errors.py`).
+
+    **وكان `status` إلزاميًّا هنا وافتراضيًّا في الثمانية الأخرى** — نداءان
+    لمفهومٍ واحد. والوراثةُ توحّدهما بافتراض `422`، **ولا تُغيّر سلوكًا
+    اليوم**: كلُّ النداءات الأربعةَ عشر في هذين الملفّين تُمرّر `status=`
+    صراحةً (مقيسًا قبل التغيير). والأثرُ على نداءٍ قادمٍ وحده، و`422` هو
+    الصواب له: «الطلبُ مفهومٌ وقاعدةُ عملٍ ترفضه».
+    """
 
 
 def _week_start_utc(org: Org, week_start: date) -> datetime:
-    return datetime.combine(week_start, time.min, tzinfo=ZoneInfo(org.timezone)).astimezone(UTC)
+    """بدايةُ اليوم بتوقيت الجمعية — المالكُ `services/week.py` (و-٢٢)."""
+    return week.start_of_day_utc(org, week_start)
 
 
 def _ref(week_start: date, user_id: int) -> str:

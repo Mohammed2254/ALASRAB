@@ -18,6 +18,10 @@ from sqlalchemy import select
 from ..extensions import db
 from ..models import MasteryMultiplier, Weight, WeightVersion
 
+# **دقّةُ الساعة — المالكُ الوحيد.** كانت ستّ نسخٍ متطابقة في `deck` و`fuel`
+# و`reports` و`rules_admin` و`standings` وهنا. ومكانُها هذا الملفّ لأن
+# `rules/` أدنى طبقة (تستورد من `models` وحدها) والخدماتُ تستورد منها أصلًا —
+# فالاتّجاه سليم. ودقّةُ الساعة مفهومُ محرّكٍ لا مفهومُ خدمة.
 CENT = Decimal("0.01")
 
 

@@ -10,35 +10,28 @@
 """
 
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, time
+from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from ..extensions import db
-from ..models import FuelActivity, FuelAssessment, FuelCriterion, FuelScore, PointEvent
-from . import audit, ledger
+from ..models import FuelActivity, FuelAssessment, FuelCriterion, FuelScore, Org, PointEvent
+from ..rules.engine import CENT
+from . import audit, ledger, week
+from .errors import ServiceError
 
-CENT = Decimal("0.01")
 RECENT_LIMIT = 10
 
 
-class FuelError(Exception):
-    """خطأ عملٍ يُترجَم إلى رمز حالة في المسار — لا يعرف HTTP (نمط `ReadingError`)."""
-
-    def __init__(self, message: str, status: int = 422):
-        self.status = status
-        super().__init__(message)
+class FuelError(ServiceError):
+    """خطأ نطاق fuel — الاسمُ يبقى لأن المسارات تُلقّط به (`services/errors.py`)."""
 
 
-def local_start_of_day_utc(org, d: date) -> datetime:
-    """
-    `RULES.md` §٩ — نفس تحويل `reading.occurred_at_for` و`rules_admin`،
-    مكرَّر عمدًا لا مستورَدًا (ثلاثة أسطر لا تبرّر اقتران و-٨ بوحدة أخرى).
-    """
-    return datetime.combine(d, time.min, tzinfo=ZoneInfo(org.timezone)).astimezone(UTC)
+def local_start_of_day_utc(org: Org, d: date) -> datetime:
+    """بدايةُ اليوم بتوقيت الجمعية — المالكُ `services/week.py` (و-٢٢)."""
+    return week.start_of_day_utc(org, d)
 
 
 def score_totals(

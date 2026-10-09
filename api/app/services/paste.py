@@ -13,7 +13,7 @@
 import hashlib
 import json
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, time
+from datetime import date, datetime
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -24,7 +24,8 @@ from ..extensions import db
 from ..ingest import rasd
 from ..models import EntryDefault, Membership, Org, PointEvent, RawRow, Team
 from ..rules.engine import Achievement, RuleSet, ruleset_at
-from . import audit, ledger
+from . import audit, ledger, week
+from .errors import ServiceError
 from .matching import match_names
 
 SOURCE = "rasd"
@@ -67,12 +68,8 @@ def _load_column_config(org_id: int) -> tuple[dict[str, list[str]], dict[str, De
     return aliases, defaults
 
 
-class PasteError(Exception):
-    """خطأ عملٍ يُترجَم إلى رمز حالة في المسار — لا يعرف HTTP (نمط `ReadingError`)."""
-
-    def __init__(self, message: str, status: int = 422):
-        self.status = status
-        super().__init__(message)
+class PasteError(ServiceError):
+    """خطأ نطاق paste — الاسمُ يبقى لأن المسارات تُلقّط به (`services/errors.py`)."""
 
 
 def _local_today(org: Org) -> date:
@@ -80,8 +77,8 @@ def _local_today(org: Org) -> date:
 
 
 def _occurred_at_for(org: Org, occurred_on: date) -> datetime:
-    """نفس تحويل `reading.occurred_at_for`، مكرَّر عمدًا لا مستوردًا (`RULES.md` §٩)."""
-    return datetime.combine(occurred_on, time.min, tzinfo=ZoneInfo(org.timezone)).astimezone(UTC)
+    """بدايةُ اليوم بتوقيت الجمعية — المالكُ `services/week.py` (و-٢٢)."""
+    return week.start_of_day_utc(org, occurred_on)
 
 
 def _percent(target: Decimal, achieved: Decimal) -> Decimal:

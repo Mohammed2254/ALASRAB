@@ -11,7 +11,7 @@
 بسطرٍ يُحذف سهوًا، ويعود العمى. فهذه الفحوص تحرس **شكل البوّابة نفسها** —
 وهي الطبقة التي لم يكن أحدٌ يحرسها.
 
-@covers ق-٢٨٥, ق-٢٨٩, ق-٢٩٠
+@covers ق-٢٨٥, ق-٢٨٩, ق-٢٩٠, ق-٢٩٣
 """
 
 import tomllib
@@ -97,3 +97,89 @@ def test_deploy_skips_cleanly_without_a_configured_host():
     # حرسٌ يُخرج `ready` ويشترطه كلُّ ما بعده — لا `exit 1` عند الغياب.
     assert "ready=false" in deploy
     assert deploy.count("steps.gate.outputs.ready == 'true'") >= 3
+
+
+# ═══ و-٢٢ — مراجعُ الوثائق تُحرَس آليًّا (ق-٢٩٤) ═══
+
+
+def _doc_sections(md: Path) -> set[str]:
+    """أرقامُ الأقسام المعلَنة في وثيقةٍ — `## ٣. اسم` ⇒ `٣`."""
+    import re
+
+    return set(re.findall(r"^## ([٠-٩]+)\. ", md.read_text(encoding="utf-8"), re.M))
+
+
+def test_no_document_cites_a_section_that_does_not_exist():
+    """
+    **المشكلةُ ليست المرجعَ الكاذب بل غيابُ من يحرسه.**
+
+    `TRACEABILITY.md` تعفّنت شهرًا وهي تقول إن مسار `FR-004` هو
+    `PATCH /admin/teams`. ثمّ وقعتُ في النظير بنفسي: نقلتُ `§٧` و`§٨` من
+    `ARCHITECTURE.md` إلى `SECURITY.md` و`OPERATIONS.md`، **فصار أربعةَ عشرَ
+    مرجعًا في الكود والوثائق يشير إلى أقسامٍ لم تبقَ**.
+
+    فهذا الفحص يمشي على كل استشهادٍ بـ`§N` في وثيقةٍ من وثائق التصميم،
+    ويؤكّد أن القسم موجودٌ فيها فعلًا. وإعادةُ ترقيمٍ أو نقلُ قسمٍ تُسقطه.
+
+    @covers ق-٢٩٤
+    """
+    import re
+
+    design = REPO / "docs" / "design"
+    known = {p.name: _doc_sections(p) for p in design.glob("*.md")}
+    assert known, "لم يُعثر على وثيقةِ تصميمٍ واحدة — فحصٌ معطوبٌ لا نجاحٌ له"
+
+    cite = re.compile(r"`?(?P<doc>[A-Z]+)(?:\.md)?`?\s*§(?P<sec>[٠-٩]+)")
+    broken = []
+    for p in REPO.rglob("*"):
+        if p.suffix not in {".md", ".py", ".ts", ".tsx", ".mjs", ".sh", ".yml"}:
+            continue
+        if any(x in p.parts for x in ("node_modules", ".venv", ".git", "dist", "archive")):
+            continue
+        for m in cite.finditer(p.read_text(encoding="utf-8", errors="ignore")):
+            name = f"{m.group('doc')}.md"
+            if name not in known:
+                continue
+            # وثيقةٌ تستشهد بنفسها: الترقيمُ الداخليّ محفوظٌ عن قصد في
+            # `SECURITY.md`، فلا تُحسَب إشاراتُها إلى `٧.x` خارجَ أقسامها.
+            if p.name == name:
+                continue
+            if m.group("sec") not in known[name]:
+                broken.append(f"{p.relative_to(REPO)} → {name} §{m.group('sec')}")
+
+    assert not broken, "مراجعُ أقسامٍ لا وجود لها:\n  " + "\n  ".join(sorted(set(broken)))
+
+
+def test_ci_scans_dependencies_and_secrets():
+    """
+    كان صفرًا حتى و-٢٢. وأوّلُ تشغيلٍ كشف **خمس ثغرات** في المثبَّت — منها
+    ترويسةُ `Vary: Cookie` الساقطة في Flask ٣.١.٠، ونحن نعتمد كوكي الجلسة.
+
+    و**التشديدُ على الإنتاج وحده** (`requirements.txt`) مقصود: ثغرةٌ في
+    `pytest` لا تصل مستخدمًا، وإفشالُ البناء عليها يُدرَّب على تجاهله فتضيع
+    قيمةُ الفحص. ولذلك فُصل `requirements-dev.txt` — وكان `pytest` و`ruff`
+    في ملفّ الإنتاج أي **يُشحنان إلى الصورة**.
+
+    @covers ق-٢٩٣
+    """
+    ci = CI.read_text(encoding="utf-8")
+    assert "pip-audit" in ci
+    assert "npm audit" in ci
+    assert "gitleaks" in ci
+    assert "requirements.txt" in ci
+
+    # **الاعتمادياتُ لا التعاليق.** أوّلُ صياغةٍ لهذا الفحص قرأت الملفّ
+    # كاملًا فأمسكت تعليقي الذي *يشرح* نقلَ `pytest` و`ruff` — فحصٌ يفشل
+    # على توثيق إصلاحه.
+    def _names(f: str) -> set[str]:
+        out = set()
+        for line in (ROOT / f).read_text(encoding="utf-8").splitlines():
+            line = line.split("#", 1)[0].strip()
+            if line and not line.startswith("-r"):
+                out.add(line.split("==")[0].split("[")[0].strip().lower())
+        return out
+
+    prod = _names("requirements.txt")
+    for tool in ("pytest", "ruff", "pip-audit"):
+        assert tool not in prod, f"{tool} في اعتماديات الإنتاج — يُشحن إلى الصورة"
+    assert {"pytest", "ruff"} <= _names("requirements-dev.txt")

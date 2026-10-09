@@ -25,6 +25,7 @@ from sqlalchemy.exc import IntegrityError
 from ..extensions import db
 from ..models import Answer, DailyQuestion, Org
 from . import audit
+from .errors import ServiceError
 
 # خيارَان حدٌّ أدنى (سؤالٌ بخيارٍ واحد ليس سؤالًا)، وأربعةٌ حدٌّ أعلى — بطاقة
 # الطالب تعرضها عمودًا واحدًا على عرض ٣٢٠px، والخامس يُخرجها عن المنفذ.
@@ -32,12 +33,8 @@ MIN_CHOICES = 2
 MAX_CHOICES = 4
 
 
-class DailyQuestionError(Exception):
-    """خطأ عملٍ يُترجَم إلى رمز حالة في المسار — لا يعرف HTTP (نمط `TeamsError`)."""
-
-    def __init__(self, message: str, status: int = 422):
-        self.status = status
-        super().__init__(message)
+class DailyQuestionError(ServiceError):
+    """خطأ نطاق daily_question — الاسمُ يبقى لأن المسارات تُلقّط به (`services/errors.py`)."""
 
 
 def list_questions(org_id: int) -> list[dict]:

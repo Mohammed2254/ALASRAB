@@ -31,14 +31,21 @@ from sqlalchemy.exc import IntegrityError
 from ..extensions import db
 from ..models import Answer, DailyQuestion, Note, Org, PilotOfWeek, User
 from . import ledger, week
+from .errors import ServiceError
 
 ZERO = Decimal("0.00")
 
 
-class EngagementError(Exception):
-    def __init__(self, message: str, status: int):
-        super().__init__(message)
-        self.status = status
+class EngagementError(ServiceError):
+    """
+    خطأ نطاق التفاعل — الاسمُ يبقى لأن المسارات تُلقّط به (`services/errors.py`).
+
+    **وكان `status` إلزاميًّا هنا وافتراضيًّا في الثمانية الأخرى** — نداءان
+    لمفهومٍ واحد. والوراثةُ توحّدهما بافتراض `422`، **ولا تُغيّر سلوكًا
+    اليوم**: كلُّ النداءات الأربعةَ عشر في هذين الملفّين تُمرّر `status=`
+    صراحةً (مقيسًا قبل التغيير). والأثرُ على نداءٍ قادمٍ وحده، و`422` هو
+    الصواب له: «الطلبُ مفهومٌ وقاعدةُ عملٍ ترفضه».
+    """
 
 
 @dataclass(frozen=True)

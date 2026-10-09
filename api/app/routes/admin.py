@@ -14,7 +14,7 @@ from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 
 from ..extensions import db
-from ..models import Org, User
+from ..models import User
 from ..schemas import (
     ActiveSetSchema,
     ActivitiesListSchema,
@@ -99,12 +99,14 @@ from ..services import roster as roster_service
 from ..services import rules_admin as rules_admin_service
 from ..services import teams as teams_service
 from ..services import week as week_service
+from ._helpers import org_of_session
 
 blp = Blueprint("admin", __name__, url_prefix="/api", description="شاشات المشرف")
 
 
 def _org():
-    return db.session.get(Org, g.user.org_id)
+    """المشترك في `_helpers` — والاسمُ المحليّ يبقى: ٣٩ موضعَ نداء."""
+    return org_of_session()
 
 
 @blp.route("/admin/readings")

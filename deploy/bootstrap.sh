@@ -101,7 +101,7 @@ grep -q 'CHANGE_ME' .env.prod && die ".env.prod ما زال يحمل قيمة CH
 say "بناء وتشغيل"
 $COMPOSE up -d --build
 
-# ٥ — الهجرة: **يدويّة دائمًا ولا تُشغَّل عند كل إعادة تشغيل** (ARCHITECTURE §٨)
+# ٥ — الهجرة: **يدويّة دائمًا ولا تُشغَّل عند كل إعادة تشغيل** (`OPERATIONS.md`)
 say "تطبيق الهجرات"
 $COMPOSE run --rm app flask db upgrade
 

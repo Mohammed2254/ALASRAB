@@ -19,37 +19,17 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import func, select
 
 from ..extensions import db
-from ..models import Membership, Org, PointEvent, Team, User
+from ..models import Membership, Org, Team, User
+from ..rules.engine import CENT
+from . import hours as hours_query
 from . import readiness, week
-
-CENT = Decimal("0.01")
-
-
-def _hours_subquery(org_id: int, since: datetime | None, until: datetime | None = None) -> Select:
-    """
-    مجموع ساعات كل مستخدم — بنافذة إن مُرِّر `since`، أو تراكميًّا بلا شرط.
-
-    و`until` **حدٌّ أعلى حصريّ** أُضيف في و-٢٠ لحساب ترتيب الأسبوع الماضي:
-    بدونه كانت النافذة مفتوحةً إلى الأبد فتخلط الأسبوعين.
-    """
-    conditions = [PointEvent.org_id == org_id, PointEvent.scope == "individual"]
-    if since is not None:
-        conditions.append(PointEvent.occurred_at >= since)
-    if until is not None:
-        conditions.append(PointEvent.occurred_at < until)
-    return (
-        select(PointEvent.user_id, func.sum(PointEvent.delta).label("hours"))
-        .where(*conditions)
-        .group_by(PointEvent.user_id)
-        .subquery()
-    )
 
 
 def _pilot_rows(org: Org, since: datetime, until: datetime | None) -> list:
-    window = _hours_subquery(org.id, since, until)
+    window = hours_query.sum_by_user(org.id, since, until)
     return db.session.execute(
         select(User.id, User.full_name, func.coalesce(window.c.hours, 0).label("hours"))
         .join(Membership, Membership.user_id == User.id)
@@ -114,7 +94,7 @@ def teams_board(org: Org, now: datetime | None = None) -> list[dict]:
 def _teams_board_window(
     org: Org, since: datetime, until: datetime | None, now: datetime
 ) -> list[dict]:
-    window = _hours_subquery(org.id, since, until)
+    window = hours_query.sum_by_user(org.id, since, until)
     rows = db.session.execute(
         select(
             Team.id,
@@ -181,7 +161,7 @@ class _Aircraft:
 
 
 def _team_aircraft(org: Org, team_id: int) -> list[_Aircraft]:
-    window = _hours_subquery(org.id, None)
+    window = hours_query.sum_by_user(org.id, None)
     rows = db.session.execute(
         select(User.id, User.full_name, func.coalesce(window.c.hours, 0).label("hours"))
         .join(Membership, Membership.user_id == User.id)
@@ -197,7 +177,7 @@ def _team_aircraft(org: Org, team_id: int) -> list[_Aircraft]:
 
 
 def _general_aircraft(org: Org) -> list[_Aircraft]:
-    window = _hours_subquery(org.id, None)
+    window = hours_query.sum_by_user(org.id, None)
     rows = db.session.execute(
         select(User.id, User.full_name, func.coalesce(window.c.hours, 0).label("hours"))
         .join(Membership, Membership.user_id == User.id)

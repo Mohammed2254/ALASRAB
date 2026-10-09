@@ -35,6 +35,29 @@ def week_start_local(org: Org, now: datetime) -> date:
     return local_now.date() - timedelta(days=days_since_start)
 
 
+def start_of_day_utc(org: Org, day: date) -> datetime:
+    """
+    بدايةُ يومٍ بعينه بتوقيت الجمعية، محوَّلةً إلى UTC.
+
+    **كانت ثماني نسخٍ** متطابقةِ الجسم في `fuel` و`quran` و`reading`
+    (مرّتين) و`paste` و`entry` و`rules_admin` و`engagement`، وثلاثٌ منها
+    تحمل تعليقًا يُبرّر التكرار بأن «ثلاثة أسطرٍ لا تستحقّ قرنَ شريحةٍ
+    بأخرى».
+
+    **والتبريرُ ينقضه شيئان:**
+
+    ١. `fuel_week.py:36` يستورد من `fuel.py` فعلًا — فالقرنُ واقعٌ أصلًا.
+    ٢. وترويسةُ هذا الملفّ ترفض هذا التكرار بعينه للحجّة نفسها: الصيغةُ
+       **تقرأ عمودَ سياسةٍ متغيّرًا** (`orgs.timezone`)، فهي ليست ثابتًا
+       رياضيًّا. وذاك بالضبط ما قيل عن `week_starts_on`.
+
+    وأثرُ الافتراق لا يظهر عطلًا بل **لحظةً مختلفةً لنفس اليوم** في مسارَين —
+    فيُختار إصدارُ أوزانٍ غير الذي يختاره الآخر، وتتبدّل ساعةُ طالبٍ بلا سبب
+    يُرى. وهذا أسوأ من العطل لأن أحدًا لا يلاحظه.
+    """
+    return datetime.combine(day, time.min, tzinfo=ZoneInfo(org.timezone)).astimezone(UTC)
+
+
 def week_start_of(org: Org, day: date) -> date:
     """
     بداية الأسبوع **الذي يقع فيه تاريخٌ بعينه** — لا أسبوع اليوم.
@@ -54,5 +77,4 @@ def week_start_utc(org: Org, now: datetime) -> datetime:
     لمن يقارن بـ`point_events.occurred_at` (الصدارة) — والتحويل نفسه الذي
     يحكمه `RULES.md` §٩: بداية اليوم المحليّ ثم إلى UTC، لا منتصف ليل UTC.
     """
-    local_start = week_start_local(org, now)
-    return datetime.combine(local_start, time.min, tzinfo=ZoneInfo(org.timezone)).astimezone(UTC)
+    return start_of_day_utc(org, week_start_local(org, now))

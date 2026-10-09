@@ -38,7 +38,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
-      - run: pip install -r requirements.txt
+      # التطوير يسحب الإنتاج معه (`-r requirements.txt` في أعلاه).
+      - run: pip install -r requirements-dev.txt
         working-directory: api
       # **اللنت والتهيئة لم يكونا في CI إطلاقًا** (و-٢٢): `ruff` مثبَّتٌ في
       # `requirements.txt` منذ و-١ ويُشغَّل بيدٍ وحدها — فعاش خطأُ ترتيبِ
@@ -85,6 +86,44 @@ jobs:
       # القياس البصريّ الحيّ (Playwright) يحتاج api+ui يعملان معًا، لا يناسب
       # مصفوفة CI عديمة الحالة بسهولة — يبقى يدويًّا قبل إغلاق كل شريحة كما
       # كان طوال و-١٣..و-١٨، لا آليًّا هنا.
+
+  # **فحصُ الثغرات والأسرار — كان صفرًا حتى و-٢٢** (ق-٢٩٣).
+  #
+  # ولا شيء منه يحتاج قاعدةَ بيانات ولا بناءً، فهو أرخصُ وظيفةٍ في المصفوفة
+  # وأكثرُها عائدًا: ثغرةٌ معلَنةٌ في مكتبةٍ تُكتشَف يومَ إعلانها لا يومَ
+  # استغلالها.
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # `gitleaks` يفحص **التاريخ** لا العاملَ وحده: سرٌّ أُضيف ثم حُذف
+          # يبقى في الدفعة التي أضافته، والمستودع عامّ.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+
+      # `--strict` يفشل إن تعذّر حلُّ اعتماديةٍ بدل أن يتخطّاها بصمت —
+      # ففحصٌ يتخطّى ما لا يفهمه يُعطي أخضرَ على لا شيء.
+      - name: ثغرات بايثون
+        run: |
+          pip install --quiet pip-audit
+          pip-audit --strict --requirement api/requirements.txt
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+
+      # `--omit=dev` لأن أدوات التطوير لا تُشحن: ثغرةٌ في `vitest` لا تصل
+      # مستخدمًا، وإفشالُ البناء عليها يُدرَّب على تجاهله.
+      - name: ثغرات الواجهة
+        run: npm audit --audit-level=high --omit=dev
+        working-directory: ui
+
+      - name: أسرارٌ مسرَّبة
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ── `web-regression` أُزيلت في و-٢٢ ──
   #

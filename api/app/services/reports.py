@@ -17,10 +17,11 @@ from decimal import Decimal
 from sqlalchemy import func, select
 
 from ..extensions import db
-from ..models import Membership, Org, PointEvent, Team, User
+from ..models import Membership, Org, Team, User
+from ..rules.engine import CENT
+from . import hours as hours_query
 from . import readiness
 
-CENT = Decimal("0.01")
 DEFAULT_DAYS = 7
 MAX_DAYS = 90
 TOP_MOVERS = 5
@@ -37,30 +38,11 @@ class Report:
     grounded: list[dict]
 
 
-def _window_hours(org_id: int, since: datetime):
-    """
-    ساعات النافذة لكل طالب — **حركة لا رصيدًا تراكميًّا**.
-
-    «من تقدّم» سؤالٌ عن الأسبوع لا عن العمر: طالبٌ رصيده ١٥٠٠ ولم يقرأ شهرًا
-    ليس متقدّمًا، والتقرير يقيس ما تغيّر.
-    """
-    return (
-        select(PointEvent.user_id, func.sum(PointEvent.delta).label("hours"))
-        .where(
-            PointEvent.org_id == org_id,
-            PointEvent.scope == "individual",
-            PointEvent.occurred_at >= since,
-        )
-        .group_by(PointEvent.user_id)
-        .subquery()
-    )
-
-
 def build(org: Org, days: int = DEFAULT_DAYS) -> Report:
     """يُبنى باستعلامين على السجلّ — بلا N+1 وبلا جدول ملخّصات."""
     days = max(1, min(days, MAX_DAYS))
     since = datetime.now(UTC) - timedelta(days=days)
-    window = _window_hours(org.id, since)
+    window = hours_query.sum_by_user(org.id, since)
 
     # صفٌّ لكل طالب في عضوية سارية، ومعه ساعات نافذته (صفر إن لم ينشط).
     rows = db.session.execute(

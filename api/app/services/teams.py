@@ -15,14 +15,11 @@ from sqlalchemy.exc import IntegrityError
 from ..extensions import db
 from ..models import Membership, Team, User
 from . import audit
+from .errors import ServiceError
 
 
-class TeamsError(Exception):
-    """خطأ عملٍ يُترجَم إلى رمز حالة في المسار — لا يعرف HTTP (نمط `ReadingError`)."""
-
-    def __init__(self, message: str, status: int = 422):
-        self.status = status
-        super().__init__(message)
+class TeamsError(ServiceError):
+    """خطأ نطاق teams — الاسمُ يبقى لأن المسارات تُلقّط به (`services/errors.py`)."""
 
 
 def list_teams(org_id: int) -> list[dict]:

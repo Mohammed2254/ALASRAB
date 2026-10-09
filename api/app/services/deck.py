@@ -15,6 +15,7 @@ from sqlalchemy import func, select
 
 from ..extensions import db
 from ..models import Membership, Org, PointEvent, RankThreshold, Team, User
+from ..rules.engine import CENT
 from . import readiness
 
 
@@ -35,9 +36,6 @@ class DeckError(Exception):
     def __init__(self, message: str, status: int = 422):
         self.status = status
         super().__init__(message)
-
-
-CENT = Decimal("0.01")
 
 
 @dataclass(frozen=True)

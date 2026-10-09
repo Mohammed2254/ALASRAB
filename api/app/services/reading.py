@@ -9,7 +9,7 @@
 """
 
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -20,6 +20,7 @@ from ..extensions import db
 from ..models import Membership, Org, PointEvent, ReadingSubmission, Team, User
 from ..rules.engine import Achievement, ruleset_at
 from . import audit, ledger, week
+from .errors import ServiceError
 
 ACTIVITY = "reading"
 KIND = "reading"
@@ -49,12 +50,8 @@ TAHDIR_ALLOWED_WEEKDAYS = {6, 0, 1, 2}
 MAX_SUBMISSIONS_PER_DAY = 20
 
 
-class ReadingError(Exception):
-    """خطأ عملٍ يُترجَم إلى رمز حالة في المسار — لا يعرف HTTP."""
-
-    def __init__(self, message: str, status: int = 422):
-        self.status = status
-        super().__init__(message)
+class ReadingError(ServiceError):
+    """خطأ نطاق reading — الاسمُ يبقى لأن المسارات تُلقّط به (`services/errors.py`)."""
 
 
 @dataclass(frozen=True)
@@ -77,13 +74,8 @@ def local_today(org: Org) -> date:
 
 
 def occurred_at_for(org: Org, read_on: date) -> datetime:
-    """
-    `RULES.md` §٩ — بداية يوم القراءة بتوقيت المنظمة، محوَّلة إلى UTC.
-
-    اللحظة الناتجة تحدّد **أي إصدار أوزان يُختار** وحساب «أرضي» ونوافذ الأسبوع
-    لاحقًا، فتركُها لاجتهاد المستدعي يعني ثلاثة أنظمة تختلف بصمت.
-    """
-    return datetime.combine(read_on, time.min, tzinfo=ZoneInfo(org.timezone)).astimezone(UTC)
+    """بدايةُ اليوم بتوقيت الجمعية — المالكُ `services/week.py` (و-٢٢)."""
+    return week.start_of_day_utc(org, read_on)
 
 
 def _check_tahdir_day(read_on: date) -> None:
@@ -104,11 +96,11 @@ def _check_daily_quota(org: Org, user_id: int) -> None:
     **والعدّ على يوم الإرسال لا على `read_on`:** التسجيل بأثرٍ رجعيّ مشروع
     (`read_on` ماضٍ)، والمقصود حدُّ الإرسال لا حدُّ المواضيع.
     """
-    since = datetime.combine(local_today(org), time.min, tzinfo=ZoneInfo(org.timezone))
+    since = week.start_of_day_utc(org, local_today(org))
     sent_today = db.session.scalar(
         select(func.count(ReadingSubmission.id)).where(
             ReadingSubmission.user_id == user_id,
-            ReadingSubmission.created_at >= since.astimezone(UTC),
+            ReadingSubmission.created_at >= since,
         )
     )
     if sent_today >= MAX_SUBMISSIONS_PER_DAY:

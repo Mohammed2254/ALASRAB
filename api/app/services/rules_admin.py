@@ -11,10 +11,9 @@
 """
 
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, time
+from datetime import date, datetime
 from decimal import Decimal
 from itertools import count
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
 
@@ -22,36 +21,28 @@ from ..extensions import db
 from ..models import (
     MasteryMultiplier,
     Membership,
+    Org,
     PointEvent,
     RankThreshold,
     User,
     Weight,
     WeightVersion,
 )
-from . import audit
+from ..rules.engine import CENT
+from . import audit, week
+from .errors import ServiceError
 
-CENT = Decimal("0.01")
 
-
-class RulesAdminError(Exception):
-    """خطأ عملٍ يُترجَم إلى رمز حالة في المسار — لا يعرف HTTP (نمط `ReadingError`)."""
-
-    def __init__(self, message: str, status: int = 422):
-        self.status = status
-        super().__init__(message)
+class RulesAdminError(ServiceError):
+    """خطأ نطاق rules_admin — الاسمُ يبقى لأن المسارات تُلقّط به (`services/errors.py`)."""
 
 
 # ═══ الأوزان — FR-081 ═══
 
 
-def _local_start_of_day_utc(org, d: date) -> datetime:
-    """
-    `RULES.md` §٩ — بداية اليوم بتوقيت المنظمة، محوَّلة إلى UTC.
-
-    **مطابق حرفيًّا لـ`services/reading.py::occurred_at_for`** — تكرارٌ مقصود
-    لا كسل: ثلاثة أسطر لا تبرّر اقتران و-٧ بوحدة و-٤ المغلقة عبر استيراد متبادل.
-    """
-    return datetime.combine(d, time.min, tzinfo=ZoneInfo(org.timezone)).astimezone(UTC)
+def _local_start_of_day_utc(org: Org, d: date) -> datetime:
+    """بدايةُ اليوم بتوقيت الجمعية — المالكُ `services/week.py` (و-٢٢)."""
+    return week.start_of_day_utc(org, d)
 
 
 def list_weights(org_id: int) -> dict:

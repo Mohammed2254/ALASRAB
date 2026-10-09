@@ -10,7 +10,7 @@
 @implements FR-035, FR-036, FR-037, FR-080
 """
 
-from datetime import UTC, date, datetime, time
+from datetime import date, datetime
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -19,26 +19,20 @@ from sqlalchemy import select
 from ..extensions import db
 from ..models import Membership, Org, PointEvent, User
 from ..rules.engine import Achievement, hours_for
-from . import audit, ledger
+from . import audit, ledger, week
 from .deck import recent_events
+from .errors import ServiceError
 
 AUDIT_KIND = "quran_correction"
 
 
-class QuranError(Exception):
-    """خطأ عملٍ يُترجَم إلى رمز حالة في المسار — لا يعرف HTTP (نمط `ReadingError`)."""
-
-    def __init__(self, message: str, status: int = 422):
-        self.status = status
-        super().__init__(message)
+class QuranError(ServiceError):
+    """خطأ نطاق quran — الاسمُ يبقى لأن المسارات تُلقّط به (`services/errors.py`)."""
 
 
 def _local_start_of_day_utc(org: Org, d: date) -> datetime:
-    """
-    `RULES.md` §٩ — نفس تحويل `reading.occurred_at_for`/`rules_admin`/`fuel`،
-    مكرَّر عمدًا لا مستورَدًا (ثلاثة أسطر لا تبرّر اقتران و-٦ بوحدة أخرى مغلقة).
-    """
-    return datetime.combine(d, time.min, tzinfo=ZoneInfo(org.timezone)).astimezone(UTC)
+    """بدايةُ اليوم بتوقيت الجمعية — المالكُ `services/week.py` (و-٢٢)."""
+    return week.start_of_day_utc(org, d)
 
 
 def _local_today(org: Org) -> date:

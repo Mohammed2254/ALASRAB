@@ -18,6 +18,9 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends libpq5 \
     && rm -rf /var/lib/apt/lists/*
 
+# **الإنتاج وحده** — `requirements-dev.txt` لا يُنسَخ ولا يُثبَّت. وكان
+# `pytest` و`ruff` في هذا الملفّ حتى و-٢٢، أي يُشحنان إلى الصورة: أدواتُ
+# تطويرٍ على خادمٍ حيّ سطحُ هجومٍ بلا مقابل.
 COPY api/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 

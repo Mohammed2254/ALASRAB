@@ -13,7 +13,7 @@ from flask.views import MethodView
 from flask_smorest import Blueprint, abort
 
 from ..extensions import db
-from ..models import Org, Team, User
+from ..models import Team, User
 from ..schemas import (
     AnsweredSchema,
     AnswerSchema,
@@ -40,6 +40,7 @@ from ..services import fuel_week as fuel_week_service
 from ..services import reading as reading_service
 from ..services import standings as standings_service
 from ..services import week as week_service
+from ._helpers import org_of_session
 
 blp = Blueprint("me", __name__, url_prefix="/api", description="بطاقة الطيار")
 
@@ -56,7 +57,7 @@ class Deck(MethodView):
         يوجد ما يُتلاعب به أصلًا. وهذا أقوى من التحقّق من الملكية — يُلغي
         المسار الذي يحتاج تحقّقًا.
         """
-        org = db.session.get(Org, g.user.org_id)
+        org = org_of_session()
         try:
             card = deck_service.build(org, g.user.id)
         except deck_service.DeckError as exc:
@@ -96,7 +97,7 @@ class PilotsBoard(MethodView):
     @blp.response(200, PilotsBoardSchema)
     def get(self):
         """صدارة الأفراد — نافذة الأسبوع الحالي (FR-050 · API.md §٥)."""
-        org = db.session.get(Org, g.user.org_id)
+        org = org_of_session()
         return {"pilots": standings_service.pilots_board(org)}
 
 
@@ -106,7 +107,7 @@ class TeamsBoard(MethodView):
     @blp.response(200, TeamsBoardSchema)
     def get(self):
         """صدارة الأسراب بالمعدّل، فكّ التعادل بـ`code` (FR-051 · FR-052)."""
-        org = db.session.get(Org, g.user.org_id)
+        org = org_of_session()
         return {"teams": standings_service.teams_board(org)}
 
 
@@ -119,7 +120,7 @@ class Formation(MethodView):
         scope = request.args.get("scope", "team")
         if scope not in ("team", "general"):
             abort(422, message="scope يجب أن يكون team أو general")
-        org = db.session.get(Org, g.user.org_id)
+        org = org_of_session()
         return standings_service.formation(org, g.user.id, scope)
 
 
@@ -157,7 +158,7 @@ class TodayQuestion(MethodView):
     @blp.response(200, TodayQuestionSchema)
     def get(self):
         """سؤال اليوم — بتوقيت المنظمة (FR-060)."""
-        org = db.session.get(Org, g.user.org_id)
+        org = org_of_session()
         question, answered = engagement_service.today(org, g.user.id)
         return {"question": None if question is None else _question_payload(question, answered)}
 
@@ -169,7 +170,7 @@ class AnswerQuestion(MethodView):
     @blp.response(200, AnsweredSchema)
     def post(self, data, question_id):
         """إجابة واحدة لكل سؤال — القيد في القاعدة لا بإخفاء الزرّ (FR-060 · ث-٨)."""
-        org = db.session.get(Org, g.user.org_id)
+        org = org_of_session()
         try:
             result = engagement_service.answer(org, g.user.id, question_id, data["choice_id"])
         except engagement_service.EngagementError as exc:
@@ -184,7 +185,7 @@ class SubmitNote(MethodView):
     @blp.response(201)
     def post(self, data):
         """ملاحظة مجهولة — بلا `id` في الردّ (FR-061 · ث-١٢)."""
-        org = db.session.get(Org, g.user.org_id)
+        org = org_of_session()
         try:
             engagement_service.submit_note(org, data["body"])
         except engagement_service.EngagementError as exc:
@@ -197,7 +198,7 @@ class WeekPilot(MethodView):
     @blp.response(200, WeekPilotSchema)
     def get(self):
         """طيار الأسبوع الحالي وسببه — `null` إن لم يُختَر بعد (FR-062)."""
-        org = db.session.get(Org, g.user.org_id)
+        org = org_of_session()
         row = engagement_service.week_pilot(org)
         if row is None:
             return {"pilot": None}
@@ -238,7 +239,7 @@ class MyReadings(MethodView):
     @blp.response(201, SubmittedSchema)
     def post(self, data):
         """طلبٌ معلَّق. **لا ساعات في الردّ** — لا يمنح شيئًا قبل الاعتماد (FR-021)."""
-        org = db.session.get(Org, g.user.org_id)
+        org = org_of_session()
         try:
             submission = reading_service.submit(
                 org, g.user.id, data["read_on"], data["pages"], data["book_title"]
@@ -255,7 +256,7 @@ class MyTahdir(MethodView):
     @login_required
     @blp.response(200, TahdirReportSchema)
     def get(self):
-        org = db.session.get(Org, g.user.org_id)
+        org = org_of_session()
         rows = reading_service.list_for_user(g.user.id, activity_type=reading_service.TAHDIR)
         return {
             "submissions": [
@@ -279,7 +280,7 @@ class MyTahdir(MethodView):
     @blp.response(201, SubmittedSchema)
     def post(self, data):
         """طلبٌ معلَّق **لا يمنح ساعات** (FR-091)."""
-        org = db.session.get(Org, g.user.org_id)
+        org = org_of_session()
         try:
             submission = reading_service.submit(
                 org,
@@ -334,7 +335,7 @@ class Station(MethodView):
         بلا عضوية سارية — حالة مصمَّمة لا عطل (`SCOPE.md` ط-٢)، نفس عقد
         `GET /me/deck`.
         """
-        org = db.session.get(Org, g.user.org_id)
+        org = org_of_session()
         if g.membership is None:
             return {
                 "team": None,
